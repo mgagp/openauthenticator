@@ -58,6 +58,9 @@ lib/app.dart
 # Snap
 open-authenticator_*.snap
 
+# Machine-specific toolchain paths (see dev-env.example)
+/dev-env.local
+
 # Flatpak
 flatpak/.flatpak-builder
 flatpak/appdir
