@@ -16,7 +16,14 @@ scripts\with-env.ps1 flutter build apk       # PowerShell
 scripts/with-env.sh                          # no args: print resolved JAVA_HOME / java / flutter / dart
 ```
 
-Flutter does not honor `JAVA_HOME` when Android Studio's bundled JBR is installed (its `flutter config --jdk-dir` setting wins), so the wrapper also syncs that user-global setting to `JAVA_HOME`. Do not search the filesystem for a JDK; read `dev-env.local`. If it is missing, ask the user for the paths. The Windows desktop target is out of scope for now (no Visual Studio needed); Android is the primary build target.
+Flutter does not honor `JAVA_HOME` when Android Studio's bundled JBR is installed (its `flutter config --jdk-dir` setting wins), so the wrapper also syncs that user-global setting to `JAVA_HOME`. Do not search the filesystem for a JDK; read `dev-env.local`. If it is missing, ask the user for the paths.
+
+### Decision: desktop targets disabled (Android is the primary target)
+
+- **Decision** (issue #3, 2026-10-26): the Windows desktop target is out of scope for now (no Visual Studio needed), and Linux cannot be built on the Windows dev machine anyway. Both are disabled in Flutter's user-global config: `flutter config --no-enable-windows-desktop --no-enable-linux-desktop`.
+- **Why**: when a project has a `windows/` or `linux/` folder *and* that desktop target is enabled (the default in current Flutter), every `flutter pub get` creates `<platform>/flutter/ephemeral/.plugin_symlinks/` — symlinks the CMake build uses to reach native plugin code (`flutter_tools/lib/src/flutter_plugins.dart`, `createPluginSymlinks`). Windows only lets a non-admin create symlinks in Developer Mode, so `pub get` failed with "Building with plugins requires symlink support" (`ERROR_PRIVILEGE_NOT_HELD`). Android/iOS never need these symlinks. Disabling the unused targets avoids changing a system security setting.
+- **Consequence**: `windows/` and `linux/` stay in the repo untouched but are ignored by the tooling; `flutter build windows|linux` and those devices are unavailable. The setting is per user account, so it affects every Flutter project on the machine. `flutter doctor` still reports Visual Studio as missing — expected.
+- **To re-enable** (when Windows becomes a target): enable Windows Developer Mode (`start ms-settings:developers`) or work from an elevated terminal, install Visual Studio with the "Desktop development with C++" workload, run `flutter config --enable-windows-desktop` (and/or `--enable-linux-desktop`), then `flutter pub get` and `flutter doctor`. Update this section.
 
 ## Setup and generated files
 
@@ -31,13 +38,16 @@ dart run open_authenticator:generate                       # writes lib/app.dart
 flutter run
 ```
 
-- `pubspec.lock` is gitignored, so dependency versions are not pinned: each `pub get` may resolve newer versions within the `pubspec.yaml` ranges.
+- `pubspec.lock` is gitignored, so dependency versions are not pinned: each `pub get` may resolve newer versions within the `pubspec.yaml` ranges. In practice the resolved set needs **Dart ≥ 3.13 / Flutter ≥ 3.47** (stricter than the `>=3.12.0` in `pubspec.yaml`, because of dependencies). Baseline verified on Flutter 3.47.8 / Dart 3.13.7.
+- Run the steps through the wrapper (`scripts/with-env.sh <step>`). `build_runner` is the slow one (~1.5 min cold, 375 outputs); the others take seconds.
+- `pub get` rewrites `macos/Flutter/GeneratedPluginRegistrant.swift` with LF endings; with `core.autocrlf=true` git then reports it modified with no content diff (`git diff` is empty). Discard it with `git restore`; never commit it unless its content actually changed.
 - `dart run open_authenticator:generate --help` lists the options; defaults point at the official backend with empty Sentry/RevenueCat keys. Never hand-edit `lib/app.dart`; regenerate it.
 - Re-run `build_runner` after changing drift tables, and `slang` after editing translation JSON.
 
 ## Lint / format
 
-- `flutter analyze` (uses `flutter_lints` + the `riverpod_lint` analyzer plugin).
+- `flutter analyze` (uses `flutter_lints` + the `riverpod_lint` analyzer plugin). Baseline: no issues.
+- Format check: `dart format --output=none --set-exit-if-changed $(git ls-files 'bin/*.dart' 'lib/*.dart')`. Check tracked files only: generated files such as `lib/model/database/database.g.dart` are not formatter-clean and are gitignored anyway (`dart format` has no exclude option). Baseline: clean (203 files). Always run the formatter inside the repo, because it reads `page_width` from `analysis_options.yaml`; outside the repo it falls back to 80 columns.
 - `dart format .` — the project sets `page_width: 200` and `trailing_commas: preserve` in `analysis_options.yaml`, so lines are long and existing trailing commas are kept.
 - Style rules enforced: single quotes, `prefer_const_constructors`, `unnecessary_lambdas`. Code uses explicit local variable types (`AppDatabase database = ...`) rather than `var`, and every public member has a `///` doc comment.
 - The SDK constraint is `>=3.12.0`; the code uses dot shorthands (`mode: .insertOrReplace`, `currentPlatform == .linux`).
