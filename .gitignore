@@ -80,3 +80,6 @@ lib/firebase_options.dart
 /macos/Runner/GoogleService-Info.plist
 /android/app/google-services.json
 firebase.json
+
+# Claude Code per-user settings (may hold secrets such as GH_TOKEN)
+/.claude/settings.local.json
