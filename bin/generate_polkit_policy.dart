@@ -25,7 +25,8 @@ Future<void> main() async {
 <policyconfig>
 ''';
   for (UnlockReason reason in UnlockReason.values) {
-    policyFileContent += '''
+    policyFileContent +=
+        '''
   <action id="app.openauthenticator.${reason.name}">
     <description gettext-domain="polkit.app.openauthenticator">${translations["en"]!["authenticationRequired"]}</description>
     <message gettext-domain="polkit.app.openauthenticator">${translations["en"]!["localAuthentication(map)"][reason.name]}</message>
@@ -50,11 +51,13 @@ Future<void> main() async {
       continue;
     }
     stdout.writeln('Generating $locale translation...');
-    String translationFileContent = '''msgid "${translations["en"]!["authenticationRequired"]}"
+    String translationFileContent =
+        '''msgid "${translations["en"]!["authenticationRequired"]}"
 msgstr "${translations[locale]!["authenticationRequired"]}"
 ''';
     for (UnlockReason reason in UnlockReason.values) {
-      translationFileContent += '''
+      translationFileContent +=
+          '''
 
 msgid "${translations["en"]!["localAuthentication(map)"][reason.name]}"
 msgstr "${translations[locale]!["localAuthentication(map)"][reason.name]}"
