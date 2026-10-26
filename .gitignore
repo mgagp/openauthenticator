@@ -58,6 +58,9 @@ lib/app.dart
 # Snap
 open-authenticator_*.snap
 
+# Machine-specific toolchain paths (see dev-env.example)
+/dev-env.local
+
 # Flatpak
 flatpak/.flatpak-builder
 flatpak/appdir
@@ -77,3 +80,6 @@ lib/firebase_options.dart
 /macos/Runner/GoogleService-Info.plist
 /android/app/google-services.json
 firebase.json
+
+# Claude Code per-user settings (may hold secrets such as GH_TOKEN)
+/.claude/settings.local.json

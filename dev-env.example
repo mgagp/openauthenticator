@@ -1,0 +1,10 @@
+# Machine-specific toolchain paths, read by scripts/with-env.sh and scripts/with-env.ps1.
+# Copy this file to `dev-env.local` (gitignored) and adjust the paths for your machine.
+# Lines are KEY=VALUE; blank lines and lines starting with # are ignored. Empty values are skipped.
+
+# JDK used by Gradle for Android builds. The app targets Java 17 (android/app/build.gradle.kts);
+# use a JDK 17 or 21 install. Example: C:\Tools\jdk17
+JAVA_HOME=
+
+# Optional: Flutter SDK root, prepended to PATH when set. Example: C:\Tools\flutter
+FLUTTER_ROOT=
