@@ -45,6 +45,7 @@ Cumulative ledger (ADR-0001 D3). Every entry names the PR and why the hook could
 | File | Change | PR |
 | --- | --- | --- |
 | `pubspec.yaml`, `pubspec.lock` | `ezkey_dart` git dependency (pinned commit), `ezkey_keystore` path dependency; the lock only gains `ezkey_dart`, `ezkey_keystore`, `cryptography`, `pointycastle`, `unorm_dart` | Slice 1 (#16) |
+| `pubspec.yaml`, `pubspec.lock` | `integration_test` (`sdk: flutter`) in `dev_dependencies` for on-device tests; the lock gains SDK packages only (`integration_test`, `flutter_driver`, …) | Slice 1 (#16) |
 
 ## Lab setup (Pixel against the local stack)
 
@@ -58,7 +59,8 @@ Cumulative ledger (ADR-0001 D3). Every entry names the PR and why the hook could
 | Check | Expected | Result |
 | --- | --- | --- |
 | Key generation tier on the Pixel 7 Pro | `strong` (StrongBox) | — |
-| StrongBox unavailable path | Falls back to `standard`, enrollment succeeds | — |
+| StrongBox unavailable path | Falls back to `standard` | Emulator `oa_api35` (Android 15, no StrongBox feature), 2026-10-27: `standard`; key generated, listed, deleted (`integration_test/ezkey/keystore_test.dart`) |
+| Raw Keystore signatures | Verify with the public key; some are high-S, all normalize to low-S | Emulator, 2026-10-27: 16/16 verify, **8/16 high-S** (confirms G8), all normalized |
 | Enroll + approve + deny against the local stack | Server accepts every device signature | — |
 | Orphan key cleanup after storage recovery | `ezkey-device-*` aliases without a record are deleted | — |
 
