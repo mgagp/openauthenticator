@@ -41,9 +41,8 @@ flutter run
 - **Pinned toolchain and dependencies** (issue #6, a fork-only divergence: upstream gitignores the lock). Goal: reproducible builds and non-flaky tests.
   - `pubspec.lock` is versioned. `flutter pub get` keeps it unchanged unless `pubspec.yaml` changes; use `flutter pub get --enforce-lockfile` to verify that.
   - `.flutter-version` holds the reference Flutter version (currently 3.47.8 / Dart 3.13.7). `scripts/with-env.*` warn when the active SDK differs. The lockfile only records an SDK floor (in practice **Dart ≥ 3.13 / Flutter ≥ 3.47**, stricter than `pubspec.yaml`'s `>=3.12.0` because of dependencies).
-  - Upgrades are deliberate: a `chore(deps)` issue/PR running `flutter pub upgrade` (or bumping `.flutter-version` and the SDK), then the full baseline (codegen, analyze, format, tests). This kind of PR is Claude-mergeable when every check passes.
-  - After an upstream sync that touches `pubspec.yaml`, run `flutter pub get` and commit the updated lock in the same PR.
-  - Known and accepted: `forui 0.25` pulls the discontinued `forui_assets`. Upgrading means a forui 0.25 → 0.27 UI migration, deferred pending upstream (issue #4).
+  - **No dependency initiative** (see "Upstream alignment"): never run `flutter pub upgrade` and never edit dependency ranges on our own. The lock changes only when an upstream sync changes `pubspec.yaml`: run `flutter pub get` and commit the updated lock in that sync PR. Bump `.flutter-version` only when an upstream change requires a newer SDK.
+  - Known and accepted: `forui 0.25` pulls the discontinued `forui_assets`. Migrating (forui 0.25 → 0.27) is upstream's call (issue #4, closed as not planned).
 - Run the steps through the wrapper (`scripts/with-env.sh <step>`). `build_runner` is the slow one (~1.5 min cold, 375 outputs); the others take seconds.
 - `pub get` rewrites `macos/Flutter/GeneratedPluginRegistrant.swift` with LF endings; with `core.autocrlf=true` git then reports it modified with no content diff (`git diff` is empty). Discard it with `git restore`; never commit it unless its content actually changed.
 - `dart run open_authenticator:generate --help` lists the options; defaults point at the official backend with empty Sentry/RevenueCat keys. Never hand-edit `lib/app.dart`; regenerate it.
@@ -52,8 +51,12 @@ flutter run
 ## Lint / format
 
 - `flutter analyze` (uses `flutter_lints` + the `riverpod_lint` analyzer plugin). Baseline: no issues.
-- Format check: `dart format --output=none --set-exit-if-changed $(git ls-files 'bin/*.dart' 'lib/*.dart')`. Check tracked files only: generated files such as `lib/model/database/database.g.dart` are not formatter-clean and are gitignored anyway (`dart format` has no exclude option). Baseline: clean (203 files). Always run the formatter inside the repo, because it reads `page_width` from `analysis_options.yaml`; outside the repo it falls back to 80 columns.
-- `dart format .` — the project sets `page_width: 200` and `trailing_commas: preserve` in `analysis_options.yaml`, so lines are long and existing trailing commas are kept.
+- Format check: only on Dart files that differ from upstream (ours are formatted, upstream's are left as upstream has them; upstream uses an older formatter, so reformatting its files would create divergence):
+  ```sh
+  files=$(git diff --name-only --diff-filter=d upstream/main -- '*.dart'); [ -z "$files" ] || scripts/with-env.sh dart format --output=none --set-exit-if-changed $files
+  ```
+  The empty guard matters: `dart format` with no paths formats the whole directory. Generated files (e.g. `lib/model/database/database.g.dart`) are gitignored, so `git diff` never lists them. Always run the formatter inside the repo, because it reads `page_width` from `analysis_options.yaml`; outside the repo it falls back to 80 columns.
+- `dart format <files you changed>` (never `dart format .`, see "Upstream alignment"). The project sets `page_width: 200` and `trailing_commas: preserve` in `analysis_options.yaml`, so lines are long and existing trailing commas are kept.
 - Style rules enforced: single quotes, `prefer_const_constructors`, `unnecessary_lambdas`. Code uses explicit local variable types (`AppDatabase database = ...`) rather than `var`, and every public member has a `///` doc comment.
 - The SDK constraint is `>=3.12.0`; the code uses dot shorthands (`mode: .insertOrReplace`, `currentPlatform == .linux`).
 
@@ -84,12 +87,18 @@ There is no `test/` directory yet, and `flutter_test` is not in `dev_dependencie
 
 Work happens on the fork `mgagp/openauthenticator` (`origin`). `upstream` is `openauthenticator-app/openauthenticator`, fetch-only (push URL disabled); sync with `git fetch upstream` + a PR. Never open PRs or issues against upstream: `gh` defaults to the parent repo on forks, so the default is pinned with `gh repo set-default mgagp/openauthenticator` — pass `--repo mgagp/openauthenticator` if in doubt. Contributing a change upstream is a separate, explicit decision.
 
+**Upstream alignment (current goal, set 2026-10-26, issue #8).** In the short term this fork follows upstream exactly and only moves when upstream moves.
+- App code (`lib/`, `bin/`, platform folders, `pubspec.yaml`) stays identical to `upstream/main`. Check with `git diff --stat upstream/main -- lib bin pubspec.yaml`.
+- No initiative on dependencies, formatting or refactors of upstream code. Findings like discontinued packages get noted, not acted on.
+- Fork-only additions are allowed when they do not touch upstream files: tooling (`scripts/with-env.*`, `dev-env.example`, `.flutter-version`), `CLAUDE.md`, `.claude/`, `pubspec.lock`, and new tests under `test/`. Adding `flutter_test` to `dev_dependencies` for tests is the one expected `pubspec.yaml` change.
+- Revisit this rule explicitly with the user before diverging.
+
 1. **Issue** — every unit of work starts with an issue (context, goal, acceptance criteria). Exception: trivial touch-ups (typos, small doc fixes) can go straight to a PR.
 2. **Branch** — one per issue, from up-to-date `main`: `<type>/<issue>-<slug>`, e.g. `chore/1-dev-env-tooling`, `test/3-result-unit-test`. `<type>` is a conventional-commit type.
 3. **Commits** — conventional commits in the repo's existing style: `type(scope): Capitalized past-tense summary.` (e.g. `chore(tooling): Added dev-env wrapper.`).
 4. **PR** — to `main` of the fork. Title is a conventional commit (it becomes the squash commit and feeds the changelog); body has `Closes #n`, a summary, and the checks that were run with their results.
 5. **Merge** — squash only (enforced by the `protect-main` ruleset: PR required, no force push, no deletion; branches auto-delete on merge).
-   - **Claude may merge** when the change's correctness is fully established by deterministic checks that were run and passed (`dart format --set-exit-if-changed`, `flutter analyze`, `flutter test`, a build when relevant): e.g. tests, generated/derived files, dependency bumps that build and pass, formatting, CI config.
+   - **Claude may merge** when the change's correctness is fully established by deterministic checks that were run and passed (`dart format --set-exit-if-changed`, `flutter analyze`, `flutter test`, a build when relevant): e.g. tests, generated/derived files, a lock update that follows an upstream sync and builds and passes, CI config.
    - **The user merges** anything whose correctness needs human judgment: app behavior and UI, crypto/auth/sync logic, security-sensitive or data-migration changes, and changes to this workflow or to `CLAUDE.md` itself.
    - When unsure which category applies, leave it to the user.
 
