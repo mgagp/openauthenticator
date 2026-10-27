@@ -68,7 +68,7 @@ dependencies:
     git:
       url: https://github.com/mgagp/ezkey.git
       path: ezkey_dart
-      ref: a44867d86f6fbdff86cbf5a85cb21af9727c9ad4
+      ref: 983e377bce559b280558f76514548e89de6fdec9
   ezkey_keystore:
     path: packages/ezkey_keystore
 
