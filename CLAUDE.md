@@ -120,13 +120,15 @@ The only CI workflow is `.github/workflows/docs.yml` (docs dispatch): nothing bu
 
 ## Development workflow (this fork)
 
+Decisions, trade-offs and design notes live in [`docs/`](docs/README.md) (index, writing rules, ADRs). Record a decision in the PR that applies it: a line in the owning document, or an ADR when there are real alternatives.
+
 Work happens on the fork `mgagp/openauthenticator` (`origin`). `upstream` is `openauthenticator-app/openauthenticator`, fetch-only (push URL disabled); sync with `git fetch upstream` + a PR. Never open PRs or issues against upstream: `gh` defaults to the parent repo on forks, so the default is pinned with `gh repo set-default mgagp/openauthenticator` — pass `--repo mgagp/openauthenticator` if in doubt. Contributing a change upstream is a separate, explicit decision.
 
 **Upstream alignment (current goal, set 2026-10-26, issue #8).** In the short term this fork follows upstream exactly and only moves when upstream moves.
 - App code (`lib/`, `bin/`, platform folders, `pubspec.yaml`) stays identical to `upstream/main`. Check with `git diff --stat upstream/main -- lib bin pubspec.yaml`.
 - No initiative on dependencies, formatting or refactors of upstream code. Findings like discontinued packages get noted, not acted on.
-- Fork-only additions are allowed when they do not touch upstream files: tooling (`scripts/with-env.*`, `dev-env.example`, `.flutter-version`), `CLAUDE.md`, `.claude/`, `pubspec.lock`, and new tests under `test/`. Adding `flutter_test` to `dev_dependencies` for tests is the one expected `pubspec.yaml` change.
-- **Single planned exception: EzKey integration.** A later step will integrate the experimental EzKey Flutter SDK (from the user's EzKey project). If that integration hits a dead end that cannot be solved within the alignment rule (e.g. a dependency or SDK version conflict with upstream), the needed divergence is decided with the user at that point, documented here, and kept minimal. No other exception.
+- Fork-only additions are allowed when they do not touch upstream files: tooling (`scripts/with-env.*`, `dev-env.example`, `.flutter-version`), `CLAUDE.md`, `.claude/`, `docs/`, `pubspec.lock`, and new tests under `test/`. Adding `flutter_test` to `dev_dependencies` for tests is the one expected `pubspec.yaml` change.
+- **Single planned exception: EzKey integration** (#16). Approved divergence, with its reasons and alternatives, in [`docs/adr/0001-ezkey-integration-divergence.md`](docs/adr/0001-ezkey-integration-divergence.md): `ezkey_dart` as a pinned git dependency, the Android key store as a local plugin under `packages/`, EzKey code under `lib/ezkey/`, and upstream files touched only for UI hooks, each listed in [`docs/ezkey/integration.md`](docs/ezkey/integration.md). Any further divergence is decided with the user and recorded the same way. No other exception.
 - Revisit this rule explicitly with the user before diverging.
 
 1. **Issue** — every unit of work starts with an issue (context, goal, acceptance criteria). Exception: trivial touch-ups (typos, small doc fixes) can go straight to a PR.
