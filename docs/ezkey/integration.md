@@ -17,8 +17,8 @@ Living design document for #16. It records how Open Authenticator meets the EzKe
 | Layer | Location | Owns |
 | --- | --- | --- |
 | SDK | `ezkey_dart` (git dependency, ADR-0001 D1) | Protocol, signatures and checks, decision lock, error classification, low-S normalization |
-| Native key store | `packages/ezkey_keystore/` (ADR-0001 D2) | Android Keystore P-256 keys, StrongBox preference, tier, orphan-key listing |
-| App integration | `lib/ezkey/` (ADR-0001 D3) | `EzkeyDeviceKeyStore` / `EzkeyEnrollmentStore` adapters, providers, screens, local copy |
+| Native key store | `packages/ezkey_keystore/` (ADR-0001 D2) | Android Keystore P-256 keys, StrongBox preference, tier, alias listing. Channel `org.ezkey.keystore`; no dependency on `ezkey_dart`, so it can move to EzKey as is |
+| App integration | `lib/ezkey/` (ADR-0001 D3) | `device_key_store.dart` (adapter + app-owned alias format `ezkey-device-<id>-<random>`), `enrollment_store.dart` (one secure-storage entry per record, unreadable records reported), `orphan_keys.dart`; providers and screens from slice 2 |
 | Upstream hooks | Ledger below | Entry points only |
 
 ## Contract conformance
@@ -44,7 +44,8 @@ Cumulative ledger (ADR-0001 D3). Every entry names the PR and why the hook could
 
 | File | Change | PR |
 | --- | --- | --- |
-| `pubspec.yaml`, `pubspec.lock` | `ezkey_dart` git dependency, `ezkey_keystore` path dependency | Slice 1 |
+| `pubspec.yaml`, `pubspec.lock` | `ezkey_dart` git dependency (pinned commit), `ezkey_keystore` path dependency; the lock only gains `ezkey_dart`, `ezkey_keystore`, `cryptography`, `pointycastle`, `unorm_dart` | Slice 1 (#16) |
+| `pubspec.yaml`, `pubspec.lock` | `integration_test` (`sdk: flutter`) in `dev_dependencies` for on-device tests; the lock gains SDK packages only (`integration_test`, `flutter_driver`, …) | Slice 1 (#16) |
 
 ## Lab setup (Pixel against the local stack)
 
@@ -58,7 +59,8 @@ Cumulative ledger (ADR-0001 D3). Every entry names the PR and why the hook could
 | Check | Expected | Result |
 | --- | --- | --- |
 | Key generation tier on the Pixel 7 Pro | `strong` (StrongBox) | — |
-| StrongBox unavailable path | Falls back to `standard`, enrollment succeeds | — |
+| StrongBox unavailable path | Falls back to `standard` | Emulator `oa_api35` (Android 15, no StrongBox feature), 2026-10-27: `standard`; key generated, listed, deleted (`integration_test/ezkey/keystore_test.dart`) |
+| Raw Keystore signatures | Verify with the public key; some are high-S, all normalize to low-S | Emulator, 2026-10-27: 16/16 verify, **8/16 high-S** (confirms G8), all normalized |
 | Enroll + approve + deny against the local stack | Server accepts every device signature | — |
 | Orphan key cleanup after storage recovery | `ezkey-device-*` aliases without a record are deleted | — |
 
@@ -67,3 +69,5 @@ Cumulative ledger (ADR-0001 D3). Every entry names the PR and why the hook could
 | Date | Finding | Where fixed |
 | --- | --- | --- |
 | 2026-10-27 | G8: Android Keystore high-S signatures rejected by the Auth API; SDK did not normalize key-store output | `ezkey_dart` 0.3.0 (mgagp/ezkey#1068 branch) |
+| 2026-10-27 | G9: `EzkeyDeviceKeyStore.storageTier` is per store, but the tier is per key (StrongBox can be unavailable for one generation). Worked around by reporting the last generated key's tier, which the SDK reads right after generation. Suggested SDK change: return the tier from `generateKeyPair`. | Open (EzKey) |
+| 2026-10-27 | `EzkeyEnrollmentStore.list()` cannot report unreadable records, while the contract's reference behaviour shows them as unusable (MOB-015). Worked around with `SecureEzkeyEnrollmentStore.unreadableLocalIds()`. | Open (EzKey, low) |

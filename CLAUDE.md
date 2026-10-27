@@ -88,12 +88,29 @@ scripts/with-env.sh flutter test --name 'to\(\) converts'               # by tes
 ```
 
 Conventions:
+- `packages/ezkey_keystore/` is a local Android plugin (EzKey key store, ADR-0001). `flutter analyze` covers its Dart code and `test/ezkey/` tests it through a mocked channel; its Kotlin is only compiled by `flutter build apk` and only runs on a device or emulator.
 - `test/` mirrors `lib/`: the tests for `lib/<path>/<name>.dart` go in `test/<path>/<name>_test.dart` (the `_test.dart` suffix is how `flutter test` finds them). Import code under test with `package:open_authenticator/...`.
 - Use `package:flutter_test/flutter_test.dart`, even for pure-Dart logic (it re-exports `package:test` and adds widget testing). One `group` per class or unit, and test names that state the behavior (`'to() keeps the same exception and stack trace'`).
 - Arrange / act / assert, separated by blank lines. Same style as `lib/`: explicit local types, single quotes, `const` where possible.
 - Test the documented contract, not implementation details. When adding tests for an important behavior, check that they can fail: temporarily break the code, see red, restore (`git restore`).
 - Tests must be deterministic: no network, no real clock or randomness without injection, no device.
 - Do not change upstream code to make it testable (see "Upstream alignment"). If something cannot be tested without a change, note it in the test plan instead.
+
+### On-device tests (emulator first)
+
+Fork-only addition (#16): `integration_test` (`sdk: flutter`) is in `dev_dependencies`; device tests live under `integration_test/` (same mirroring as `test/`). They run the real app process on an Android emulator or device, so they reach native code (the Keystore plugin) and, later, the UI.
+
+- **Emulator (default, autonomous):** AVD `oa_api35` (API 35, `google_apis_playstore` x86_64, WHPX acceleration; no StrongBox, so Keystore keys fall back to the TEE). It is separate from the user's phone, so it can be wiped and reinstalled freely.
+  ```sh
+  "$LOCALAPPDATA/Android/Sdk/emulator/emulator.exe" -avd oa_api35 -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot-save   # run in background
+  adb reconnect offline   # the emulator can stay "offline" in adb after booting; this fixes it without dropping the Pixel
+  adb -s emulator-5554 shell getprop sys.boot_completed   # 1 when ready
+  scripts/with-env.sh flutter test integration_test/ezkey/keystore_test.dart -d emulator-5554
+  adb -s emulator-5554 exec-out screencap -p > shot.png   # screenshot (scratchpad) to check the UI
+  ```
+  Always pass `-d`: the Pixel is usually connected too. The emulator reaches a local EzKey stack at `http://10.0.2.2:8080`.
+- **Pixel (StrongBox, final checks):** only with the user's go-ahead; installing a build replaces the app on the phone (see "Android device build").
+- Recreate the AVD if missing: `echo no | "$LOCALAPPDATA/Android/Sdk/cmdline-tools/latest/bin/avdmanager.bat" create avd -n oa_api35 -k "system-images;android-35;google_apis_playstore;x86_64" -d pixel_7` (needs `JAVA_HOME` from `dev-env.local`).
 
 The only CI workflow is `.github/workflows/docs.yml` (docs dispatch): nothing builds or tests the app in CI yet (when added, it should use `.flutter-version` and `--enforce-lockfile`).
 
