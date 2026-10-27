@@ -82,3 +82,6 @@ firebase.json
 
 # Claude Code per-user settings (may hold secrets such as GH_TOKEN)
 /.claude/settings.local.json
+
+# Gradle output of the Android project (not covered by upstream ignores)
+/android/build/

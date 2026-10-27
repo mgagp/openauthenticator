@@ -48,6 +48,23 @@ flutter run
 - `dart run open_authenticator:generate --help` lists the options; defaults point at the official backend with empty Sentry/RevenueCat keys. Never hand-edit `lib/app.dart`; regenerate it.
 - Re-run `build_runner` after changing drift tables, and `slang` after editing translation JSON.
 
+## Android device build (issue #10)
+
+Debug build on a physical device, with no change to upstream files:
+
+```sh
+scripts/with-env.sh dart scripts/generate_google_services.dart   # once: writes gitignored android/app/google-services.json
+scripts/with-env.sh flutter build apk --debug                    # ~6.5 min cold, ~226 MB (all ABIs, JIT)
+adb install build/app/outputs/flutter-apk/app-debug.apk          # or: scripts/with-env.sh flutter run -d <device>
+```
+
+- **`google-services.json`**: the upstream Gradle file applies the Google Services plugin, which refuses to build without this file, and upstream does not ship it. `scripts/generate_google_services.dart` derives it from the Android options in the upstream-tracked `lib/model/migrator/firebase_options.dart` (same Firebase project; these are public client identifiers, not secrets). Firebase is only used by the legacy-storage migrator. Do not create our own Firebase project.
+- **NDK**: Flutter 3.47 requires NDK `28.2.13676358`. Gradle's auto-install fails ("Package ndk not found"): in cmdline-tools 23.0, `sdkmanager` is a deprecated shim over the new `android` CLI, and the `;` in `ndk;<version>` gets split. Install it manually with the new syntax: `"$ANDROID_HOME/cmdline-tools/latest/bin/android.exe" --no-metrics sdk install ndk/28.2.13676358` (list packages with `... sdk list`). Do the same when a future Flutter needs another NDK.
+- **Release builds** need upstream's signing key (`android/key.properties`, not in the repo), so only debug (or profile) builds are possible here.
+- **App identity**: the build keeps the upstream `applicationId` `app.openauthenticator` (no `.dev` suffix, to avoid divergence). It cannot be installed over the Play Store app (signature mismatch). The official app was uninstalled from the dev Pixel on 2026-10-26 with the user's explicit consent. **Never uninstall or replace an installed `app.openauthenticator` on any device without asking**: uninstalling wipes its TOTP data.
+- **Expected build warnings** (upstream-owned, left as is): Flutter will soon drop support for AGP 8.11.1 (wants ≥ 9.0.1) and Kotlin 2.2.20 (wants ≥ 2.3.20). A future Flutter bump may turn these into errors; `.flutter-version` keeps us on 3.47.8 meanwhile.
+- **Screenshots**: `adb exec-out screencap -p` returns a black image when the screen is off or locked (`adb shell dumpsys power | grep mWakefulness`).
+
 ## Lint / format
 
 - `flutter analyze` (uses `flutter_lints` + the `riverpod_lint` analyzer plugin). Baseline: no issues.
