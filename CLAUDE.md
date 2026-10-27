@@ -53,14 +53,32 @@ flutter run
 - `flutter analyze` (uses `flutter_lints` + the `riverpod_lint` analyzer plugin). Baseline: no issues.
 - Format check: only on Dart files that differ from upstream (ours are formatted, upstream's are left as upstream has them; upstream uses an older formatter, so reformatting its files would create divergence):
   ```sh
-  files=$(git diff --name-only --diff-filter=d upstream/main -- '*.dart'); [ -z "$files" ] || scripts/with-env.sh dart format --output=none --set-exit-if-changed $files
+  files=$( (git diff --name-only --diff-filter=d upstream/main -- '*.dart'; git ls-files --others --exclude-standard -- '*.dart') | sort -u); [ -z "$files" ] || scripts/with-env.sh dart format --output=none --set-exit-if-changed $files
   ```
   The empty guard matters: `dart format` with no paths formats the whole directory. Generated files (e.g. `lib/model/database/database.g.dart`) are gitignored, so `git diff` never lists them. Always run the formatter inside the repo, because it reads `page_width` from `analysis_options.yaml`; outside the repo it falls back to 80 columns.
 - `dart format <files you changed>` (never `dart format .`, see "Upstream alignment"). The project sets `page_width: 200` and `trailing_commas: preserve` in `analysis_options.yaml`, so lines are long and existing trailing commas are kept.
 - Style rules enforced: single quotes, `prefer_const_constructors`, `unnecessary_lambdas`. Code uses explicit local variable types (`AppDatabase database = ...`) rather than `var`, and every public member has a `///` doc comment.
 - The SDK constraint is `>=3.12.0`; the code uses dot shorthands (`mode: .insertOrReplace`, `currentPlatform == .linux`).
 
-There is no `test/` directory yet, and `flutter_test` is not in `dev_dependencies`; add both before writing the first test. The only CI workflow is `.github/workflows/docs.yml` (docs dispatch): nothing builds or tests the app in CI yet (when added, it should use `.flutter-version` and `--enforce-lockfile`).
+## Tests
+
+Fork-only addition (issue #12): `flutter_test` (`sdk: flutter`) is in `dev_dependencies`, and tests live under `test/`.
+
+```sh
+scripts/with-env.sh flutter test                                        # all tests
+scripts/with-env.sh flutter test test/utils/result/result_test.dart     # one file
+scripts/with-env.sh flutter test --name 'to\(\) converts'               # by test-name regex
+```
+
+Conventions:
+- `test/` mirrors `lib/`: the tests for `lib/<path>/<name>.dart` go in `test/<path>/<name>_test.dart` (the `_test.dart` suffix is how `flutter test` finds them). Import code under test with `package:open_authenticator/...`.
+- Use `package:flutter_test/flutter_test.dart`, even for pure-Dart logic (it re-exports `package:test` and adds widget testing). One `group` per class or unit, and test names that state the behavior (`'to() keeps the same exception and stack trace'`).
+- Arrange / act / assert, separated by blank lines. Same style as `lib/`: explicit local types, single quotes, `const` where possible.
+- Test the documented contract, not implementation details. When adding tests for an important behavior, check that they can fail: temporarily break the code, see red, restore (`git restore`).
+- Tests must be deterministic: no network, no real clock or randomness without injection, no device.
+- Do not change upstream code to make it testable (see "Upstream alignment"). If something cannot be tested without a change, note it in the test plan instead.
+
+The only CI workflow is `.github/workflows/docs.yml` (docs dispatch): nothing builds or tests the app in CI yet (when added, it should use `.flutter-version` and `--enforce-lockfile`).
 
 ## Architecture
 
