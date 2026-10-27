@@ -31,6 +31,20 @@ foreach ($line in Get-Content $config) {
     }
 }
 
+# Warn (do not fail) when the active Flutter differs from the project's reference version.
+$versionFile = Join-Path $root '.flutter-version'
+$flutterCommand = Get-Command flutter -ErrorAction SilentlyContinue
+if ((Test-Path $versionFile) -and $flutterCommand) {
+    $expected = (Get-Content $versionFile -Raw).Trim()
+    $actual = $null
+    $versionJson = Join-Path (Split-Path -Parent $flutterCommand.Source) 'cache\flutter.version.json'
+    if (Test-Path $versionJson) { $actual = (Get-Content $versionJson -Raw | ConvertFrom-Json).frameworkVersion }
+    if ($expected -and $actual -ne $expected) {
+        if (-not $actual) { $actual = '<unknown>' }
+        Write-Warning "with-env: Flutter $actual is active, but .flutter-version expects $expected."
+    }
+}
+
 # Flutter ignores JAVA_HOME when Android Studio's bundled JBR is installed; its own `jdk-dir` setting wins.
 # Keep that (user-global) setting in sync with dev-env.local.
 if ($env:JAVA_HOME -and (Get-Command flutter -ErrorAction SilentlyContinue)) {

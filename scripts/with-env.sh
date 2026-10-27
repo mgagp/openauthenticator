@@ -43,6 +43,15 @@ while IFS='=' read -r key value || [ -n "$key" ]; do
 done < "$config"
 export PATH
 
+# Warn (do not fail) when the active Flutter differs from the project's reference version.
+if [ -f "$root/.flutter-version" ] && command -v flutter > /dev/null 2>&1; then
+  expected="$(tr -d '[:space:]' < "$root/.flutter-version")"
+  actual="$(sed -n 's/.*"frameworkVersion": *"\([^"]*\)".*/\1/p' "$(dirname "$(command -v flutter)")/cache/flutter.version.json" 2> /dev/null)"
+  if [ -n "$expected" ] && [ "$actual" != "$expected" ]; then
+    echo "with-env: warning: Flutter ${actual:-<unknown>} is active, but .flutter-version expects $expected." >&2
+  fi
+fi
+
 # Flutter ignores JAVA_HOME when Android Studio's bundled JBR is installed; its own `jdk-dir` setting wins.
 # Keep that (user-global) setting in sync with dev-env.local.
 if [ -n "${JAVA_HOME:-}" ] && command -v flutter > /dev/null 2>&1; then

@@ -38,7 +38,12 @@ dart run open_authenticator:generate                       # writes lib/app.dart
 flutter run
 ```
 
-- `pubspec.lock` is gitignored, so dependency versions are not pinned: each `pub get` may resolve newer versions within the `pubspec.yaml` ranges. In practice the resolved set needs **Dart ≥ 3.13 / Flutter ≥ 3.47** (stricter than the `>=3.12.0` in `pubspec.yaml`, because of dependencies). Baseline verified on Flutter 3.47.8 / Dart 3.13.7.
+- **Pinned toolchain and dependencies** (issue #6, a fork-only divergence: upstream gitignores the lock). Goal: reproducible builds and non-flaky tests.
+  - `pubspec.lock` is versioned. `flutter pub get` keeps it unchanged unless `pubspec.yaml` changes; use `flutter pub get --enforce-lockfile` to verify that.
+  - `.flutter-version` holds the reference Flutter version (currently 3.47.8 / Dart 3.13.7). `scripts/with-env.*` warn when the active SDK differs. The lockfile only records an SDK floor (in practice **Dart ≥ 3.13 / Flutter ≥ 3.47**, stricter than `pubspec.yaml`'s `>=3.12.0` because of dependencies).
+  - Upgrades are deliberate: a `chore(deps)` issue/PR running `flutter pub upgrade` (or bumping `.flutter-version` and the SDK), then the full baseline (codegen, analyze, format, tests). This kind of PR is Claude-mergeable when every check passes.
+  - After an upstream sync that touches `pubspec.yaml`, run `flutter pub get` and commit the updated lock in the same PR.
+  - Known and accepted: `forui 0.25` pulls the discontinued `forui_assets`. Upgrading means a forui 0.25 → 0.27 UI migration, deferred pending upstream (issue #4).
 - Run the steps through the wrapper (`scripts/with-env.sh <step>`). `build_runner` is the slow one (~1.5 min cold, 375 outputs); the others take seconds.
 - `pub get` rewrites `macos/Flutter/GeneratedPluginRegistrant.swift` with LF endings; with `core.autocrlf=true` git then reports it modified with no content diff (`git diff` is empty). Discard it with `git restore`; never commit it unless its content actually changed.
 - `dart run open_authenticator:generate --help` lists the options; defaults point at the official backend with empty Sentry/RevenueCat keys. Never hand-edit `lib/app.dart`; regenerate it.
@@ -52,7 +57,7 @@ flutter run
 - Style rules enforced: single quotes, `prefer_const_constructors`, `unnecessary_lambdas`. Code uses explicit local variable types (`AppDatabase database = ...`) rather than `var`, and every public member has a `///` doc comment.
 - The SDK constraint is `>=3.12.0`; the code uses dot shorthands (`mode: .insertOrReplace`, `currentPlatform == .linux`).
 
-There is no `test/` directory yet, and `flutter_test` is not in `dev_dependencies`; add both before writing the first test. The only CI workflow is `.github/workflows/docs.yml` (docs dispatch): nothing builds or tests the app in CI, and no Flutter version is pinned anywhere.
+There is no `test/` directory yet, and `flutter_test` is not in `dev_dependencies`; add both before writing the first test. The only CI workflow is `.github/workflows/docs.yml` (docs dispatch): nothing builds or tests the app in CI yet (when added, it should use `.flutter-version` and `--enforce-lockfile`).
 
 ## Architecture
 
