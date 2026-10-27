@@ -337,6 +337,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.7"
+  cryptography:
+    dependency: transitive
+    description:
+      name: cryptography
+      sha256: "3eda3029d34ec9095a27a198ac9785630fe525c0eb6a49f3d575272f8e792ef0"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.9.0"
   csslib:
     dependency: transitive
     description:
@@ -433,6 +441,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.0"
+  ezkey_dart:
+    dependency: "direct main"
+    description:
+      path: ezkey_dart
+      ref: a44867d86f6fbdff86cbf5a85cb21af9727c9ad4
+      resolved-ref: a44867d86f6fbdff86cbf5a85cb21af9727c9ad4
+      url: "https://github.com/mgagp/ezkey.git"
+    source: git
+    version: "0.3.0"
+  ezkey_keystore:
+    dependency: "direct main"
+    description:
+      path: "packages/ezkey_keystore"
+      relative: true
+    source: path
+    version: "0.1.0"
   fake_async:
     dependency: transitive
     description:
@@ -1077,6 +1101,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.8"
+  pointycastle:
+    dependency: transitive
+    description:
+      name: pointycastle
+      sha256: "92aa3841d083cc4b0f4709b5c74fd6409a3e6ba833ffc7dc6a8fee096366acf5"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.0.0"
   pool:
     dependency: transitive
     description:
@@ -1603,6 +1635,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.4.0"
+  unorm_dart:
+    dependency: transitive
+    description:
+      name: unorm_dart
+      sha256: b4f4d2aff27d65a5fc37f400d4c09e55d7535359315acbe3b895a9add4de3a23
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.3.3"
   url_launcher:
     dependency: "direct main"
     description:

@@ -63,6 +63,14 @@ dependencies:
   firebase_core: ^4.13.0
   firebase_auth: ^6.5.7
   cloud_firestore: ^6.8.0
+  # EzKey integration (fork-only): docs/adr/0001-ezkey-integration-divergence.md.
+  ezkey_dart:
+    git:
+      url: https://github.com/mgagp/ezkey.git
+      path: ezkey_dart
+      ref: a44867d86f6fbdff86cbf5a85cb21af9727c9ad4
+  ezkey_keystore:
+    path: packages/ezkey_keystore
 
 dev_dependencies:
   flutter_test:

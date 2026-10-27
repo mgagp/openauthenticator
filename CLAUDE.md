@@ -88,6 +88,7 @@ scripts/with-env.sh flutter test --name 'to\(\) converts'               # by tes
 ```
 
 Conventions:
+- `packages/ezkey_keystore/` is a local Android plugin (EzKey key store, ADR-0001). `flutter analyze` covers its Dart code and `test/ezkey/` tests it through a mocked channel; its Kotlin is only compiled by `flutter build apk` and only runs on a device or emulator.
 - `test/` mirrors `lib/`: the tests for `lib/<path>/<name>.dart` go in `test/<path>/<name>_test.dart` (the `_test.dart` suffix is how `flutter test` finds them). Import code under test with `package:open_authenticator/...`.
 - Use `package:flutter_test/flutter_test.dart`, even for pure-Dart logic (it re-exports `package:test` and adds widget testing). One `group` per class or unit, and test names that state the behavior (`'to() keeps the same exception and stack trace'`).
 - Arrange / act / assert, separated by blank lines. Same style as `lib/`: explicit local types, single quotes, `const` where possible.
