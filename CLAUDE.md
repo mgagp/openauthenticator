@@ -91,6 +91,7 @@ Work happens on the fork `mgagp/openauthenticator` (`origin`). `upstream` is `op
 - App code (`lib/`, `bin/`, platform folders, `pubspec.yaml`) stays identical to `upstream/main`. Check with `git diff --stat upstream/main -- lib bin pubspec.yaml`.
 - No initiative on dependencies, formatting or refactors of upstream code. Findings like discontinued packages get noted, not acted on.
 - Fork-only additions are allowed when they do not touch upstream files: tooling (`scripts/with-env.*`, `dev-env.example`, `.flutter-version`), `CLAUDE.md`, `.claude/`, `pubspec.lock`, and new tests under `test/`. Adding `flutter_test` to `dev_dependencies` for tests is the one expected `pubspec.yaml` change.
+- **Single planned exception: EzKey integration.** A later step will integrate the experimental EzKey Flutter SDK (from the user's EzKey project). If that integration hits a dead end that cannot be solved within the alignment rule (e.g. a dependency or SDK version conflict with upstream), the needed divergence is decided with the user at that point, documented here, and kept minimal. No other exception.
 - Revisit this rule explicitly with the user before diverging.
 
 1. **Issue** — every unit of work starts with an issue (context, goal, acceptance criteria). Exception: trivial touch-ups (typos, small doc fixes) can go straight to a PR.
