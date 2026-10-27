@@ -109,6 +109,8 @@ Fork-only addition (#16): `integration_test` (`sdk: flutter`) is in `dev_depende
   adb -s emulator-5554 exec-out screencap -p > shot.png   # screenshot (scratchpad) to check the UI
   ```
   Always pass `-d`: the Pixel is usually connected too. The emulator reaches a local EzKey stack at `http://10.0.2.2:8080`.
+- **Live EzKey stack:** `scripts/with-env.sh dart scripts/ezkey_lab.dart e2e --test <integration_test file>` creates the invitation and auth attempt on a running clean-start stack and saves screenshots under `build/ezkey-lab/screens/` (details: `docs/ezkey/integration.md` § Lab setup). Never run the stack's `clean-start.sh` yourself: it wipes its database.
+- **adb from Git Bash:** prefix with `MSYS_NO_PATHCONV=1` when an argument is a device path (`/sdcard/...`), or Git Bash rewrites it to a Windows path.
 - **Pixel (StrongBox, final checks):** only with the user's go-ahead; installing a build replaces the app on the phone (see "Android device build").
 - Recreate the AVD if missing: `echo no | "$LOCALAPPDATA/Android/Sdk/cmdline-tools/latest/bin/avdmanager.bat" create avd -n oa_api35 -k "system-images;android-35;google_apis_playstore;x86_64" -d pixel_7` (needs `JAVA_HOME` from `dev-env.local`).
 
