@@ -1,0 +1,67 @@
+{
+  "settingsEntry": {
+    "title": "Approbations de connexion EzKey",
+    "subtitle": "Approuvez depuis cet appareil les connexions aux applications de votre organisation."
+  },
+  "page": {
+    "title": "EzKey",
+    "enrollments": "Enrôlements",
+    "empty": "Cet appareil n'est pas encore enrôlé. Demandez une invitation EzKey à votre administrateur, puis scannez son code QR.",
+    "add": "Ajouter un enrôlement",
+    "scan": {
+      "title": "Scanner le code QR d'une invitation",
+      "subtitle": "Le code QR fourni par votre administrateur."
+    },
+    "paste": {
+      "title": "Saisir une invitation manuellement",
+      "subtitle": "Collez le contenu du code QR de l'invitation.",
+      "dialogTitle": "Saisir une invitation",
+      "dialogMessage": "Collez le contenu du code QR de l'invitation."
+    },
+    "forget": {
+      "title": "Retirer de cet appareil",
+      "confirmTitle": "Retirer cet enrôlement ?",
+      "confirmMessage": "Cet appareil ne recevra plus les demandes de connexion de $integration. L'enrôlement existe toujours sur le serveur EzKey : demandez à votre administrateur de le révoquer.",
+      "success": "Enrôlement retiré de cet appareil."
+    }
+  },
+  "scan": {
+    "title": "Scanner une invitation EzKey",
+    "notAnInvitation": "Ce code QR n'est pas une invitation EzKey."
+  },
+  "server": {
+    "title": "Serveur EzKey",
+    "message": "Cette invitation n'indique pas quel serveur EzKey utiliser. Saisissez l'adresse fournie par votre administrateur.",
+    "invalid": "Saisissez une adresse https://."
+  },
+  "enroll": {
+    "title": "Confirmer l'enrôlement",
+    "intro": "Vérifiez qui fait la demande avant de continuer.",
+    "integration": "Application",
+    "organization": "Organisation",
+    "account": "Compte",
+    "server": "Serveur",
+    "administrator": "Cette invitation enrôle un compte administrateur EzKey.",
+    "codeLabel": "Code d'enrôlement",
+    "codeHelp": "Saisissez le code à 6 chiffres que votre administrateur vous a donné séparément. Il n'est pas dans le code QR.",
+    "abandonWarning": "Si vous quittez maintenant, cette invitation ne pourra plus servir et il vous en faudra une nouvelle.",
+    "submit": "Enrôler cet appareil",
+    "binding": "Connexion au serveur EzKey...",
+    "verifying": "Enrôlement de cet appareil...",
+    "success": "Cet appareil est maintenant enrôlé pour $integration."
+  },
+  "error": {
+    "invalidInvitation": "Cette invitation n'est pas valide.",
+    "alreadyEnrolled": "Cet appareil est déjà enrôlé avec cette invitation.",
+    "invitationAlreadyUsed": "Cette invitation a déjà été utilisée. Demandez-en une nouvelle à votre administrateur.",
+    "invitationExpired": "Cette invitation a expiré. Demandez-en une nouvelle à votre administrateur.",
+    "invitationRejected": "Le serveur EzKey a refusé cette invitation. Demandez-en une nouvelle à votre administrateur.",
+    "wrongCode": "Code d'enrôlement incorrect. Par sécurité, cette invitation ne peut plus servir : demandez-en une nouvelle à votre administrateur.",
+    "invalidCode": "Saisissez le code d'enrôlement à 6 chiffres.",
+    "integrity": "La réponse du serveur EzKey n'a pas pu être vérifiée : rien n'a été enregistré. Contactez votre administrateur.",
+    "network": "Le serveur EzKey est injoignable. Vérifiez votre connexion et réessayez.",
+    "rateLimited": "Trop de tentatives. Patientez un instant et réessayez.",
+    "keyStore": "Cet appareil n'a pas pu créer ou utiliser sa clé de sécurité.",
+    "server": "Le serveur EzKey n'a pas pu traiter la demande. Réessayez plus tard."
+  }
+}

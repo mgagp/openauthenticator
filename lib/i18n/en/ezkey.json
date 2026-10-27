@@ -1,0 +1,67 @@
+{
+  "settingsEntry": {
+    "title": "EzKey sign-in approvals",
+    "subtitle": "Approve sign-ins to your organization's apps from this device."
+  },
+  "page": {
+    "title": "EzKey",
+    "enrollments": "Enrollments",
+    "empty": "This device is not enrolled yet. Ask your administrator for an EzKey invitation, then scan its QR code.",
+    "add": "Add an enrollment",
+    "scan": {
+      "title": "Scan an invitation QR code",
+      "subtitle": "The QR code your administrator gave you."
+    },
+    "paste": {
+      "title": "Enter an invitation manually",
+      "subtitle": "Paste the content of the invitation QR code.",
+      "dialogTitle": "Enter an invitation",
+      "dialogMessage": "Paste the content of the invitation QR code."
+    },
+    "forget": {
+      "title": "Remove from this device",
+      "confirmTitle": "Remove this enrollment?",
+      "confirmMessage": "This device will no longer receive sign-in requests for $integration. The enrollment still exists on the EzKey server: ask your administrator to revoke it.",
+      "success": "Enrollment removed from this device."
+    }
+  },
+  "scan": {
+    "title": "Scan an EzKey invitation",
+    "notAnInvitation": "This QR code is not an EzKey invitation."
+  },
+  "server": {
+    "title": "EzKey server",
+    "message": "This invitation does not say which EzKey server to use. Enter the address your administrator gave you.",
+    "invalid": "Enter an https:// address."
+  },
+  "enroll": {
+    "title": "Confirm the enrollment",
+    "intro": "Check who is asking before you continue.",
+    "integration": "Application",
+    "organization": "Organization",
+    "account": "Account",
+    "server": "Server",
+    "administrator": "This invitation enrolls an EzKey administrator account.",
+    "codeLabel": "Enrollment code",
+    "codeHelp": "Enter the 6-digit code your administrator gave you separately. It is not in the QR code.",
+    "abandonWarning": "If you leave now, this invitation can no longer be used and you will need a new one.",
+    "submit": "Enroll this device",
+    "binding": "Contacting the EzKey server...",
+    "verifying": "Enrolling this device...",
+    "success": "This device is now enrolled for $integration."
+  },
+  "error": {
+    "invalidInvitation": "This invitation is not valid.",
+    "alreadyEnrolled": "This device is already enrolled with this invitation.",
+    "invitationAlreadyUsed": "This invitation has already been used. Ask your administrator for a new one.",
+    "invitationExpired": "This invitation has expired. Ask your administrator for a new one.",
+    "invitationRejected": "The EzKey server rejected this invitation. Ask your administrator for a new one.",
+    "wrongCode": "Wrong enrollment code. For your security, this invitation can no longer be used: ask your administrator for a new one.",
+    "invalidCode": "Enter the 6-digit enrollment code.",
+    "integrity": "The answer of the EzKey server could not be verified, so nothing was saved. Contact your administrator.",
+    "network": "The EzKey server could not be reached. Check your connection and try again.",
+    "rateLimited": "Too many attempts. Wait a moment and try again.",
+    "keyStore": "This device could not create or use its security key.",
+    "server": "The EzKey server could not process the request. Try again later."
+  }
+}
