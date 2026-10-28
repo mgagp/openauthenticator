@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
 import 'package:open_authenticator/ezkey/messages.dart';
+import 'package:open_authenticator/ezkey/pages/approval_page.dart';
 import 'package:open_authenticator/ezkey/pages/enroll_page.dart';
 import 'package:open_authenticator/ezkey/pages/scan_page.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
@@ -62,6 +63,21 @@ class _EzkeyPageState extends ConsumerState<EzkeyPage> {
             label: Text(translations.ezkey.page.enrollments),
             children: [
               for (EzkeyEnrollment enrollment in enrollments) _EnrollmentTile(enrollment: enrollment),
+            ],
+          ),
+        ),
+      if (enrollments.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(bottom: kBigSpace),
+          child: FTileGroup(
+            children: [
+              ClickableTile(
+                key: const ValueKey('ezkey-check-pending'),
+                prefix: const Icon(FLucideIcons.bellRing),
+                title: Text(translations.ezkey.attempt.check.title),
+                subtitle: Text(translations.ezkey.attempt.check.subtitle),
+                onPress: () => checkPending(enrollments),
+              ),
             ],
           ),
         ),
@@ -130,6 +146,7 @@ class _EzkeyPageState extends ConsumerState<EzkeyPage> {
         future: authenticator.bindEnrollment(code, authApiBaseUrlOverride: serverUrl),
       );
     } on EzkeyException catch (ex) {
+      debugPrint('EzKey bind failed: $ex');
       if (mounted) {
         showErrorToast(context, text: ex is EzkeyValidationException ? translations.ezkey.error.alreadyEnrolled : ezkeyEnrollmentErrorMessage(ex));
       }
@@ -137,6 +154,47 @@ class _EzkeyPageState extends ConsumerState<EzkeyPage> {
     }
     if (mounted) {
       await EzkeyEnrollPage.open(context, bound);
+    }
+  }
+
+  /// Claims the first pending auth attempt of [enrollments] and opens [EzkeyApprovalPage] for it.
+  ///
+  /// Runs on user action only: the SDK advises against polling in the background.
+  Future<void> checkPending(List<EzkeyEnrollment> enrollments) async {
+    EzkeyAuthenticator authenticator = await ref.read(ezkeyAuthenticatorProvider.future);
+    if (!mounted) {
+      return;
+    }
+    EzkeyException? firstError;
+    (EzkeyEnrollment, PendingAuthAttempt)? found = await showWaitingOverlay(
+      context,
+      message: translations.ezkey.attempt.check.checking,
+      future: () async {
+        for (EzkeyEnrollment enrollment in enrollments) {
+          try {
+            PendingAuthAttempt? attempt = await authenticator.checkPending(enrollment);
+            if (attempt != null) {
+              debugPrint('EzKey claimed $attempt');
+              return (enrollment, attempt);
+            }
+          } on EzkeyException catch (ex) {
+            // One failing enrollment (revoked, unreachable server) must not hide the others.
+            debugPrint('EzKey pending check failed for enrollment ${enrollment.enrollmentId}: $ex');
+            firstError ??= ex;
+          }
+        }
+        return null;
+      }(),
+    );
+    if (!mounted) {
+      return;
+    }
+    if (found != null) {
+      await EzkeyApprovalPage.open(context, found.$1, found.$2);
+    } else if (firstError != null) {
+      showErrorToast(context, text: ezkeyAttemptErrorMessage(firstError!));
+    } else {
+      showSuccessToast(context, text: translations.ezkey.attempt.check.none);
     }
   }
 

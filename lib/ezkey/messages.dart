@@ -26,3 +26,26 @@ bool isEzkeyInvitationDead(Object error) => switch (error) {
   EzkeyIntegrityException() => true,
   _ => false,
 };
+
+/// Returns the localized message to show when checking for or answering an auth attempt fails.
+///
+/// Same rule as [ezkeyEnrollmentErrorMessage]: the exception type and problem kind decide, never the
+/// server texts.
+String ezkeyAttemptErrorMessage(Object error) => switch (error) {
+  EzkeyRespondOutcomeUnknownException() => translations.ezkey.attempt.uncertain,
+  EzkeyApiException(isAttemptNoLongerActionable: true) => translations.ezkey.attempt.noLongerActive,
+  EzkeyApiException(kind: .rateLimited) => translations.ezkey.error.rateLimited,
+  EzkeyApiException() => translations.ezkey.error.server,
+  EzkeyNetworkException() => translations.ezkey.error.network,
+  EzkeyIntegrityException() => translations.ezkey.attempt.integrity,
+  EzkeyLocalStateException() => translations.ezkey.error.keyStore,
+  _ => translations.ezkey.error.server,
+};
+
+/// Returns the localized message for the signed server [result] of a decision.
+String ezkeyAttemptResultMessage(AuthAttemptResult result) => switch (result) {
+  .approved => translations.ezkey.attempt.result.approved,
+  .denied => translations.ezkey.attempt.result.denied,
+  .failed => translations.ezkey.attempt.result.failed,
+  .expired => translations.ezkey.attempt.result.expired,
+};

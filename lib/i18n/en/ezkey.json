@@ -63,5 +63,31 @@
     "rateLimited": "Too many attempts. Wait a moment and try again.",
     "keyStore": "This device could not create or use its security key.",
     "server": "The EzKey server could not process the request. Try again later."
+  },
+  "attempt": {
+    "check": {
+      "title": "Check for sign-in requests",
+      "subtitle": "Looks for a request waiting for your approval.",
+      "checking": "Looking for sign-in requests...",
+      "none": "No sign-in request is waiting."
+    },
+    "title": "Sign-in request",
+    "intro": "Someone is signing in with your account. Approve only if it is you.",
+    "request": "Request",
+    "codeLabel": "Code",
+    "codeHelp": "Enter the code shown where you are signing in.",
+    "approve": "Approve",
+    "deny": "Deny",
+    "sending": "Sending your answer...",
+    "leaveHint": "If you leave without answering, the request will expire.",
+    "result": {
+      "approved": "Sign-in approved.",
+      "denied": "Sign-in denied.",
+      "failed": "Wrong code: the sign-in was refused. Start it again where you are signing in.",
+      "expired": "This request has expired."
+    },
+    "noLongerActive": "This request is no longer active. It may have been cancelled, answered or replaced by a newer one.",
+    "uncertain": "Your answer was sent, but its result is unknown. Check where you are signing in.",
+    "integrity": "This request could not be verified, so it was ignored. Contact your administrator."
   }
 }
