@@ -47,4 +47,37 @@ void main() {
       expect(isEzkeyInvitationDead(EzkeyApiException(method: 'POST', path: '/api/v1/enrollments/verify', statusCode: 429)), isFalse);
     });
   });
+
+  group('ezkeyAttemptErrorMessage', () {
+    test('a cancelled, answered or expired attempt is no longer active', () {
+      expect(ezkeyAttemptErrorMessage(apiError(409, 'auth-attempt-state-conflict')), translations.ezkey.attempt.noLongerActive);
+      expect(ezkeyAttemptErrorMessage(apiError(410, 'auth-attempt-expired')), translations.ezkey.attempt.noLongerActive);
+    });
+
+    test('an unknown respond outcome is uncertain, not a failure', () {
+      EzkeyRespondOutcomeUnknownException error = const EzkeyRespondOutcomeUnknownException(authAttemptId: 7, accepted: true, cause: EzkeyNetworkException('timeout'));
+
+      expect(ezkeyAttemptErrorMessage(error), translations.ezkey.attempt.uncertain);
+    });
+
+    test('maps other failures by exception type and never shows server texts', () {
+      String message = ezkeyAttemptErrorMessage(apiError(500, 'internal-error'));
+
+      expect(message, translations.ezkey.error.server);
+      expect(message, isNot(contains('Server')));
+      expect(ezkeyAttemptErrorMessage(const EzkeyNetworkException('timeout')), translations.ezkey.error.network);
+      expect(ezkeyAttemptErrorMessage(const EzkeyIntegrityException(EzkeyIntegrityCheck.pendingSignature, 'bad signature')), translations.ezkey.attempt.integrity);
+      expect(ezkeyAttemptErrorMessage(const EzkeyLocalStateException('keystore')), translations.ezkey.error.keyStore);
+    });
+  });
+
+  group('ezkeyAttemptResultMessage', () {
+    test('gives each signed result its own message', () {
+      Set<String> messages = {for (AuthAttemptResult result in AuthAttemptResult.values) ezkeyAttemptResultMessage(result)};
+
+      expect(messages, hasLength(AuthAttemptResult.values.length));
+      expect(ezkeyAttemptResultMessage(AuthAttemptResult.approved), translations.ezkey.attempt.result.approved);
+      expect(ezkeyAttemptResultMessage(AuthAttemptResult.failed), translations.ezkey.attempt.result.failed);
+    });
+  });
 }

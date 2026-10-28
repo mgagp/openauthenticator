@@ -63,5 +63,31 @@
     "rateLimited": "Trop de tentatives. Patientez un instant et réessayez.",
     "keyStore": "Cet appareil n'a pas pu créer ou utiliser sa clé de sécurité.",
     "server": "Le serveur EzKey n'a pas pu traiter la demande. Réessayez plus tard."
+  },
+  "attempt": {
+    "check": {
+      "title": "Vérifier les demandes de connexion",
+      "subtitle": "Cherche une demande en attente de votre approbation.",
+      "checking": "Recherche des demandes de connexion...",
+      "none": "Aucune demande de connexion en attente."
+    },
+    "title": "Demande de connexion",
+    "intro": "Quelqu'un se connecte avec votre compte. N'approuvez que si c'est vous.",
+    "request": "Demande",
+    "codeLabel": "Code",
+    "codeHelp": "Saisissez le code affiché là où vous vous connectez.",
+    "approve": "Approuver",
+    "deny": "Refuser",
+    "sending": "Envoi de votre réponse...",
+    "leaveHint": "Si vous quittez sans répondre, la demande expirera.",
+    "result": {
+      "approved": "Connexion approuvée.",
+      "denied": "Connexion refusée.",
+      "failed": "Code incorrect : la connexion a été refusée. Recommencez-la là où vous vous connectez.",
+      "expired": "Cette demande a expiré."
+    },
+    "noLongerActive": "Cette demande n'est plus active. Elle a peut-être été annulée, déjà traitée ou remplacée par une plus récente.",
+    "uncertain": "Votre réponse a été envoyée, mais son résultat est inconnu. Vérifiez là où vous vous connectez.",
+    "integrity": "Cette demande n'a pas pu être vérifiée : elle a été ignorée. Contactez votre administrateur."
   }
 }

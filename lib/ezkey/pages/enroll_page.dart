@@ -133,6 +133,7 @@ class _EzkeyEnrollPageState extends ConsumerState<EzkeyEnrollPage> {
         Navigator.pop(context, enrollment);
       }
     } on EzkeyException catch (ex) {
+      debugPrint('EzKey enrollment verify failed: $ex');
       if (!mounted) {
         return;
       }
