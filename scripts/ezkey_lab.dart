@@ -1,5 +1,6 @@
 // Drives a local EzKey clean-start stack for on-device tests (#16): creates enrollment invitations
-// and auth attempts for the Open Authenticator lab integration, and runs the live-stack test.
+// for the Open Authenticator lab integration, auth attempts for any enrollment, and runs the
+// live-stack test.
 //
 // Usage (from the repository root, with the stack up):
 //   scripts/with-env.sh dart scripts/ezkey_lab.dart invite [--name <enrollment name>]
@@ -7,8 +8,8 @@
 //   scripts/with-env.sh dart scripts/ezkey_lab.dart e2e [--device emulator-5554] [--test integration_test/ezkey/enrollment_ui_test.dart]
 //
 // Admin API calls need a bearer token: the script logs in as the clean-start administrator and
-// approves that login itself through the stack's Demo Device web UI (lab only). The token and the
-// integration API key are cached under the gitignored build/ezkey-lab/ (secrets: never commit or
+// approves that login itself through the stack's Demo Device web UI (lab only). The token and one
+// API key per integration are cached under the gitignored build/ezkey-lab/ (secrets: never commit or
 // print them). Endpoints come from EZKEY_ADMIN_API, EZKEY_INTEGRATION_API and EZKEY_DEMO_DEVICE.
 import 'dart:async';
 import 'dart:convert';
@@ -66,7 +67,7 @@ Future<void> main(List<String> arguments) async {
         Map<String, dynamic> attempt = await createAttempt(enrollmentId, title: command['title'] as String, message: command['message'] as String, challenge: command['challenge'] as bool);
         stdout.writeln(jsonEncode({'authAttemptId': attempt['authAttemptId'], 'authAttemptChallenge': attempt['authAttemptChallenge']}));
         if (command['wait'] as bool) {
-          stdout.writeln('status: ${await waitForAttempt(attempt['authAttemptId'] as int)}');
+          stdout.writeln('status: ${await waitForAttempt(attempt)}');
         }
       case 'e2e':
         exit(await e2e(command!['device'] as String, command['test'] as String));
@@ -96,23 +97,25 @@ Future<Map<String, Object>> invite(String name) async {
   };
 }
 
-/// Creates an auth attempt for [enrollmentId] through the Integration API.
+/// Creates an auth attempt for [enrollmentId] through the Integration API, with an API key of the
+/// enrollment's own integration. The result also holds that `integrationId`, for [waitForAttempt].
 Future<Map<String, dynamic>> createAttempt(int enrollmentId, {required String title, required String message, bool challenge = false}) async {
+  int integrationId = (await adminRequest('GET', '/api/v1/enrollments/$enrollmentId'))['integrationId'] as int;
   Map<String, Object?> body = {'enrollmentId': enrollmentId, 'challengeRequested': challenge, 'contextTitle': title, 'contextMessage': message};
-  http.Response response = await _send('POST', integrationApi.resolve('/api/v1/auth-attempts'), body, await integrationAuthorization());
+  http.Response response = await _send('POST', integrationApi.resolve('/api/v1/auth-attempts'), body, await integrationAuthorization(integrationId));
   if (response.statusCode == 401) {
     // The cached API key belongs to a previous stack (clean start): make a new one.
-    response = await _send('POST', integrationApi.resolve('/api/v1/auth-attempts'), body, await integrationAuthorization(refresh: true));
+    response = await _send('POST', integrationApi.resolve('/api/v1/auth-attempts'), body, await integrationAuthorization(integrationId, refresh: true));
   }
-  return _json(response, 'create auth attempt');
+  return {..._json(response, 'create auth attempt'), 'integrationId': integrationId};
 }
 
-/// Waits until the device decided [authAttemptId] (or it expired) and returns its status.
-Future<String> waitForAttempt(int authAttemptId, {Duration timeout = const Duration(seconds: 120)}) async {
+/// Waits until the device decided [attempt] (from [createAttempt]), or it expired, and returns its status.
+Future<String> waitForAttempt(Map<String, dynamic> attempt, {Duration timeout = const Duration(seconds: 120)}) async {
   DateTime deadline = DateTime.now().add(timeout);
   while (true) {
     Map<String, dynamic> json = _json(
-      await _send('GET', integrationApi.resolve('/api/v1/auth-attempts/$authAttemptId/wait?timeout=20&polling=1'), null, await integrationAuthorization()),
+      await _send('GET', integrationApi.resolve('/api/v1/auth-attempts/${attempt['authAttemptId']}/wait?timeout=20&polling=1'), null, await integrationAuthorization(attempt['integrationId'] as int)),
       'wait for auth attempt',
     );
     String status = json['status'] as String? ?? 'UNKNOWN';
@@ -163,7 +166,7 @@ Future<int> e2e(String device, String testPath) async {
     if (enrollment['enrollmentStatus'] == 'VERIFIED') {
       Map<String, dynamic> attempt = await createAttempt(enrollmentId, title: 'Sign in to Open Authenticator Lab', message: 'e2e auth attempt');
       stdout.writeln('auth attempt ${attempt['authAttemptId']} created');
-      stdout.writeln('auth attempt status: ${await waitForAttempt(attempt['authAttemptId'] as int)}');
+      stdout.writeln('auth attempt status: ${await waitForAttempt(attempt)}');
       break;
     }
     await Future.any([exitCode, Future.delayed(const Duration(seconds: 3))]);
@@ -253,11 +256,11 @@ Future<void> approveOnDemoDevice(int authAttemptId) async {
   throw LabException('auth attempt $authAttemptId never showed up on the Demo Device');
 }
 
-/// Returns the integration API `Authorization` header, creating an API key when needed.
-Future<String> integrationAuthorization({bool refresh = false}) async {
-  File cache = File('${stateDirectory.path}/api-key.json');
+/// Returns the integration API `Authorization` header for [integrationId], creating an API key when needed.
+Future<String> integrationAuthorization(int integrationId, {bool refresh = false}) async {
+  File cache = File('${stateDirectory.path}/api-key-$integrationId.json');
   if (refresh || !cache.existsSync()) {
-    Map<String, dynamic> key = await adminRequest('POST', '/api/v1/api-keys', {'integrationId': await labIntegrationId(), 'description': 'scripts/ezkey_lab.dart'});
+    Map<String, dynamic> key = await adminRequest('POST', '/api/v1/api-keys', {'integrationId': integrationId, 'description': 'scripts/ezkey_lab.dart'});
     stateDirectory.createSync(recursive: true);
     cache.writeAsStringSync(jsonEncode({'integrationKey': key['integrationKey'], 'secretKey': key['secretKey']}));
   }

@@ -20,7 +20,7 @@ const String _enrollmentChallenge = String.fromEnvironment('EZKEY_LAB_ENROLLMENT
 const String _authApiBaseUrl = String.fromEnvironment('EZKEY_LAB_AUTH_URL', defaultValue: 'http://10.0.2.2:8080');
 
 /// Goes through the enrollment screens against a live local EzKey stack, then approves one auth
-/// attempt and removes the enrollment from the list. Driven by
+/// attempt through the approval screen and removes the enrollment from the list. Driven by
 /// `scripts/ezkey_lab.dart e2e --test integration_test/ezkey/enrollment_ui_test.dart`, which takes a
 /// screenshot at each `EZKEY_LAB_SCREEN` line.
 void main() {
@@ -84,18 +84,28 @@ void main() {
       EzkeyEnrollment enrollment = enrollments.single;
       // ignore: avoid_print
       print('EZKEY_LAB enrolled id=${enrollment.enrollmentId} integration=${enrollment.integrationName} tier=${enrollment.devicePrivateKeyStorageTier.name}');
-      EzkeyAuthenticator authenticator = await container.read(ezkeyAuthenticatorProvider.future);
-      PendingAuthAttempt? attempt = await authenticator.pollPending(enrollment, timeout: const Duration(seconds: 90));
-      expect(attempt, isNotNull, reason: 'no auth attempt arrived');
-      AuthAttemptOutcome outcome = await authenticator.approve(enrollment, attempt!);
-      expect(outcome.result, AuthAttemptResult.approved);
+
+      // The lab script creates the auth attempt once the enrollment is VERIFIED: check until it shows up.
+      Finder approve = find.byKey(const ValueKey('ezkey-attempt-approve'));
+      DateTime deadline = DateTime.now().add(const Duration(seconds: 90));
+      while (approve.evaluate().isEmpty && DateTime.now().isBefore(deadline)) {
+        await tester.tap(find.byKey(const ValueKey('ezkey-check-pending')));
+        await _settle(tester, until: approve, timeout: const Duration(seconds: 5));
+      }
+      expect(approve, findsOneWidget, reason: 'no auth attempt arrived');
+      expect(find.text('Sign in to Open Authenticator Lab'), findsOneWidget);
+      await _screen(tester, '7-attempt');
+      await tester.tap(approve);
+      await _settle(tester, until: find.text(translations.ezkey.attempt.result.approved));
+      expect(find.text(translations.ezkey.attempt.result.approved), findsOneWidget);
+      await _screen(tester, '8-approved');
 
       await tester.tap(find.byIcon(FLucideIcons.trash));
       await _settle(tester);
-      await _screen(tester, '7-forget');
+      await _screen(tester, '9-forget');
       await tester.tap(find.text('OK'));
       await _settle(tester, until: find.text(translations.ezkey.page.empty));
-      await _screen(tester, '8-forgotten');
+      await _screen(tester, '10-forgotten');
       expect(await container.read(ezkeyEnrollmentsProvider.future), isEmpty);
     },
     // With semantics on, the framework asserts in the forui tile group / dialog tree
