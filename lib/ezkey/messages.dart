@@ -49,3 +49,10 @@ String ezkeyAttemptResultMessage(AuthAttemptResult result) => switch (result) {
   .failed => translations.ezkey.attempt.result.failed,
   .expired => translations.ezkey.attempt.result.expired,
 };
+
+/// Returns where the device key of an enrollment lives, as shown on its tile.
+String ezkeyStorageTierLabel(DevicePrivateKeyStorageTier tier) => switch (tier) {
+  .strong => translations.ezkey.page.tier.strong,
+  .standard => translations.ezkey.page.tier.standard,
+  .none => translations.ezkey.page.tier.none,
+};

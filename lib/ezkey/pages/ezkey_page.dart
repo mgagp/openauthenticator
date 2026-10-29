@@ -240,7 +240,15 @@ class _EnrollmentTile extends ConsumerWidget with FTileMixin {
   Widget build(BuildContext context, WidgetRef ref) => FTile(
     prefix: const Icon(FLucideIcons.shieldCheck),
     title: Text(enrollment.integrationName ?? '—'),
-    subtitle: Text([enrollment.tenantName, enrollment.enrollmentName, Uri.parse(enrollment.authApiBaseUrl).authority].whereType<String>().where((part) => part.isNotEmpty).join(' · ')),
+    // Two lines: forui keeps each subtitle line to one line. The key tier comes first so a long
+    // server address is what gets cut.
+    subtitle: Column(
+      crossAxisAlignment: .start,
+      children: [
+        Text([enrollment.tenantName, enrollment.enrollmentName].whereType<String>().where((part) => part.isNotEmpty).join(' · ')),
+        Text('${ezkeyStorageTierLabel(enrollment.devicePrivateKeyStorageTier)} · ${Uri.parse(enrollment.authApiBaseUrl).authority}'),
+      ],
+    ),
     suffix: ClickableButton.icon(
       variant: .ghost,
       onPress: () => forget(context, ref),
