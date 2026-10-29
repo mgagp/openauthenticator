@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forui/forui.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:open_authenticator/ezkey/local_confirmation.dart';
 import 'package:open_authenticator/ezkey/pages/ezkey_page.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
@@ -29,7 +30,12 @@ void main() {
   testWidgets(
     'enrolls through the EzKey screens',
     (tester) async {
-      ProviderContainer container = ProviderContainer();
+      // The emulator has no screen lock to confirm with; the Pixel pilot covers the real prompt.
+      ProviderContainer container = ProviderContainer(
+        overrides: [
+          ezkeyApprovalConfirmationProvider.overrideWithValue(() async => true),
+        ],
+      );
       addTearDown(container.dispose);
       await tester.pumpWidget(
         UncontrolledProviderScope(
