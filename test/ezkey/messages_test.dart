@@ -80,4 +80,12 @@ void main() {
       expect(ezkeyAttemptResultMessage(AuthAttemptResult.failed), translations.ezkey.attempt.result.failed);
     });
   });
+
+  group('ezkeyStorageTierLabel', () {
+    test('tells the three storage tiers apart', () {
+      expect(ezkeyStorageTierLabel(DevicePrivateKeyStorageTier.strong), translations.ezkey.page.tier.strong);
+      expect(ezkeyStorageTierLabel(DevicePrivateKeyStorageTier.standard), translations.ezkey.page.tier.standard);
+      expect(ezkeyStorageTierLabel(DevicePrivateKeyStorageTier.none), translations.ezkey.page.tier.none);
+    });
+  });
 }

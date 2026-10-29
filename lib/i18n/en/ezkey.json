@@ -23,6 +23,11 @@
       "confirmTitle": "Remove this enrollment?",
       "confirmMessage": "This device will no longer receive sign-in requests for $integration. The enrollment still exists on the EzKey server: ask your administrator to revoke it.",
       "success": "Enrollment removed from this device."
+    },
+    "tier": {
+      "strong": "Strong isolation",
+      "standard": "Hardware-backed",
+      "none": "Not hardware-protected"
     }
   },
   "scan": {
@@ -79,7 +84,7 @@
     "approve": "Approve",
     "deny": "Deny",
     "sending": "Sending your answer...",
-    "leaveHint": "If you leave without answering, the request will expire.",
+    "leaveHint": "Leaving this screen declines the request.",
     "result": {
       "approved": "Sign-in approved.",
       "denied": "Sign-in denied.",
@@ -88,6 +93,9 @@
     },
     "noLongerActive": "This request is no longer active. It may have been cancelled, answered or replaced by a newer one.",
     "uncertain": "Your answer was sent, but its result is unknown. Check where you are signing in.",
-    "integrity": "This request could not be verified, so it was ignored. Contact your administrator."
+    "integrity": "This request could not be verified, so it was ignored. Contact your administrator.",
+    "leaveDenyFailed": "The request could not be declined. It will expire on its own.",
+    "confirmTitle": "Approve the sign-in",
+    "confirmReason": "Confirm it is you to approve this sign-in."
   }
 }
