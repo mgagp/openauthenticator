@@ -5,7 +5,8 @@
     "loadError": "Impossible de charger les enrôlements EzKey.",
     "check": "Vérifier les demandes",
     "expand": "Déplier EzKey",
-    "collapse": "Replier EzKey"
+    "collapse": "Replier EzKey",
+    "manage": "Réglages EzKey et tous les enrôlements"
   },
   "about": {
     "title": "À propos d'EzKey",
@@ -40,6 +41,12 @@
       "standard": "Matériel (TEE)",
       "none": "Non protégé matériellement"
     }
+  },
+  "enrollment": {
+    "keyStorage": "Stockage de la clé",
+    "enrolledAt": "Enrôlé le",
+    "administrator": "Cet enrôlement protège un compte administrateur EzKey.",
+    "checkSubtitle": "Cherche une demande en attente pour cet enrôlement seulement."
   },
   "security": {
     "title": "Sécurité",

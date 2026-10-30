@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
 import 'package:open_authenticator/ezkey/messages.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
+import 'package:open_authenticator/ezkey/widgets/information_tile.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/spacing.dart';
 import 'package:open_authenticator/widgets/app_scaffold.dart';
@@ -74,10 +75,10 @@ class _EzkeyEnrollPageState extends ConsumerState<EzkeyEnrollPage> {
         const SizedBox(height: kSpace),
         FTileGroup(
           children: [
-            _InformationTile(icon: FLucideIcons.appWindow, label: translations.ezkey.enroll.integration, value: bound.integrationName, details: bound.integrationDescription),
-            _InformationTile(icon: FLucideIcons.building, label: translations.ezkey.enroll.organization, value: bound.tenantName),
-            _InformationTile(icon: FLucideIcons.user, label: translations.ezkey.enroll.account, value: bound.enrollmentName),
-            _InformationTile(icon: FLucideIcons.server, label: translations.ezkey.enroll.server, value: Uri.parse(bound.authApiBaseUrl).authority),
+            EzkeyInformationTile(icon: FLucideIcons.appWindow, label: translations.ezkey.enroll.integration, value: bound.integrationName, details: bound.integrationDescription),
+            EzkeyInformationTile(icon: FLucideIcons.building, label: translations.ezkey.enroll.organization, value: bound.tenantName),
+            EzkeyInformationTile(icon: FLucideIcons.user, label: translations.ezkey.enroll.account, value: bound.enrollmentName),
+            EzkeyInformationTile(icon: FLucideIcons.server, label: translations.ezkey.enroll.server, value: Uri.parse(bound.authApiBaseUrl).authority),
           ],
         ),
         if (bound.isSystemIntegration) ...[
@@ -151,34 +152,4 @@ class _EzkeyEnrollPageState extends ConsumerState<EzkeyEnrollPage> {
     codeController.dispose();
     super.dispose();
   }
-}
-
-/// One line of what the signed bind answer says.
-class _InformationTile extends StatelessWidget with FTileMixin {
-  /// The icon.
-  final IconData icon;
-
-  /// The label.
-  final String label;
-
-  /// The value (may be missing on the server side).
-  final String? value;
-
-  /// Optional details under the value.
-  final String? details;
-
-  /// Creates a new information tile instance.
-  const _InformationTile({
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.details,
-  });
-
-  @override
-  Widget build(BuildContext context) => FTile(
-    prefix: Icon(icon),
-    title: Text(value == null || value!.isEmpty ? '—' : value!),
-    subtitle: Text(details == null || details!.isEmpty ? label : '$label · $details'),
-  );
 }
