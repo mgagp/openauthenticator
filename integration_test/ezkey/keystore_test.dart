@@ -2,6 +2,7 @@ import 'package:ezkey_dart/ezkey_dart.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:open_authenticator/ezkey/device_key_store.dart';
+import 'package:open_authenticator/ezkey/orphan_keys.dart';
 
 /// Runs the EzKey key store against the real Android Keystore (emulator or device):
 /// `scripts/with-env.sh flutter test integration_test/ezkey/keystore_test.dart -d <device>`.
@@ -38,6 +39,27 @@ void main() {
     }
     expect(await store.publicKey(alias), isNull);
     expect(await store.deviceKeyAliases(), isNot(contains(alias)));
+  });
+
+  test('orphan cleanup leaves the keys of the other build type in the real Keystore (#41)', () async {
+    AndroidEzkeyDeviceKeyStore debugStore = AndroidEzkeyDeviceKeyStore(namespace: 'debug');
+    AndroidEzkeyDeviceKeyStore mainStore = AndroidEzkeyDeviceKeyStore(namespace: 'main');
+    String orphan = ezkeyDeviceKeyAlias(1, namespace: 'debug');
+    String otherBuild = ezkeyDeviceKeyAlias(2, namespace: 'main');
+    try {
+      await debugStore.generateKeyPair(orphan);
+      await mainStore.generateKeyPair(otherBuild);
+
+      // The debug build sees no record at all, as when its namespace is empty.
+      List<String> deleted = await deleteOrphanEzkeyDeviceKeys(keyStore: debugStore, enrollmentStore: InMemoryEnrollmentStore());
+
+      expect(deleted, [orphan]);
+      expect(await debugStore.publicKey(orphan), isNull);
+      expect(await mainStore.publicKey(otherBuild), isNotNull);
+    } finally {
+      await debugStore.deleteKeyPair(orphan);
+      await mainStore.deleteKeyPair(otherBuild);
+    }
   });
 
   test('signing with a missing key is a local-state error', () async {
