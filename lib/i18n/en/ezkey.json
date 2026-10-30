@@ -3,7 +3,9 @@
     "title": "EzKey",
     "empty": "No EzKey enrollment yet. Tap + to add one with the invitation from your administrator.",
     "loadError": "Could not load the EzKey enrollments.",
-    "check": "Check for requests"
+    "check": "Check for requests",
+    "expand": "Expand EzKey",
+    "collapse": "Collapse EzKey"
   },
   "about": {
     "title": "About EzKey",

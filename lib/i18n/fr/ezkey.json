@@ -3,7 +3,9 @@
     "title": "EzKey",
     "empty": "Aucun enrôlement EzKey pour le moment. Touchez + pour en ajouter un avec l'invitation de votre administrateur.",
     "loadError": "Impossible de charger les enrôlements EzKey.",
-    "check": "Vérifier les demandes"
+    "check": "Vérifier les demandes",
+    "expand": "Déplier EzKey",
+    "collapse": "Replier EzKey"
   },
   "about": {
     "title": "À propos d'EzKey",

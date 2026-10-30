@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forui/forui.dart';
 import 'package:open_authenticator/ezkey/home_zone.dart';
+import 'package:open_authenticator/ezkey/home_zone_state.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/themes.dart';
@@ -23,6 +24,21 @@ class _FixedEnrollments extends EzkeyEnrollmentsNotifier {
 
   @override
   FutureOr<List<EzkeyEnrollment>> build() => enrollments;
+}
+
+/// Keeps the zone state in memory instead of the shared preferences.
+class _MemoryZoneState extends EzkeyHomeZoneStateEntry {
+  /// The initial state.
+  final EzkeyHomeZoneState initial;
+
+  /// Creates a new memory zone state instance.
+  _MemoryZoneState(this.initial);
+
+  @override
+  FutureOr<EzkeyHomeZoneState> build() => initial;
+
+  @override
+  Future<void> changeValue(EzkeyHomeZoneState value) async => state = AsyncData(value);
 }
 
 void main() {
@@ -87,6 +103,65 @@ void main() {
       expect(find.text(translations.ezkey.about.description), findsOneWidget);
       expect(find.byKey(const ValueKey('ezkey-about-website')), findsOneWidget);
       expect(find.byKey(const ValueKey('ezkey-about-source')), findsOneWidget);
+    });
+  });
+
+  group('EzkeyHomeZones', () {
+    /// Shows both zones with [enrollments] and the zone [state].
+    Future<void> pumpZones(WidgetTester tester, List<EzkeyEnrollment> enrollments, {EzkeyHomeZoneState state = .auto}) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            ezkeyEnrollmentsProvider.overrideWith(() => _FixedEnrollments(enrollments)),
+            ezkeyHomeZoneStateProvider.overrideWith(() => _MemoryZoneState(state)),
+          ],
+          child: TranslationProvider(
+            child: MaterialApp(
+              builder: (context, child) => FTheme(
+                data: greenTheme.light.touch,
+                child: child!,
+              ),
+              home: const Scaffold(body: EzkeyHomeZones(totpZone: Text('totp'))),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('is collapsed to a bar while there is no enrollment', (tester) async {
+      await pumpZones(tester, []);
+
+      expect(find.byKey(const ValueKey('ezkey-home-expand')), findsOneWidget);
+      expect(find.byType(EzkeyHomeZone), findsNothing);
+      expect(find.text('totp'), findsOneWidget);
+    });
+
+    testWidgets('is expanded once there is an enrollment', (tester) async {
+      await pumpZones(tester, [testEnrollment(1)]);
+
+      expect(find.byType(EzkeyHomeZone), findsOneWidget);
+      expect(find.byKey(const ValueKey('ezkey-home-expand')), findsNothing);
+    });
+
+    testWidgets('a remembered choice wins over the default', (tester) async {
+      await pumpZones(tester, [testEnrollment(1)], state: .collapsed);
+
+      expect(find.byType(EzkeyHomeZone), findsNothing);
+    });
+
+    testWidgets('collapses and expands on tap', (tester) async {
+      await pumpZones(tester, [testEnrollment(1)]);
+
+      await tester.tap(find.byKey(const ValueKey('ezkey-home-collapse')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(EzkeyHomeZone), findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('ezkey-home-expand')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(EzkeyHomeZone), findsOneWidget);
     });
   });
 

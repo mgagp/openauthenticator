@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
 import 'package:open_authenticator/ezkey/about.dart';
 import 'package:open_authenticator/ezkey/actions.dart';
+import 'package:open_authenticator/ezkey/home_zone_state.dart';
 import 'package:open_authenticator/ezkey/installations.dart';
 import 'package:open_authenticator/ezkey/pages/ezkey_page.dart';
 import 'package:open_authenticator/ezkey/widgets/enrollment_tile.dart';
@@ -24,8 +25,11 @@ const Color kEzkeyBlue = Color(0xFF3076DF);
 /// this function. Off Android, EzKey is not available and [totpChildren] comes back unchanged.
 List<Widget> ezkeyHomeZones(List<Widget> totpChildren) => currentPlatform == .android && totpChildren.length == 1 ? [EzkeyHomeZones(totpZone: totpChildren.single)] : totpChildren;
 
-/// The two framed home zones: TOTP (upstream content, unchanged) above, EzKey below.
-class EzkeyHomeZones extends StatelessWidget {
+/// The home zones: TOTP (upstream content, unchanged) above, EzKey below.
+///
+/// Expanded, both zones are framed. Collapsed (#36), the upstream content takes the full height
+/// without a frame, so the app looks like the original, and EzKey is a thin bar at the bottom.
+class EzkeyHomeZones extends ConsumerWidget {
   /// The upstream home content (TOTP list or empty state, and its add button).
   final Widget totpZone;
 
@@ -36,22 +40,99 @@ class EzkeyHomeZones extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => SafeArea(
-    top: false,
-    child: Column(
-      crossAxisAlignment: .stretch,
-      children: [
-        Expanded(
-          child: _ZoneFrame(
-            margin: const EdgeInsets.fromLTRB(kSpace, 0, kSpace, kSpace),
-            child: totpZone,
+  Widget build(BuildContext context, WidgetRef ref) {
+    bool hasEnrollments = ref.watch(ezkeyInstallationsProvider).value?.isNotEmpty ?? false;
+    EzkeyHomeZoneState state = ref.watch(ezkeyHomeZoneStateProvider).value ?? .auto;
+    bool expanded = state.isExpanded(hasEnrollments: hasEnrollments);
+    return SafeArea(
+      top: false,
+      child: Column(
+        crossAxisAlignment: .stretch,
+        children: [
+          Expanded(
+            // Same widget tree framed or not, so the upstream content keeps its state.
+            child: _ZoneFrame(
+              framed: expanded,
+              margin: const EdgeInsets.fromLTRB(kSpace, 0, kSpace, kSpace),
+              child: totpZone,
+            ),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            alignment: .bottomCenter,
+            child: expanded
+                ? const _ZoneFrame(
+                    margin: EdgeInsets.fromLTRB(kSpace, 0, kSpace, kSpace),
+                    child: EzkeyHomeZone(),
+                  )
+                : const _CollapsedBar(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Expands or collapses the EzKey home zone, and remembers the choice.
+void _setExpanded(WidgetRef ref, bool expanded) => ref.read(ezkeyHomeZoneStateProvider.notifier).changeValue(expanded ? .expanded : .collapsed);
+
+/// The collapsed EzKey zone: a thin bar with the logo, the name, "about", and a chevron.
+class _CollapsedBar extends ConsumerWidget {
+  /// Creates a new collapsed bar instance.
+  const _CollapsedBar();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => Semantics(
+    button: true,
+    label: translations.ezkey.home.expand,
+    child: GestureDetector(
+      key: const ValueKey('ezkey-home-expand'),
+      behavior: .opaque,
+      onTap: () => _setExpanded(ref, true),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border(top: BorderSide(color: context.theme.colors.border, width: 2)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: kBigSpace, vertical: kSpace / 2),
+          child: Row(
+            children: [
+              const SizedScalableImage(
+                asset: 'assets/images/ezkey_logo.si',
+                width: 24,
+                height: 24,
+              ),
+              const SizedBox(width: kSpace),
+              Expanded(
+                child: Text(
+                  translations.ezkey.home.title,
+                  style: context.theme.typography.body.md.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+              const _AboutButton(),
+              const Icon(FLucideIcons.chevronUp),
+            ],
           ),
         ),
-        const _ZoneFrame(
-          margin: EdgeInsets.fromLTRB(kSpace, 0, kSpace, kSpace),
-          child: EzkeyHomeZone(),
-        ),
-      ],
+      ),
+    ),
+  );
+}
+
+/// The ⓘ button that opens "About EzKey".
+class _AboutButton extends StatelessWidget {
+  /// Creates a new about button instance.
+  const _AboutButton();
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: translations.ezkey.about.open,
+    child: ClickableButton.icon(
+      key: const ValueKey('ezkey-home-about'),
+      variant: .ghost,
+      onPress: () => EzkeyAboutDialog.show(context),
+      child: const Icon(FLucideIcons.info),
     ),
   );
 }
@@ -101,14 +182,15 @@ class EzkeyHomeZone extends ConsumerWidget {
                   ),
                 ),
               ),
+              const _AboutButton(),
               Semantics(
                 button: true,
-                label: translations.ezkey.about.open,
+                label: translations.ezkey.home.collapse,
                 child: ClickableButton.icon(
-                  key: const ValueKey('ezkey-home-about'),
+                  key: const ValueKey('ezkey-home-collapse'),
                   variant: .ghost,
-                  onPress: () => EzkeyAboutDialog.show(context),
-                  child: const Icon(FLucideIcons.info),
+                  onPress: () => _setExpanded(ref, false),
+                  child: const Icon(FLucideIcons.chevronDown),
                 ),
               ),
             ],
@@ -278,8 +360,12 @@ class _AddButton extends StatelessWidget {
   );
 }
 
-/// A home zone frame: a rounded border, the same for both zones, thick enough to notice.
+/// A home zone frame: a rounded border, the same for both zones, thick enough to notice. Unframed,
+/// it keeps the same widget tree with no margin and no border.
 class _ZoneFrame extends StatelessWidget {
+  /// Whether to show the frame.
+  final bool framed;
+
   /// The space around the frame.
   final EdgeInsets margin;
 
@@ -288,20 +374,21 @@ class _ZoneFrame extends StatelessWidget {
 
   /// Creates a new zone frame instance.
   const _ZoneFrame({
+    this.framed = true,
     required this.margin,
     required this.child,
   });
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: margin,
+    padding: framed ? margin : EdgeInsets.zero,
     child: DecoratedBox(
       decoration: BoxDecoration(
-        border: Border.all(color: context.theme.colors.border, width: 2),
-        borderRadius: context.theme.style.borderRadius.md,
+        border: framed ? Border.all(color: context.theme.colors.border, width: 2) : null,
+        borderRadius: framed ? context.theme.style.borderRadius.md : null,
       ),
       child: ClipRRect(
-        borderRadius: context.theme.style.borderRadius.md,
+        borderRadius: framed ? context.theme.style.borderRadius.md : BorderRadius.zero,
         child: child,
       ),
     ),
