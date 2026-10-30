@@ -1,6 +1,6 @@
 # EzKey integration — design notes
 
-Living design document for #16. It records how Open Authenticator meets the EzKey client contract and what it changes in upstream files. Protocol and behaviour rules are **not** restated here: they live in the EzKey repository (`mgagp/ezkey`), linked below. Decisions with trade-offs are ADRs ([0001](../adr/0001-ezkey-integration-divergence.md), [0002](../adr/0002-ezkey-key-and-secret-storage.md)).
+Living design document for #16. It records how Open Authenticator meets the EzKey client contract and what it changes in upstream files. Protocol and behaviour rules are **not** restated here: they live in the EzKey repository (`mgagp/ezkey`), linked below. Decisions with trade-offs are ADRs ([0001](../adr/0001-ezkey-integration-divergence.md), [0002](../adr/0002-ezkey-key-and-secret-storage.md), [0003](../adr/0003-ezkey-on-the-home-screen.md)).
 
 ## Sources (EzKey repo)
 
@@ -10,6 +10,8 @@ Living design document for #16. It records how Open Authenticator meets the EzKe
 | `ezkey_dart/README.md` | SDK API, storage hooks, integration pitfalls |
 | `docs/MOBILE_DEVELOPER_GUIDE.md` | Wire protocol, signed payloads, problem types |
 | `ezkey_mobile/docs/MOBILE_APP_STATE_MACHINE.md`, `MOBILE_SCREENS_AND_WIREFLOWS.md`, `MOBILE_POSITIONING.md` | Reference app behaviour, screens and naming vocabulary (inspiration for slices 2–3, not obligations) |
+| `product-docs/global/architecture-decisions.md` ADR-0002 | User-initiated pending checks only: no push, no background or automatic polling (not stated in the contract, see findings) |
+| `ezkey_mobile/docs/MOBILE_DATA_MODEL.md` § Installation Trust Zone, `ezkey_mobile/app/utils/{tenantGrouping,enrollmentDisplay}.ts` | Trust zones and enrollment grouping on the reference app's home screen (to adopt gradually, #26) |
 | `sites/ezkey-org/technical-trace-ezkey-enrollment-authentication.html` | One complete real exchange (enroll, instance-info, pending, respond) with actual values |
 
 ## Layers
@@ -28,6 +30,7 @@ One row per contract rule that applies to this app. "SDK" means `ezkey_dart` enf
 | Contract rule | Level | Owner | How | Proof | Status |
 | --- | --- | --- | --- | --- | --- |
 | §1.1 Pending is a one-shot claim | MUST (server) | SDK + App | SDK returns the claimed attempt once; the app claims on user action only ("check for requests") and keeps it in memory on `EzkeyApprovalPage` until decided | Pixel pilot | Basic (#22) |
+| EzKey ADR-0002: pending checks on explicit user action only | MUST (ADR; not in the contract) | App | `checkPending` runs only from the "check for requests" tap; no `pollPending` / `watchPending`, no check on app resume, no notification | — | Done (#22) |
 | §1.2 No context before the pending signature verifies; no refusal on fail-closed | MUST NOT | SDK + App | SDK throws `EzkeyIntegrityException`; the app shows a neutral error (`attempt.integrity`) and sends nothing | `test/ezkey/messages_test.dart` | Done (#22) |
 | §1.3 No device countdown as a security control | MUST NOT | App | No timer UI; `isCertainlyExpired` only stops a decision on a stale prompt | — | Done (#22) |
 | §2 Decision lock, unknown outcome | MUST / SHOULD | SDK | `PendingAuthAttempt.decisionState`, `EzkeyRespondOutcomeUnknownException` (SDK 0.3.0 tests) | SDK tests, `messages_test.dart` | Done in SDK; basic app UI (#22): buttons follow `canDecide`, uncertain outcome shown as such, page closes once locked |
@@ -40,7 +43,7 @@ One row per contract rule that applies to this app. "SDK" means `ezkey_dart` enf
 
 ## Upstream files touched
 
-Cumulative ledger (ADR-0001 D3). Every entry names the PR and why the hook could not live in a new file.
+Cumulative ledger (ADR-0001 D3, refined by ADR-0003 D4). Every entry names the PR, why the change could not live in a new file, and is precise enough to re-apply. On an upstream sync that conflicts with an entry, take upstream's version, re-apply the entry, and run the checks.
 
 | File | Change | PR |
 | --- | --- | --- |
@@ -96,17 +99,32 @@ docker logs -f --since 1m ezkey-auth-api > auth-api.log                         
 
 ## Findings fed back to EzKey
 
-| Date | Finding | Where fixed |
-| --- | --- | --- |
-| 2026-10-27 | G8: Android Keystore high-S signatures rejected by the Auth API; SDK did not normalize key-store output | `ezkey_dart` 0.3.0 (mgagp/ezkey#1068 branch) |
-| 2026-10-27 | G9: `EzkeyDeviceKeyStore.storageTier` is per store, but the tier is per key (StrongBox can be unavailable for one generation). Worked around by reporting the last generated key's tier, which the SDK reads right after generation. Suggested SDK change: return the tier from `generateKeyPair`. | Open (EzKey) |
-| 2026-10-27 | Clean-start invitations have no `authUrl`, so every third-party app must ask the user for the server address; the reference app has a global default instead. Suggest documenting this in the SDK README §2.2 or defaulting `EZKEY_QR_AUTH_BASE_URL` in clean-start. | Open (EzKey, docs) |
-| 2026-10-27 | `EzkeyEnrollmentStore.list()` cannot report unreadable records, while the contract's reference behaviour shows them as unusable (MOB-015). Worked around with `SecureEzkeyEnrollmentStore.unreadableLocalIds()`. | Open (EzKey, low) |
+Kept in two lists so the EzKey follow-ups stay separate from this app's integration work. Documentation findings are about **discoverability**: a third-party integrator reads the contract and the SDK README first, so rules that live only in ADRs or in `ezkey_mobile` are easy to miss. Record them here; refactoring EzKey's documentation is out of scope for this fork.
+
+### EzKey documentation
+
+| Date | Finding | Suggested action | Status |
+| --- | --- | --- | --- |
+| 2026-10-27 | Clean-start invitations have no `authUrl`, so every third-party app must ask the user for the server address; the reference app has a global default instead | Document it in the SDK README §2.2, or default `EZKEY_QR_AUTH_BASE_URL` in clean-start | Open |
+| 2026-10-29 | **No push by design** (ADR-0002, user-initiated pending only) is absent from `CLIENT_BEHAVIOUR_CONTRACT.md`. The SDK README contradicts it: it suggests checking "when the app returns to the foreground, or with `pollPending` / `watchPending` while an approvals screen is visible", says "no push channel *yet*", and lists it under limitations rather than as a security choice. This led this fork to propose notifications. | Add a MUST NOT to the contract citing ADR-0002 (as the integration-kit vision note already asks); align the README wording | Open |
+| 2026-10-29 | Trust zones (installation = normalized Auth URL), tenant groups and the admin / regular distinction are documented only in `ezkey_mobile`; the contract, the SDK README and the vision note do not point a third-party app to them (#26) | A short "presenting enrollments" section in the SDK README linking to `MOBILE_DATA_MODEL.md` | Open |
+| 2026-10-29 | `CLIENT_BEHAVIOUR_CONTRACT.md` § "Known gap" and `MOBILE_DEVELOPER_GUIDE.md` (known-gap note, `auth/internal-error` row) still say the Dart SDK does not lock on lost `respond` transport or ambiguous 5xx; SDK 0.3.0 does (decision lock, unknown outcome) | Update both once mgagp/ezkey#1068 merges | Open |
+
+### EzKey SDK (`ezkey_dart`)
+
+| Date | Finding | Suggested action | Status |
+| --- | --- | --- | --- |
+| 2026-10-27 | G8: Android Keystore high-S signatures rejected by the Auth API; the SDK did not normalize key-store output | — | Fixed in `ezkey_dart` 0.3.0 (mgagp/ezkey#1068 branch) |
+| 2026-10-27 | G9: `EzkeyDeviceKeyStore.storageTier` is per store, but the tier is per key (StrongBox can be unavailable for one generation). Worked around by reporting the last generated key's tier, which the SDK reads right after generation | Return the tier from `generateKeyPair` | Open |
+| 2026-10-27 | `EzkeyEnrollmentStore.list()` cannot report unreadable records, while the contract's reference behaviour shows them as unusable (MOB-015). Worked around with `SecureEzkeyEnrollmentStore.unreadableLocalIds()` | Let `list()` report unreadable records | Open (low) |
+| 2026-10-29 | `pollPending` / `watchPending` offer automatic polling that EzKey ADR-0002 rejects for the mobile path | Restrict or document them as non-mobile (lab, CLI) helpers | Open |
 
 ## Open points (this app)
 
-- Accessibility: with semantics enabled, the EzKey screens trigger a framework assertion (`node.isMergedIntoParent`) in debug, after which taps reach stale forui tappables. `enrollment_ui_test.dart` runs with `semanticsEnabled: false` until this is understood (forui tile group / dialog, or our tree). To check with TalkBack before slice 4.
-- A claimed attempt lives only in memory: if the app dies before the decision, it simply expires (leave-as-deny cannot run). No top-level entry yet: the EzKey page is under Settings → Security (smallest upstream hook); a home-screen entry or a pending-request prompt would be one more upstream change, to decide and record here.
+- Accessibility: with semantics enabled, the EzKey screens trigger a framework assertion (`node.isMergedIntoParent`) in debug, after which taps reach stale forui tappables. `enrollment_ui_test.dart` runs with `semanticsEnabled: false` until this is understood (#30).
+- A claimed attempt lives only in memory: if the app dies before the decision, it simply expires (leave-as-deny cannot run).
+- Home-screen entry: decided in ADR-0003 (two zones, phased), built in #28. Until then the EzKey page is under Settings → Security.
+- `ezkey_dart` is pinned to a branch commit until mgagp/ezkey#1068 merges (#29).
 - Each enrollment tile shows where its key lives, from the tier recorded at enrollment, with the Admin UI's platform-neutral labels ("Strong isolation", "Hardware-backed", "Not hardware-protected") (#24).
-- `enrollment_ui_test.dart` now approves through the screens (`ezkey-check-pending`, `ezkey-attempt-approve`); not yet run on the emulator (it was stopped). The Pixel pilot covered the same path by hand.
+- `enrollment_ui_test.dart` approves through the screens (`ezkey-check-pending`, `ezkey-attempt-approve`); it passed on the emulator in #24 (`ACCEPTED`, 10 screenshots).
 - The settings tile is verified by `flutter analyze` only: the UI test opens `EzkeyPage` directly, because the upstream intro (master password) blocks a fresh install.
