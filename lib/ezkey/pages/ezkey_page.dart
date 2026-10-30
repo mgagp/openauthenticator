@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
 import 'package:open_authenticator/ezkey/actions.dart';
-import 'package:open_authenticator/ezkey/messages.dart';
+import 'package:open_authenticator/ezkey/pages/enrollment_page.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
 import 'package:open_authenticator/ezkey/widgets/approval_security_tile.dart';
 import 'package:open_authenticator/ezkey/widgets/enrollment_tile.dart';
@@ -11,10 +11,8 @@ import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/spacing.dart';
 import 'package:open_authenticator/widgets/app_scaffold.dart';
 import 'package:open_authenticator/widgets/clickable.dart';
-import 'package:open_authenticator/widgets/dialog/confirmation_dialog.dart';
-import 'package:open_authenticator/ezkey/toast.dart';
 
-/// Lists the EzKey enrollments of this device in detail, and adds new ones.
+/// EzKey settings and all enrollments of this device: each opens its own page, and new ones are added here.
 class EzkeyPage extends ConsumerWidget {
   /// Creates a new EzKey page instance.
   const EzkeyPage({
@@ -55,11 +53,8 @@ class EzkeyPage extends ConsumerWidget {
                 EzkeyEnrollmentTile(
                   enrollment: enrollment,
                   showDetails: true,
-                  suffix: ClickableButton.icon(
-                    variant: .ghost,
-                    onPress: () => forget(context, ref, enrollment),
-                    child: const Icon(FLucideIcons.trash),
-                  ),
+                  suffix: const Icon(FLucideIcons.chevronRight),
+                  onPress: () => EzkeyEnrollmentPage.open(context, enrollment),
                 ),
             ],
           ),
@@ -110,27 +105,4 @@ class EzkeyPage extends ConsumerWidget {
       ),
     ],
   );
-
-  /// Removes [enrollment] from this device, after confirmation.
-  Future<void> forget(BuildContext context, WidgetRef ref, EzkeyEnrollment enrollment) async {
-    bool confirmed = await ConfirmationDialog.ask(
-      context,
-      title: translations.ezkey.page.forget.confirmTitle,
-      message: translations.ezkey.page.forget.confirmMessage(integration: enrollment.integrationName ?? ''),
-      okButtonVariant: .destructive,
-    );
-    if (!confirmed || !context.mounted) {
-      return;
-    }
-    try {
-      await ref.read(ezkeyEnrollmentsProvider.notifier).forget(enrollment);
-      if (context.mounted) {
-        showEzkeySuccessToast(context, text: translations.ezkey.page.forget.success);
-      }
-    } on EzkeyException catch (ex) {
-      if (context.mounted) {
-        showEzkeyErrorToast(context, text: ezkeyEnrollmentErrorMessage(ex));
-      }
-    }
-  }
 }

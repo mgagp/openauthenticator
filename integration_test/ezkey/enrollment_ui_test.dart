@@ -106,7 +106,10 @@ void main() {
       expect(find.text(translations.ezkey.attempt.result.approved), findsOneWidget);
       await _screen(tester, '8-approved');
 
-      await tester.tap(find.byIcon(FLucideIcons.trash));
+      // Removal lives on the enrollment's own page (#33).
+      await tester.tap(find.text('Open Authenticator Lab'));
+      await _settle(tester, until: find.byKey(const ValueKey('ezkey-enrollment-forget')));
+      await tester.tap(find.byKey(const ValueKey('ezkey-enrollment-forget')));
       await _settle(tester);
       await _screen(tester, '9-forget');
       await tester.tap(find.text('OK'));

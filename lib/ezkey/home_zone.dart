@@ -6,6 +6,7 @@ import 'package:open_authenticator/ezkey/about.dart';
 import 'package:open_authenticator/ezkey/actions.dart';
 import 'package:open_authenticator/ezkey/home_zone_state.dart';
 import 'package:open_authenticator/ezkey/installations.dart';
+import 'package:open_authenticator/ezkey/pages/enrollment_page.dart';
 import 'package:open_authenticator/ezkey/pages/ezkey_page.dart';
 import 'package:open_authenticator/ezkey/widgets/enrollment_tile.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
@@ -124,10 +125,10 @@ class _AboutButton extends StatelessWidget {
   /// Creates a new about button instance.
   const _AboutButton();
 
+  // Icon only: a tooltip on long press, which also labels it for screen readers.
   @override
-  Widget build(BuildContext context) => Semantics(
-    button: true,
-    label: translations.ezkey.about.open,
+  Widget build(BuildContext context) => Tooltip(
+    message: translations.ezkey.about.open,
     child: ClickableButton.icon(
       key: const ValueKey('ezkey-home-about'),
       variant: .ghost,
@@ -183,9 +184,19 @@ class EzkeyHomeZone extends ConsumerWidget {
                 ),
               ),
               const _AboutButton(),
-              Semantics(
-                button: true,
-                label: translations.ezkey.home.collapse,
+              // Icon only: a tooltip on long press, which also labels it for screen readers.
+              Tooltip(
+                message: translations.ezkey.home.manage,
+                child: ClickableButton.icon(
+                  key: const ValueKey('ezkey-home-manage'),
+                  variant: .ghost,
+                  onPress: () => EzkeyPage.open(context),
+                  child: const Icon(FLucideIcons.settings2),
+                ),
+              ),
+              // Icon only: a tooltip on long press, which also labels it for screen readers.
+              Tooltip(
+                message: translations.ezkey.home.collapse,
                 child: ClickableButton.icon(
                   key: const ValueKey('ezkey-home-collapse'),
                   variant: .ghost,
@@ -218,7 +229,7 @@ class EzkeyHomeZone extends ConsumerWidget {
                     for (EzkeyEnrollment enrollment in enrollments)
                       EzkeyEnrollmentTile(
                         enrollment: enrollment,
-                        onPress: () => EzkeyPage.open(context),
+                        onPress: () => EzkeyEnrollmentPage.open(context, enrollment),
                       ),
                   ],
                 ),
