@@ -7,7 +7,7 @@ import 'package:open_authenticator/ezkey/device_key_store.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('AndroidEzkeyDeviceKeyStore', () {
+  group('NativeEzkeyDeviceKeyStore', () {
     late List<MethodCall> calls;
     late Object? Function(MethodCall call) answer;
 
@@ -24,12 +24,12 @@ void main() {
     });
 
     test('reports the tier of the last generated key', () async {
-      AndroidEzkeyDeviceKeyStore store = AndroidEzkeyDeviceKeyStore();
-      answer = (call) => {'publicKey': 'SPKI-strong', 'strongBox': true};
+      NativeEzkeyDeviceKeyStore store = NativeEzkeyDeviceKeyStore();
+      answer = (call) => {'publicKey': 'SPKI-strong', 'tier': 'strong'};
       expect(await store.generateKeyPair('ezkey-device-1-a'), 'SPKI-strong');
       expect(store.storageTier, DevicePrivateKeyStorageTier.strong);
 
-      answer = (call) => {'publicKey': 'SPKI-tee', 'strongBox': false};
+      answer = (call) => {'publicKey': 'SPKI-tee', 'tier': 'standard'};
       expect(await store.generateKeyPair('ezkey-device-2-b'), 'SPKI-tee');
       expect(store.storageTier, DevicePrivateKeyStorageTier.standard);
       expect(calls.map((call) => call.arguments), [
@@ -39,7 +39,7 @@ void main() {
     });
 
     test('passes alias and payload through to the platform', () async {
-      AndroidEzkeyDeviceKeyStore store = AndroidEzkeyDeviceKeyStore();
+      NativeEzkeyDeviceKeyStore store = NativeEzkeyDeviceKeyStore();
       answer = (call) => switch (call.method) {
         'sign' => 'DER-signature',
         'aliases' => ['ezkey-device-1-a'],
@@ -59,7 +59,7 @@ void main() {
     });
 
     test('platform failures become local-state errors without leaking the payload', () async {
-      AndroidEzkeyDeviceKeyStore store = AndroidEzkeyDeviceKeyStore();
+      NativeEzkeyDeviceKeyStore store = NativeEzkeyDeviceKeyStore();
       answer = (call) => throw PlatformException(code: 'key_not_found', message: 'No key for alias ezkey-device-1-a');
       await expectLater(
         store.sign('ezkey-device-1-a', 'secret-payload'),
@@ -77,6 +77,6 @@ void main() {
 
   test('debug builds use their own namespace, like upstream secure storage', () {
     expect(ezkeyDeviceKeyNamespace, 'debug');
-    expect(AndroidEzkeyDeviceKeyStore().namespace, 'debug');
+    expect(NativeEzkeyDeviceKeyStore().namespace, 'debug');
   });
 }

@@ -1,32 +1,48 @@
-/// Android Keystore EC P-256 signing keys for EzKey device keys.
+/// Hardware-protected EC P-256 signing keys for EzKey device keys, through the `org.ezkey.keystore`
+/// platform channel.
 ///
-/// Keys are non-exportable and sign-only; generation requests StrongBox first and falls back to the
-/// TEE. Only aliases, strings to sign, signatures and public keys cross the platform channel.
+/// The channel is the cross-platform contract (docs/adr/0004-ezkey-multi-platform-posture.md): every
+/// platform implementation answers the same methods, arguments, results and error codes, so this
+/// client serves them all. Implemented today on Android (Android Keystore: StrongBox first, then the
+/// TEE).
+///
+/// Keys are non-exportable and sign-only. Only aliases, strings to sign, signatures and public keys
+/// cross the channel.
 ///
 /// Failures are [PlatformException]s with one of these codes:
 /// * `key_not_found`: no key for the alias;
 /// * `invalid_arguments`: a required argument is missing;
-/// * `keystore_error`: any other Keystore failure (message is the exception class name only).
+/// * `keystore_error`: any other key store failure (message is the error type only, never key
+///   material or payloads).
 library;
 
 import 'package:flutter/services.dart';
+
+/// Where a generated key lives, in platform-neutral terms. On the channel: `strong` or `standard`.
+enum EzkeyKeyTier {
+  /// A discrete secure element (Android StrongBox).
+  strong,
+
+  /// The platform's main hardware key store (Android TEE; Apple Secure Enclave; a TPM).
+  standard,
+}
 
 /// Result of [EzkeyKeystore.generateKeyPair].
 class EzkeyGeneratedKey {
   /// Creates a new generated key description.
   const EzkeyGeneratedKey({
     required this.publicKey,
-    required this.strongBox,
+    required this.tier,
   });
 
   /// SPKI DER public key, standard Base64 with padding.
   final String publicKey;
 
-  /// Whether the key lives in StrongBox (`false`: TEE).
-  final bool strongBox;
+  /// Where the key lives.
+  final EzkeyKeyTier tier;
 }
 
-/// Client of the `org.ezkey.keystore` platform channel (Android only).
+/// Client of the `org.ezkey.keystore` platform channel.
 class EzkeyKeystore {
   /// Creates a new keystore client.
   const EzkeyKeystore();
@@ -34,12 +50,12 @@ class EzkeyKeystore {
   /// The platform channel.
   static const MethodChannel channel = MethodChannel('org.ezkey.keystore');
 
-  /// Generates a new key pair under [alias] (StrongBox first, then TEE).
+  /// Generates a new key pair under [alias], in the strongest tier the device offers.
   Future<EzkeyGeneratedKey> generateKeyPair(String alias) async {
     Map<Object?, Object?> result = (await channel.invokeMapMethod<Object?, Object?>('generateKeyPair', {'alias': alias}))!;
     return EzkeyGeneratedKey(
       publicKey: result['publicKey'] as String,
-      strongBox: result['strongBox'] as bool,
+      tier: EzkeyKeyTier.values.byName(result['tier'] as String),
     );
   }
 

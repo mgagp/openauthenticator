@@ -36,7 +36,7 @@ void main() {
     values.values['${SecureEzkeyEnrollmentStore.keyPrefix}http://localhost:8080#3'] = '{broken';
 
     List<String> deleted = await deleteOrphanEzkeyDeviceKeys(
-      keyStore: AndroidEzkeyDeviceKeyStore(namespace: 'debug'),
+      keyStore: NativeEzkeyDeviceKeyStore(namespace: 'debug'),
       enrollmentStore: store,
     );
 

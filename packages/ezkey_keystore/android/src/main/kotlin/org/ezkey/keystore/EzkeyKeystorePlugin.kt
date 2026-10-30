@@ -85,7 +85,7 @@ class EzkeyKeystorePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         val generator = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC, ANDROID_KEYSTORE)
         generator.initialize(spec.build())
         val pair = generator.generateKeyPair()
-        return mapOf("publicKey" to encode(pair.public.encoded), "strongBox" to strongBox)
+        return mapOf("publicKey" to encode(pair.public.encoded), "tier" to if (strongBox) "strong" else "standard")
     }
 
     /** Signs the UTF-8 bytes of [payload]; returns ASN.1 DER, standard Base64 (may be high-S). */
