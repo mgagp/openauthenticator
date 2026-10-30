@@ -124,5 +124,10 @@
     "leaveDenyFailed": "The request could not be declined. It will expire on its own.",
     "confirmTitle": "Approve the sign-in",
     "confirmReason": "Confirm it is you to approve this sign-in."
+  },
+  "clearData": {
+    "title": "EzKey enrollments on this device",
+    "message": "Clearing the data also removes these EzKey enrollments from this device, for good:\n$services\n\nThey stay active on the EzKey servers: ask the administrator of each service to revoke them. To use EzKey with them again, you will have to enroll again.",
+    "unreadable": "An enrollment that can no longer be read"
   }
 }
