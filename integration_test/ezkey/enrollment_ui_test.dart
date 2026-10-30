@@ -82,7 +82,10 @@ void main() {
       await tester.enterText(find.byKey(const ValueKey('ezkey-enrollment-code')), _enrollmentChallenge);
       await _settle(tester);
       await _screen(tester, '5-code');
-      await tester.tap(find.byKey(const ValueKey('ezkey-enroll-submit')));
+      // The page is a lazy list: with the keyboard open, the button is not built until scrolled to.
+      Finder submit = find.byKey(const ValueKey('ezkey-enroll-submit'));
+      await tester.scrollUntilVisible(submit, 100, scrollable: find.byType(Scrollable).first);
+      await tester.tap(submit);
       await _settle(tester, until: find.text(translations.ezkey.page.enrollments));
       await _screen(tester, '6-enrolled');
 
