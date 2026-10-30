@@ -10,7 +10,7 @@ import 'package:open_authenticator/ezkey/device_key_store.dart';
 /// Run it only when no enrollment is in progress: between key generation and record save, a new
 /// key has no record yet.
 Future<List<String>> deleteOrphanEzkeyDeviceKeys({
-  required AndroidEzkeyDeviceKeyStore keyStore,
+  required NativeEzkeyDeviceKeyStore keyStore,
   required EzkeyEnrollmentStore enrollmentStore,
 }) async {
   Set<String> referenced = {

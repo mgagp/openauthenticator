@@ -4,6 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
 // ignore: depend_on_referenced_packages
 import 'package:local_auth_android/local_auth_android.dart';
+// ignore: depend_on_referenced_packages
+import 'package:local_auth_darwin/local_auth_darwin.dart';
+// ignore: depend_on_referenced_packages
+import 'package:local_auth_darwin/types/auth_messages_macos.dart';
+// ignore: depend_on_referenced_packages
+import 'package:local_auth_windows/local_auth_windows.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/model/settings/entry.dart';
 
@@ -83,6 +89,10 @@ final ezkeyDowngradeConfirmationProvider = Provider<Future<bool> Function()>(
 /// Returns whether the user confirmed with the device credential or a biometric. A device without a
 /// screen lock has nothing to confirm with, so the action goes on; a cancelled or failed prompt
 /// returns `false`.
+///
+/// Passes the prompt messages of every platform `local_auth` supports, like upstream's
+/// `LocalAuthenticationDefault`, so a port needs no change here (ADR-0004). Desktop window focus
+/// handling, which upstream adds around the prompt, comes with the first desktop port.
 Future<bool> confirmWithDevice({required String title, required String reason}) async {
   LocalAuthentication localAuthentication = LocalAuthentication();
   try {
@@ -92,11 +102,18 @@ Future<bool> confirmWithDevice({required String title, required String reason}) 
     return await localAuthentication.authenticate(
       localizedReason: reason,
       authMessages: [
+        IOSAuthMessages(
+          cancelButton: translations.appUnlock.button.cancel,
+        ),
+        MacOSAuthMessages(
+          cancelButton: translations.appUnlock.button.cancel,
+        ),
         AndroidAuthMessages(
           signInTitle: title,
           signInHint: translations.localAuth.android.signInHint,
           cancelButton: translations.appUnlock.button.cancel,
         ),
+        const WindowsAuthMessages(),
       ],
     );
   } on LocalAuthException catch (ex) {

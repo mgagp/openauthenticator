@@ -9,8 +9,8 @@ import 'package:open_authenticator/ezkey/enrollment_store.dart';
 import 'package:open_authenticator/ezkey/orphan_keys.dart';
 import 'package:open_authenticator/model/secure_storage.dart';
 
-/// The Android Keystore-backed EzKey device key store.
-final ezkeyDeviceKeyStoreProvider = Provider<AndroidEzkeyDeviceKeyStore>((ref) => AndroidEzkeyDeviceKeyStore());
+/// The EzKey device key store, on the platform's hardware key store.
+final ezkeyDeviceKeyStoreProvider = Provider<NativeEzkeyDeviceKeyStore>((ref) => NativeEzkeyDeviceKeyStore());
 
 /// The EzKey enrollment store, on the app's secure storage.
 final ezkeyEnrollmentStoreProvider = FutureProvider<SecureEzkeyEnrollmentStore>((ref) async => SecureEzkeyEnrollmentStore(CachedSecureValues(await ref.watch(secureStorageProvider.future))));
@@ -20,7 +20,7 @@ final ezkeyEnrollmentStoreProvider = FutureProvider<SecureEzkeyEnrollmentStore>(
 /// Kept alive: it holds the per-attempt decision locks and the Auth API clients. Before handing it
 /// out, it deletes orphan device keys once, so the cleanup never runs during an enrollment.
 final ezkeyAuthenticatorProvider = FutureProvider<EzkeyAuthenticator>((ref) async {
-  AndroidEzkeyDeviceKeyStore keyStore = ref.watch(ezkeyDeviceKeyStoreProvider);
+  NativeEzkeyDeviceKeyStore keyStore = ref.watch(ezkeyDeviceKeyStoreProvider);
   SecureEzkeyEnrollmentStore enrollmentStore = await ref.watch(ezkeyEnrollmentStoreProvider.future);
   try {
     await deleteOrphanEzkeyDeviceKeys(keyStore: keyStore, enrollmentStore: enrollmentStore);

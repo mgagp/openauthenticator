@@ -4,13 +4,13 @@ import 'package:integration_test/integration_test.dart';
 import 'package:open_authenticator/ezkey/device_key_store.dart';
 import 'package:open_authenticator/ezkey/orphan_keys.dart';
 
-/// Runs the EzKey key store against the real Android Keystore (emulator or device):
+/// Runs the EzKey key store against the real platform key store (Android Keystore today; emulator or device):
 /// `scripts/with-env.sh flutter test integration_test/ezkey/keystore_test.dart -d <device>`.
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   test('generates a P-256 key whose signatures verify and normalize to low-S', () async {
-    AndroidEzkeyDeviceKeyStore store = AndroidEzkeyDeviceKeyStore();
+    NativeEzkeyDeviceKeyStore store = NativeEzkeyDeviceKeyStore();
     String alias = ezkeyDeviceKeyAlias(1);
     try {
       String spki = await store.generateKeyPair(alias);
@@ -42,8 +42,8 @@ void main() {
   });
 
   test('orphan cleanup leaves the keys of the other build type in the real Keystore (#41)', () async {
-    AndroidEzkeyDeviceKeyStore debugStore = AndroidEzkeyDeviceKeyStore(namespace: 'debug');
-    AndroidEzkeyDeviceKeyStore mainStore = AndroidEzkeyDeviceKeyStore(namespace: 'main');
+    NativeEzkeyDeviceKeyStore debugStore = NativeEzkeyDeviceKeyStore(namespace: 'debug');
+    NativeEzkeyDeviceKeyStore mainStore = NativeEzkeyDeviceKeyStore(namespace: 'main');
     String orphan = ezkeyDeviceKeyAlias(1, namespace: 'debug');
     String otherBuild = ezkeyDeviceKeyAlias(2, namespace: 'main');
     try {
@@ -63,7 +63,7 @@ void main() {
   });
 
   test('signing with a missing key is a local-state error', () async {
-    AndroidEzkeyDeviceKeyStore store = AndroidEzkeyDeviceKeyStore();
+    NativeEzkeyDeviceKeyStore store = NativeEzkeyDeviceKeyStore();
     await expectLater(store.sign('${ezkeyDeviceKeyAliasPrefix}missing', 'payload'), throwsA(isA<EzkeyLocalStateException>()));
   });
 }

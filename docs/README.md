@@ -23,6 +23,7 @@ Decision records and design notes for this fork. `CLAUDE.md` holds the operating
 | [0001](adr/0001-ezkey-integration-divergence.md) | How the fork diverges from upstream for the EzKey integration | Accepted |
 | [0002](adr/0002-ezkey-key-and-secret-storage.md) | Where the EzKey device key and enrollment secrets live on Android | Accepted |
 | [0003](adr/0003-ezkey-on-the-home-screen.md) | How EzKey appears on the home screen, in phases, and how upstream changes are judged by re-integration | Accepted |
+| [0004](adr/0004-ezkey-multi-platform-posture.md) | How EzKey stays portable to every upstream platform: availability rule, one key store channel contract, tiers, desktop enrollment | Proposed |
 
 ## Writing an ADR
 

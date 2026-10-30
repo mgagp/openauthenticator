@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
 import 'package:open_authenticator/ezkey/about.dart';
 import 'package:open_authenticator/ezkey/actions.dart';
+import 'package:open_authenticator/ezkey/availability.dart';
 import 'package:open_authenticator/ezkey/home_zone_state.dart';
 import 'package:open_authenticator/ezkey/installations.dart';
 import 'package:open_authenticator/ezkey/pages/enrollment_page.dart';
@@ -11,7 +12,6 @@ import 'package:open_authenticator/ezkey/pages/ezkey_page.dart';
 import 'package:open_authenticator/ezkey/widgets/enrollment_tile.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/spacing.dart';
-import 'package:open_authenticator/utils/platform.dart';
 import 'package:open_authenticator/widgets/button_text.dart';
 import 'package:open_authenticator/widgets/clickable.dart';
 import 'package:open_authenticator/widgets/dialog/app_dialog.dart';
@@ -23,8 +23,8 @@ const Color kEzkeyBlue = Color(0xFF3076DF);
 /// Puts the upstream home content and the EzKey zone side by side (ADR-0003).
 ///
 /// This is the only home-screen hook: the home page passes the list its builder returns through
-/// this function. Off Android, EzKey is not available and [totpChildren] comes back unchanged.
-List<Widget> ezkeyHomeZones(List<Widget> totpChildren) => currentPlatform == .android && totpChildren.length == 1 ? [EzkeyHomeZones(totpZone: totpChildren.single)] : totpChildren;
+/// this function. Where EzKey is not available ([ezkeyAvailable]), [totpChildren] comes back unchanged.
+List<Widget> ezkeyHomeZones(List<Widget> totpChildren) => ezkeyAvailable && totpChildren.length == 1 ? [EzkeyHomeZones(totpZone: totpChildren.single)] : totpChildren;
 
 /// The home zones: TOTP (upstream content, unchanged) above, EzKey below.
 ///
