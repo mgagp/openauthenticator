@@ -20,7 +20,7 @@ Living design document for #16. It records how Open Authenticator meets the EzKe
 | --- | --- | --- |
 | SDK | `ezkey_dart` (git dependency, ADR-0001 D1) | Protocol, signatures and checks, decision lock, error classification, low-S normalization |
 | Native key store | `packages/ezkey_keystore/` (ADR-0001 D2) | Android Keystore P-256 keys, StrongBox preference, tier, alias listing. Channel `org.ezkey.keystore`; no dependency on `ezkey_dart`, so it can move to EzKey as is |
-| App integration | `lib/ezkey/` (ADR-0001 D3) | `device_key_store.dart` (adapter + app-owned alias format `ezkey-device-<id>-<random>`), `enrollment_store.dart` (one secure-storage entry per record, unreadable records reported), `orphan_keys.dart`; `providers.dart` (Riverpod wiring; orphan cleanup runs once when the authenticator is first built, before any enrollment), `messages.dart` (error copy), `pages/` (EzKey list with "check for requests", scan, confirm + code, approval), `local_confirmation.dart` (Approve-only prompt), `settings_entry.dart`. Strings: `lib/i18n/{en,fr}/ezkey.json` (slang namespace `ezkey`; other locales fall back to English) |
+| App integration | `lib/ezkey/` (ADR-0001 D3) | `device_key_store.dart` (adapter + app-owned alias format `ezkey-device-<id>-<random>`), `enrollment_store.dart` (one secure-storage entry per record, unreadable records reported), `orphan_keys.dart`; `providers.dart` (Riverpod wiring; orphan cleanup runs once when the authenticator is first built, before any enrollment), `messages.dart` (error copy), `pages/` (EzKey list with "check for requests", scan, confirm + code, approval), `local_confirmation.dart` (Approve-only prompt), `home_zone.dart` (home-screen EzKey zone, ADR-0003), `actions.dart` (add and check actions shared by the home zone and the EzKey page), `installations.dart` (enrollments grouped by installation), `widgets/enrollment_tile.dart` (the one enrollment row), `toast.dart` (EzKey toasts: blue success, 4 s), `about.dart` ("About EzKey": what it is, links to ezkey.org and the source code; EzKey is little known). Strings: `lib/i18n/{en,fr}/ezkey.json` (slang namespace `ezkey`; other locales fall back to English) |
 | Upstream hooks | Ledger below | Entry points only |
 
 ## Contract conformance
@@ -30,7 +30,7 @@ One row per contract rule that applies to this app. "SDK" means `ezkey_dart` enf
 | Contract rule | Level | Owner | How | Proof | Status |
 | --- | --- | --- | --- | --- | --- |
 | §1.1 Pending is a one-shot claim | MUST (server) | SDK + App | SDK returns the claimed attempt once; the app claims on user action only ("check for requests") and keeps it in memory on `EzkeyApprovalPage` until decided | Pixel pilot | Basic (#22) |
-| EzKey ADR-0002: pending checks on explicit user action only | MUST (ADR; not in the contract) | App | `checkPending` runs only from the "check for requests" tap; no `pollPending` / `watchPending`, no check on app resume, no notification | — | Done (#22) |
+| EzKey ADR-0002: pending checks on explicit user action only | MUST (ADR; not in the contract) | App | `checkPending` runs only from a "check for requests" tap (home zone or EzKey page), which checks every enrollment in turn and opens the first claimed attempt; no `pollPending` / `watchPending`, no check on app resume, no notification | — | Done (#22) |
 | §1.2 No context before the pending signature verifies; no refusal on fail-closed | MUST NOT | SDK + App | SDK throws `EzkeyIntegrityException`; the app shows a neutral error (`attempt.integrity`) and sends nothing | `test/ezkey/messages_test.dart` | Done (#22) |
 | §1.3 No device countdown as a security control | MUST NOT | App | No timer UI; `isCertainlyExpired` only stops a decision on a stale prompt | — | Done (#22) |
 | §2 Decision lock, unknown outcome | MUST / SHOULD | SDK | `PendingAuthAttempt.decisionState`, `EzkeyRespondOutcomeUnknownException` (SDK 0.3.0 tests) | SDK tests, `messages_test.dart` | Done in SDK; basic app UI (#22): buttons follow `canDecide`, uncertain outcome shown as such, page closes once locked |
@@ -49,7 +49,9 @@ Cumulative ledger (ADR-0001 D3, refined by ADR-0003 D4). Every entry names the P
 | --- | --- | --- |
 | `pubspec.yaml`, `pubspec.lock` | `ezkey_dart` git dependency (pinned commit), `ezkey_keystore` path dependency; the lock only gains `ezkey_dart`, `ezkey_keystore`, `cryptography`, `pointycastle`, `unorm_dart` | Slice 1 (#16) |
 | `pubspec.yaml`, `pubspec.lock` | `integration_test` (`sdk: flutter`) in `dev_dependencies` for on-device tests; the lock gains SDK packages only (`integration_test`, `flutter_driver`, …) | Slice 1 (#16) |
-| `lib/pages/settings/page.dart` | One import and one Android-only tile (`EzkeySettingsEntryWidget`) in the Security group: the settings list is a literal widget tree, so an entry cannot be added from outside it. Pages are pushed with `MaterialPageRoute`, so the route table is untouched | Slice 2 (#20) |
+| `lib/pages/settings/page.dart` | ~~One import and one Android-only tile (`EzkeySettingsEntryWidget`) in the Security group~~. Removed in #28: the file is identical to upstream again | Slice 2 (#20), removed #28 |
+| `lib/pages/home/page.dart` | One import (`ezkey/home_zone.dart`), and the list returned by the `AppScaffold.asyncValue` builder wrapped in `ezkeyHomeZones([...])` (2 lines: `return [` → `return ezkeyHomeZones([`, `];` → `]);`). The builder's result is the only place that holds both the TOTP content and its floating button. **Re-apply:** take upstream's file, add the import, wrap the builder's returned list. Off Android the function returns the list unchanged | #28 (ADR-0003) |
+| `assets/svg/ezkey_logo.svg` | New file (no upstream file changed): EzKey's `logo.svg`, compiled by upstream's `compile_svg` into the gitignored `assets/images/ezkey_logo.si`, a folder `pubspec.yaml` already declares | #28 |
 | `lib/i18n/en/ezkey.json`, `lib/i18n/fr/ezkey.json` | New files (no upstream file changed): slang only reads translations from `lib/i18n/` | Slice 2 (#20) |
 
 ## Lab setup (Pixel against the local stack)
@@ -123,8 +125,11 @@ Kept in two lists so the EzKey follow-ups stay separate from this app's integrat
 
 - Accessibility: with semantics enabled, the EzKey screens trigger a framework assertion (`node.isMergedIntoParent`) in debug, after which taps reach stale forui tappables. `enrollment_ui_test.dart` runs with `semanticsEnabled: false` until this is understood (#30).
 - A claimed attempt lives only in memory: if the app dies before the decision, it simply expires (leave-as-deny cannot run).
-- Home-screen entry: decided in ADR-0003 (two zones, phased), built in #28. Until then the EzKey page is under Settings → Security.
+- Home-screen entry: ADR-0003, phase 1 built in #28. Follow-ups: per-enrollment detail page and check (#33), adjustable split between the zones (#32), display concepts (#26).
+- Difference from the EzKey reference app, kept on purpose (user, 2026-10-30): one "check for requests" tap checks **every** enrollment, since an EzKey user has few. The user may bring it to `ezkey_mobile`.
+- Approval confirmation is always on since #24, beyond contract §4 and ADR-0002 D2 ("when enabled"); a Standard-by-default setting like the reference app is #34.
+- Toasts: upstream toasts close after 1 s; EzKey toasts stay 4 s (Material guidance: 4–10 s). forui keeps every toast until closed while Android reports accessible navigation, e.g. with a dictation app's accessibility service on (Wispr Flow on the dev Pixel).
 - `ezkey_dart` is pinned to a branch commit until mgagp/ezkey#1068 merges (#29).
 - Each enrollment tile shows where its key lives, from the tier recorded at enrollment, with the Admin UI's platform-neutral labels ("Strong isolation", "Hardware-backed", "Not hardware-protected") (#24).
 - `enrollment_ui_test.dart` approves through the screens (`ezkey-check-pending`, `ezkey-attempt-approve`); it passed on the emulator in #24 (`ACCEPTED`, 10 screenshots).
-- The settings tile is verified by `flutter analyze` only: the UI test opens `EzkeyPage` directly, because the upstream intro (master password) blocks a fresh install.
+- The home-zone hook is verified by widget tests and on the Pixel only: the UI test opens `EzkeyPage` directly, because the upstream intro (master password) blocks a fresh install.

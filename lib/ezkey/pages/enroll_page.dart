@@ -10,7 +10,7 @@ import 'package:open_authenticator/spacing.dart';
 import 'package:open_authenticator/widgets/app_scaffold.dart';
 import 'package:open_authenticator/widgets/button_text.dart';
 import 'package:open_authenticator/widgets/clickable.dart';
-import 'package:open_authenticator/widgets/toast.dart';
+import 'package:open_authenticator/ezkey/toast.dart';
 import 'package:open_authenticator/widgets/waiting_overlay.dart';
 
 /// Second enrollment step: shows who is asking (from the signed bind answer) and takes the
@@ -129,7 +129,7 @@ class _EzkeyEnrollPageState extends ConsumerState<EzkeyEnrollPage> {
         future: ref.read(ezkeyEnrollmentsProvider.notifier).complete(widget.bound, parseChallengeCode(codeController.text)),
       );
       if (mounted) {
-        showSuccessToast(context, text: translations.ezkey.enroll.success(integration: enrollment.integrationName ?? ''));
+        showEzkeySuccessToast(context, text: translations.ezkey.enroll.success(integration: enrollment.integrationName ?? ''));
         Navigator.pop(context, enrollment);
       }
     } on EzkeyException catch (ex) {
@@ -137,7 +137,7 @@ class _EzkeyEnrollPageState extends ConsumerState<EzkeyEnrollPage> {
       if (!mounted) {
         return;
       }
-      showErrorToast(context, text: ezkeyEnrollmentErrorMessage(ex));
+      showEzkeyErrorToast(context, text: ezkeyEnrollmentErrorMessage(ex));
       if (isEzkeyInvitationDead(ex)) {
         Navigator.pop(context);
       } else {

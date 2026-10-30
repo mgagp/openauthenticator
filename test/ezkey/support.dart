@@ -20,9 +20,9 @@ class InMemorySecureValues implements EzkeySecureValues {
 }
 
 /// Returns a valid enrollment record for [enrollmentId], using [deviceKeyAlias].
-EzkeyEnrollment testEnrollment(int enrollmentId, {String? deviceKeyAlias}) => EzkeyEnrollment.fromJson({
+EzkeyEnrollment testEnrollment(int enrollmentId, {String? deviceKeyAlias, String authApiBaseUrl = 'http://localhost:8080', String integrationName = 'Orbit Console'}) => EzkeyEnrollment.fromJson({
   'schemaVersion': 1,
-  'authApiBaseUrl': 'http://localhost:8080',
+  'authApiBaseUrl': authApiBaseUrl,
   'enrollmentId': enrollmentId,
   'enrollmentProofToken': 'proof-token-$enrollmentId',
   'integrationPublicKey': 'o_g1NmS1Gm95e2Ftiq9e2UG31cZtE-sJYjn486I4g_o',
@@ -31,7 +31,7 @@ EzkeyEnrollment testEnrollment(int enrollmentId, {String? deviceKeyAlias}) => Ez
   'devicePublicKey': 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE',
   'devicePrivateKeyStorageTier': 'STRONG',
   'enrolledAt': '2026-10-27T12:00:00.000Z',
-  'integrationName': 'Orbit Console',
+  'integrationName': integrationName,
   'integrationDescription': null,
   'enrollmentName': 'Alice Chen',
   'tenantId': 1,

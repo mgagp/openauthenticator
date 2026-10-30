@@ -11,7 +11,7 @@ import 'package:open_authenticator/spacing.dart';
 import 'package:open_authenticator/widgets/app_scaffold.dart';
 import 'package:open_authenticator/widgets/button_text.dart';
 import 'package:open_authenticator/widgets/clickable.dart';
-import 'package:open_authenticator/widgets/toast.dart';
+import 'package:open_authenticator/ezkey/toast.dart';
 import 'package:open_authenticator/widgets/waiting_overlay.dart';
 
 /// Shows a claimed auth attempt and sends the user's decision.
@@ -147,7 +147,7 @@ class _EzkeyApprovalPageState extends ConsumerState<EzkeyApprovalPage> {
       return;
     }
     if (attempt.isCertainlyExpired(DateTime.now().toUtc())) {
-      showErrorToast(context, text: translations.ezkey.attempt.result.expired);
+      showEzkeyErrorToast(context, text: translations.ezkey.attempt.result.expired);
       Navigator.pop(context);
       return;
     }
@@ -180,9 +180,9 @@ class _EzkeyApprovalPageState extends ConsumerState<EzkeyApprovalPage> {
       }
       String message = ezkeyAttemptResultMessage(outcome.result);
       if (outcome.result == AuthAttemptResult.approved || outcome.result == AuthAttemptResult.denied) {
-        showSuccessToast(context, text: message);
+        showEzkeySuccessToast(context, text: message);
       } else {
-        showErrorToast(context, text: message);
+        showEzkeyErrorToast(context, text: message);
       }
       Navigator.pop(context);
     } on EzkeyException catch (ex) {
@@ -190,7 +190,7 @@ class _EzkeyApprovalPageState extends ConsumerState<EzkeyApprovalPage> {
       if (!mounted) {
         return;
       }
-      showErrorToast(context, text: ezkeyAttemptErrorMessage(ex));
+      showEzkeyErrorToast(context, text: ezkeyAttemptErrorMessage(ex));
       if (attempt.canDecide) {
         // Nothing was sent, or the server asked to retry: the user may decide again.
         setState(() => sending = false);
@@ -217,7 +217,7 @@ class _EzkeyApprovalPageState extends ConsumerState<EzkeyApprovalPage> {
       } on EzkeyException catch (ex) {
         debugPrint('EzKey leave-as-deny failed: $ex');
         if (navigatorContext.mounted) {
-          showErrorToast(navigatorContext, text: translations.ezkey.attempt.leaveDenyFailed);
+          showEzkeyErrorToast(navigatorContext, text: translations.ezkey.attempt.leaveDenyFailed);
         }
       }
     });

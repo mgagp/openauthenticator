@@ -6,6 +6,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:open_authenticator/ezkey/home_zone.dart';
 import 'package:open_authenticator/flows/master_password.dart';
 import 'package:open_authenticator/i18n/localizable_exception.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
@@ -182,7 +183,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             ),
           ),
         );
-        return [
+        return ezkeyHomeZones([
           if (_RevealFloatingActionButtonWidget.hasFloatingActionButton)
             Stack(
               alignment: Alignment.bottomRight,
@@ -198,7 +199,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             )
           else
             body,
-        ];
+        ]);
       },
       onRetryPressed: () {
         ref.invalidate(totpRepositoryProvider);

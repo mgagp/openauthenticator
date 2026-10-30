@@ -1,7 +1,16 @@
 {
-  "settingsEntry": {
-    "title": "Approbations de connexion EzKey",
-    "subtitle": "Approuvez depuis cet appareil les connexions aux applications de votre organisation."
+  "home": {
+    "title": "EzKey",
+    "empty": "Aucun enrôlement EzKey pour le moment. Touchez + pour en ajouter un avec l'invitation de votre administrateur.",
+    "loadError": "Impossible de charger les enrôlements EzKey.",
+    "check": "Vérifier les demandes"
+  },
+  "about": {
+    "title": "À propos d'EzKey",
+    "description": "EzKey est une plateforme d'authentification multifacteur cryptographique, open source et auto-hébergée, en alpha publique.\nLes demandes de connexion arrivent seulement quand vous vérifiez : pas de notification, par conception.",
+    "website": "Site web",
+    "sourceCode": "Code source sur GitHub",
+    "open": "À propos d'EzKey"
   },
   "page": {
     "title": "EzKey",

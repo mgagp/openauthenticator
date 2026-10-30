@@ -1,7 +1,16 @@
 {
-  "settingsEntry": {
-    "title": "EzKey sign-in approvals",
-    "subtitle": "Approve sign-ins to your organization's apps from this device."
+  "home": {
+    "title": "EzKey",
+    "empty": "No EzKey enrollment yet. Tap + to add one with the invitation from your administrator.",
+    "loadError": "Could not load the EzKey enrollments.",
+    "check": "Check for requests"
+  },
+  "about": {
+    "title": "About EzKey",
+    "description": "EzKey is an open-source, self-hosted cryptographic multi-factor authentication platform, in public alpha.\nSign-in requests arrive only when you check for them: there are no notifications, by design.",
+    "website": "Website",
+    "sourceCode": "Source code on GitHub",
+    "open": "About EzKey"
   },
   "page": {
     "title": "EzKey",
