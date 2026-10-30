@@ -1,4 +1,5 @@
 import 'package:ezkey_dart/ezkey_dart.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_authenticator/ezkey/messages.dart';
@@ -10,6 +11,13 @@ import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/widgets/dialog/text_input_dialog.dart';
 import 'package:open_authenticator/ezkey/toast.dart';
 import 'package:open_authenticator/widgets/waiting_overlay.dart';
+
+/// Whether the user may type or paste an invitation instead of scanning it.
+///
+/// Debug builds only, like the EzKey reference app's test-only "controlled seed bypass": the QR
+/// content carries the invitation's bearer proof token, which pasting moves through the clipboard.
+/// The lab and the emulator e2e (no camera) rely on it. Tests may change it.
+bool ezkeyManualInvitationEntry = kDebugMode;
 
 /// The EzKey user actions, shared by the home zone and the EzKey page.
 class EzkeyActions {
