@@ -41,6 +41,15 @@
       "none": "Non protégé matériellement"
     }
   },
+  "security": {
+    "title": "Sécurité",
+    "confirm": {
+      "title": "Confirmer avant d'approuver",
+      "subtitle": "Demander votre empreinte, votre visage ou le code de l'appareil avant d'approuver une connexion. Refuser ne le demande jamais."
+    },
+    "downgradeTitle": "Désactiver la confirmation",
+    "downgradeReason": "Confirmez que c'est vous pour ne plus confirmer avant d'approuver."
+  },
   "scan": {
     "title": "Scanner une invitation EzKey",
     "notAnInvitation": "Ce code QR n'est pas une invitation EzKey."

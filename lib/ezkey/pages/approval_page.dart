@@ -16,7 +16,7 @@ import 'package:open_authenticator/widgets/waiting_overlay.dart';
 
 /// Shows a claimed auth attempt and sends the user's decision.
 ///
-/// Approve asks for a local confirmation first (contract §4). Leaving the page while the attempt is
+/// Approve asks for a local confirmation first when protection applies (contract §4, #34). Leaving the page while the attempt is
 /// still undecided denies it once (contract §3). The SDK holds the decision lock, so a second
 /// decision on the same attempt is never sent.
 class EzkeyApprovalPage extends ConsumerStatefulWidget {
@@ -152,7 +152,7 @@ class _EzkeyApprovalPageState extends ConsumerState<EzkeyApprovalPage> {
       return;
     }
     setState(() => sending = true);
-    if (approve && !await ref.read(ezkeyApprovalConfirmationProvider)()) {
+    if (approve && !await _confirmApproval()) {
       // Nothing was sent: the user may decide again.
       if (mounted) {
         setState(() => sending = false);
@@ -198,6 +198,16 @@ class _EzkeyApprovalPageState extends ConsumerState<EzkeyApprovalPage> {
         Navigator.pop(context);
       }
     }
+  }
+
+  /// Returns whether the approval may go on: confirmed by the user, or no confirmation needed
+  /// (contract §4: enrollment policy or user preference, see [ezkeyApprovalNeedsConfirmation]).
+  Future<bool> _confirmApproval() async {
+    EzkeyApprovalSecurity security = await ref.read(ezkeyApprovalSecurityProvider.future);
+    if (!ezkeyApprovalNeedsConfirmation(widget.enrollment, security)) {
+      return true;
+    }
+    return await ref.read(ezkeyApprovalConfirmationProvider)();
   }
 
   /// Denies the attempt once when the user leaves it undecided (contract §3): no prompt, no retry,

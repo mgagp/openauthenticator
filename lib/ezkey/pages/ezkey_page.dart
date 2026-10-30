@@ -5,6 +5,7 @@ import 'package:forui/forui.dart';
 import 'package:open_authenticator/ezkey/actions.dart';
 import 'package:open_authenticator/ezkey/messages.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
+import 'package:open_authenticator/ezkey/widgets/approval_security_tile.dart';
 import 'package:open_authenticator/ezkey/widgets/enrollment_tile.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/spacing.dart';
@@ -78,6 +79,15 @@ class EzkeyPage extends ConsumerWidget {
             ],
           ),
         ),
+      Padding(
+        padding: const EdgeInsets.only(bottom: kBigSpace),
+        child: FTileGroup(
+          label: Text(translations.ezkey.security.title),
+          children: [
+            EzkeyApprovalSecurityTile(),
+          ],
+        ),
+      ),
       FTileGroup(
         label: Text(translations.ezkey.page.add),
         children: [
