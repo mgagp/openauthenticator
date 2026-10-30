@@ -41,6 +41,15 @@
       "none": "Not hardware-protected"
     }
   },
+  "security": {
+    "title": "Security",
+    "confirm": {
+      "title": "Confirm before approvals",
+      "subtitle": "Ask for your fingerprint, face or device code before approving a sign-in. Declining never asks."
+    },
+    "downgradeTitle": "Turn off confirmation",
+    "downgradeReason": "Confirm it is you to stop confirming before approvals."
+  },
   "scan": {
     "title": "Scan an EzKey invitation",
     "notAnInvitation": "This QR code is not an EzKey invitation."

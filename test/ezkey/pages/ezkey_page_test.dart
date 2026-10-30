@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forui/forui.dart';
 import 'package:open_authenticator/ezkey/actions.dart';
+import 'package:open_authenticator/ezkey/local_confirmation.dart';
 import 'package:open_authenticator/ezkey/pages/ezkey_page.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
@@ -15,6 +16,12 @@ import 'package:open_authenticator/themes.dart';
 class _NoEnrollments extends EzkeyEnrollmentsNotifier {
   @override
   FutureOr<List<EzkeyEnrollment>> build() => [];
+}
+
+/// Keeps the approval protection in memory instead of the shared preferences.
+class _StandardSecurity extends EzkeyApprovalSecurityEntry {
+  @override
+  FutureOr<EzkeyApprovalSecurity> build() => EzkeyApprovalSecurity.standard;
 }
 
 void main() {
@@ -30,6 +37,7 @@ void main() {
       ProviderScope(
         overrides: [
           ezkeyEnrollmentsProvider.overrideWith(_NoEnrollments.new),
+          ezkeyApprovalSecurityProvider.overrideWith(_StandardSecurity.new),
         ],
         child: TranslationProvider(
           child: MaterialApp(
@@ -62,6 +70,13 @@ void main() {
 
       expect(find.byKey(const ValueKey('ezkey-add-scan')), findsOneWidget);
       expect(find.byKey(const ValueKey('ezkey-add-paste')), findsNothing);
+    });
+
+    testWidgets('offers the approval confirmation setting, off by default', (tester) async {
+      await pumpPage(tester);
+
+      expect(find.text(translations.ezkey.security.confirm.title), findsOneWidget);
+      expect(tester.widget<FCheckbox>(find.byType(FCheckbox)).value, isFalse);
     });
   });
 }

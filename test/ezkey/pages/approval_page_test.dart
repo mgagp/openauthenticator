@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:ezkey_dart/ezkey_dart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,14 +33,28 @@ class _RecordingAuthApi implements EzkeyAuthApi {
   dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError('${invocation.memberName}');
 }
 
+/// Keeps the approval protection in memory instead of the shared preferences.
+class _MemorySecurity extends EzkeyApprovalSecurityEntry {
+  /// The protection.
+  final EzkeyApprovalSecurity security;
+
+  /// Creates a new memory security instance.
+  _MemorySecurity(this.security);
+
+  @override
+  FutureOr<EzkeyApprovalSecurity> build() => security;
+}
+
 void main() {
   late _RecordingAuthApi api;
+  late int confirmations;
   late EzkeyEnrollment enrollment;
   late PendingAuthAttempt attempt;
   late EzkeyAuthenticator authenticator;
 
   setUp(() async {
     api = _RecordingAuthApi();
+    confirmations = 0;
     SoftwareDeviceKeyStore keyStore = SoftwareDeviceKeyStore();
     await keyStore.generateKeyPair('test-key');
     enrollment = testEnrollment(5, deviceKeyAlias: 'test-key');
@@ -53,13 +69,18 @@ void main() {
     authenticator = EzkeyAuthenticator(keyStore: keyStore, enrollmentStore: InMemoryEnrollmentStore(), apiFactory: (uri) => api);
   });
 
-  /// Opens the approval page above a home page, with the local confirmation answering [confirmed].
-  Future<void> openPage(WidgetTester tester, {bool confirmed = true}) async {
+  /// Opens the approval page above a home page, with the user's [security] choice and the local
+  /// confirmation answering [confirmed].
+  Future<void> openPage(WidgetTester tester, {EzkeyApprovalSecurity security = .confirmBeforeApprovals, bool confirmed = true}) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           ezkeyAuthenticatorProvider.overrideWith((ref) async => authenticator),
-          ezkeyApprovalConfirmationProvider.overrideWithValue(() async => confirmed),
+          ezkeyApprovalSecurityProvider.overrideWith(() => _MemorySecurity(security)),
+          ezkeyApprovalConfirmationProvider.overrideWithValue(() async {
+            confirmations++;
+            return confirmed;
+          }),
         ],
         child: TranslationProvider(
           child: MaterialApp(
@@ -108,11 +129,23 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('ezkey-attempt-approve')));
       await tester.pumpAndSettle();
 
+      expect(confirmations, 1);
       expect(api.responds, isEmpty);
       expect(attempt.canDecide, isTrue);
       expect(find.byType(EzkeyApprovalPage), findsOneWidget);
       await leave(tester);
       expect(api.responds.single.authAttemptAccepted, isFalse);
+      await drainToasts(tester);
+    });
+
+    testWidgets('in standard mode, approving asks for no confirmation', (tester) async {
+      await openPage(tester, security: .standard, confirmed: false);
+
+      await tester.tap(find.byKey(const ValueKey('ezkey-attempt-approve')));
+      await tester.pumpAndSettle();
+
+      expect(confirmations, 0);
+      expect(api.responds.single.authAttemptAccepted, isTrue);
       await drainToasts(tester);
     });
 
