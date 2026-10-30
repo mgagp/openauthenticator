@@ -14,6 +14,7 @@ Decision records and design notes for this fork. `CLAUDE.md` holds the operating
 | --- | --- |
 | [`test-plan.md`](test-plan.md) | What to test first, at which level, and the known seams and gaps |
 | [`ezkey/integration.md`](ezkey/integration.md) | EzKey integration design: layers, contract conformance, upstream files touched, lab setup |
+| [`ezkey/harmonization.md`](ezkey/harmonization.md) | EzKey × Open Authenticator features: the two tracks, integration levels, inventory of upstream features, tracking |
 | [`adr/`](adr/) | Decisions with real trade-offs (below) |
 
 ### Architecture decision records
