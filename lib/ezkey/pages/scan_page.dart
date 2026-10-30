@@ -7,7 +7,7 @@ import 'package:open_authenticator/widgets/app_scaffold.dart';
 import 'package:open_authenticator/widgets/clickable.dart';
 import 'package:open_authenticator/widgets/dialog/error_dialog.dart';
 import 'package:open_authenticator/widgets/scan/scanner.dart';
-import 'package:open_authenticator/widgets/toast.dart';
+import 'package:open_authenticator/ezkey/toast.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 /// Scans an EzKey invitation QR code and pops with its raw content.
@@ -55,7 +55,7 @@ class _EzkeyScanPageState extends State<EzkeyScanPage> {
           try {
             EnrollmentCode.parse(barcode);
           } on EzkeyValidationException {
-            showErrorToast(context, text: translations.ezkey.scan.notAnInvitation);
+            showEzkeyErrorToast(context, text: translations.ezkey.scan.notAnInvitation);
             return true;
           }
           Navigator.pop(context, barcode);
