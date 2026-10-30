@@ -88,13 +88,14 @@ class EzkeyPage extends ConsumerWidget {
             subtitle: Text(translations.ezkey.page.scan.subtitle),
             onPress: () => EzkeyActions.addFromScan(context, ref),
           ),
-          ClickableTile(
-            key: const ValueKey('ezkey-add-paste'),
-            prefix: const Icon(FLucideIcons.keyboard),
-            title: Text(translations.ezkey.page.paste.title),
-            subtitle: Text(translations.ezkey.page.paste.subtitle),
-            onPress: () => EzkeyActions.addFromText(context, ref),
-          ),
+          if (ezkeyManualInvitationEntry)
+            ClickableTile(
+              key: const ValueKey('ezkey-add-paste'),
+              prefix: const Icon(FLucideIcons.keyboard),
+              title: Text(translations.ezkey.page.paste.title),
+              subtitle: Text(translations.ezkey.page.paste.subtitle),
+              onPress: () => EzkeyActions.addFromText(context, ref),
+            ),
         ],
       ),
     ],

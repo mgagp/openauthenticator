@@ -269,8 +269,12 @@ class EzkeyHomeZone extends ConsumerWidget {
     );
   }
 
-  /// Asks how to add the enrollment, then adds it.
+  /// Scans an invitation, or first asks how to add it when manual entry is allowed.
   Future<void> _addEnrollment(BuildContext context, WidgetRef ref) async {
+    if (!ezkeyManualInvitationEntry) {
+      await EzkeyActions.addFromScan(context, ref);
+      return;
+    }
     _AddChoice? choice = await showFDialog<_AddChoice>(
       context: context,
       builder: (context, style, animation) => AppDialog(
