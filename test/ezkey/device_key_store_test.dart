@@ -54,7 +54,7 @@ void main() {
         {'alias': 'ezkey-device-1-a', 'payload': 'token|true'},
         {'alias': 'missing'},
         {'alias': 'ezkey-device-1-a'},
-        {'prefix': ezkeyDeviceKeyAliasPrefix},
+        {'prefix': '${ezkeyDeviceKeyAliasPrefix}debug-'},
       ]);
     });
 
@@ -68,10 +68,15 @@ void main() {
     });
   });
 
-  test('device key aliases carry the app prefix and are unguessable', () {
-    String first = ezkeyDeviceKeyAlias(42);
-    String second = ezkeyDeviceKeyAlias(42);
-    expect(first, startsWith('${ezkeyDeviceKeyAliasPrefix}42-'));
+  test('device key aliases carry the app prefix and the namespace, and are unguessable', () {
+    String first = ezkeyDeviceKeyAlias(42, namespace: 'main');
+    String second = ezkeyDeviceKeyAlias(42, namespace: 'main');
+    expect(first, startsWith('${ezkeyDeviceKeyAliasPrefix}main-42-'));
     expect(first, isNot(second));
+  });
+
+  test('debug builds use their own namespace, like upstream secure storage', () {
+    expect(ezkeyDeviceKeyNamespace, 'debug');
+    expect(AndroidEzkeyDeviceKeyStore().namespace, 'debug');
   });
 }

@@ -34,7 +34,7 @@ final ezkeyAuthenticatorProvider = FutureProvider<EzkeyAuthenticator>((ref) asyn
     keyStore: keyStore,
     enrollmentStore: enrollmentStore,
     httpClient: client,
-    keyAliasFactory: ezkeyDeviceKeyAlias,
+    keyAliasFactory: (enrollmentId) => ezkeyDeviceKeyAlias(enrollmentId, namespace: keyStore.namespace),
   );
 });
 
