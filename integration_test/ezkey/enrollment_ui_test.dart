@@ -120,8 +120,8 @@ void main() {
       await _screen(tester, '10-forgotten');
       expect(await container.read(ezkeyEnrollmentsProvider.future), isEmpty);
     },
-    // With semantics on, the framework asserts in the forui tile group / dialog tree
-    // ('node.isMergedIntoParent'), then taps hit stale tappables. Accessibility follow-up noted in #20.
+    // With semantics on, a focused forui 0.25 text field fails 'node.isMergedIntoParent' on Flutter 3.47,
+    // then taps hit stale tappables (duobaseio/forui#1160, fixed in forui 0.26). Re-enable when upstream bumps forui (#30).
     semanticsEnabled: false,
     skip: _enrollmentCode.isEmpty,
   );
