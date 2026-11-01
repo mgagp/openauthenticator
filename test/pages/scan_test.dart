@@ -12,11 +12,13 @@ import 'package:open_authenticator/model/totp/decrypted.dart';
 import 'package:open_authenticator/pages/scan.dart';
 import 'package:open_authenticator/pages/totp.dart';
 import 'package:open_authenticator/themes.dart';
+import 'package:open_authenticator/utils/platform.dart';
 import 'package:open_authenticator/widgets/scan/scanner.dart';
 
 // Characterization tests (#64): they pin upstream's QR scanner as it is today, before the EzKey work
 // lets it recognize EzKey invitations (harmonization H6). The camera is not needed: the tests call the
-// scanner's `onScan` callback with the scanned content.
+// scanner's `onScan` callback with the scanned content. They run where EzKey is not available (Windows),
+// so they see upstream's behavior only; test/ezkey/scan_test.dart covers the EzKey hook.
 
 /// A crypto store notifier that holds a fixed store, without the secure storage.
 class _FixedCryptoStore extends CryptoStoreNotifier {
@@ -33,10 +35,17 @@ class _FixedCryptoStore extends CryptoStoreNotifier {
 void main() {
   late CryptoStore cryptoStore;
   late List<RouteSettings> pushedRoutes;
+  late Platform platform;
 
   setUpAll(() => cryptoStore = CryptoStore.fromPassword('password', Salt.generate()));
 
-  setUp(() => pushedRoutes = []);
+  setUp(() {
+    pushedRoutes = [];
+    platform = currentPlatform;
+    currentPlatform = .windows;
+  });
+
+  tearDown(() => currentPlatform = platform);
 
   /// Shows the scan page, with a crypto store unless [withCryptoStore] is `false`.
   Future<void> pumpScan(WidgetTester tester, {bool withCryptoStore = true}) async {

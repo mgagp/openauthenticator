@@ -45,27 +45,31 @@ class EzkeyActions {
     }
   }
 
-  /// Parses [rawCode], binds the invitation, then lets the user confirm on [EzkeyEnrollPage].
-  static Future<void> addEnrollment(BuildContext context, WidgetRef ref, String rawCode) async {
+  /// Parses [rawCode], binds the invitation, then lets the user confirm on [EzkeyEnrollPage], which takes
+  /// the place of the current route when [replaceRoute] is `true`.
+  ///
+  /// Returns whether [EzkeyEnrollPage] was opened: `false` when the code is not an invitation, the user
+  /// cancelled, or binding failed (the user was told).
+  static Future<bool> addEnrollment(BuildContext context, WidgetRef ref, String rawCode, {bool replaceRoute = false}) async {
     EnrollmentCode code;
     try {
       code = EnrollmentCode.parse(rawCode);
     } on EzkeyValidationException {
       showEzkeyErrorToast(context, text: translations.ezkey.scan.notAnInvitation);
-      return;
+      return false;
     }
     String? serverUrl;
     if (code.authUrl == null) {
       serverUrl = await askServerUrl(context, ref);
       if (serverUrl == null || !context.mounted) {
-        return;
+        return false;
       }
     }
     EzkeyBoundEnrollment bound;
     try {
       EzkeyAuthenticator authenticator = await ref.read(ezkeyAuthenticatorProvider.future);
       if (!context.mounted) {
-        return;
+        return false;
       }
       bound = await showWaitingOverlay(
         context,
@@ -77,11 +81,13 @@ class EzkeyActions {
       if (context.mounted) {
         showEzkeyErrorToast(context, text: ex is EzkeyValidationException ? translations.ezkey.error.alreadyEnrolled : ezkeyEnrollmentErrorMessage(ex));
       }
-      return;
+      return false;
     }
-    if (context.mounted) {
-      await EzkeyEnrollPage.open(context, bound);
+    if (!context.mounted) {
+      return false;
     }
+    await EzkeyEnrollPage.open(context, bound, replace: replaceRoute);
+    return true;
   }
 
   /// Claims the first pending auth attempt of [enrollments] and opens [EzkeyApprovalPage] for it.
