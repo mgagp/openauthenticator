@@ -79,3 +79,4 @@ Legend for effort: S < ½ day, M ≈ 1 day, L > 1 day.
 - **Argon2 cost.** If the production parameters make key derivation slow, crypto tests derive a key once per file (`setUpAll`).
 - **Secure storage** (`simple_secure_storage`) is a platform plugin. Repository-level tests need a fake through provider overrides, which needs confirming in Lot 2.
 - **Private APIs** (`Backup._create/_read`, …) are tested through their public callers only.
+- **Deep-link routing** lives in the private `_RouteWidgetState` in `lib/main.dart`: it handles `openauthenticator://` and `otpauth://totp/` links, once each through `consumeLink`, and ignores the others. It cannot be reached without the whole app, so `test/model/app_links/` pins the link types and the listener only (#55).
