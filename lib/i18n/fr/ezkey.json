@@ -137,5 +137,9 @@
     "title": "Enrôlements EzKey sur cet appareil",
     "message": "Effacer les données retire aussi définitivement ces enrôlements EzKey de cet appareil :\n$services\n\nIls restent actifs sur les serveurs EzKey : demandez à l'administrateur de chaque service de les révoquer. Pour utiliser EzKey avec eux de nouveau, il faudra vous enrôler de nouveau.",
     "unreadable": "Un enrôlement qui ne peut plus être lu"
+  },
+  "backups": {
+    "backupNote": "Les enrôlements EzKey ne sont pas inclus : leurs clés ne quittent jamais cet appareil. Après une restauration sur un autre appareil, enrôlez-vous de nouveau auprès de chaque service.",
+    "restoreNote": "Seuls vos TOTP sont restaurés. Les enrôlements EzKey de cet appareil restent tels quels."
   }
 }

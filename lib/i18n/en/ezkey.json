@@ -137,5 +137,9 @@
     "title": "EzKey enrollments on this device",
     "message": "Clearing the data also removes these EzKey enrollments from this device, for good:\n$services\n\nThey stay active on the EzKey servers: ask the administrator of each service to revoke them. To use EzKey with them again, you will have to enroll again.",
     "unreadable": "An enrollment that can no longer be read"
+  },
+  "backups": {
+    "backupNote": "EzKey enrollments are not included: their keys never leave this device. After restoring on another device, enroll again with each service.",
+    "restoreNote": "This restores your TOTPs only. The EzKey enrollments on this device stay as they are."
   }
 }
