@@ -6,7 +6,15 @@
     "check": "Vérifier les demandes",
     "expand": "Déplier EzKey",
     "collapse": "Replier EzKey",
-    "manage": "Réglages EzKey et tous les enrôlements"
+    "manage": "Réglages EzKey et tous les enrôlements",
+    "totpTitle": "Codes TOTP",
+    "totpCount": {
+      "zero": "Aucun code",
+      "one": "$n code",
+      "other": "$n codes"
+    },
+    "totpExpand": "Déplier les codes TOTP",
+    "totpCollapse": "Replier les codes TOTP"
   },
   "about": {
     "title": "À propos d'EzKey",

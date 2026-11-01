@@ -6,7 +6,15 @@
     "check": "Check for requests",
     "expand": "Expand EzKey",
     "collapse": "Collapse EzKey",
-    "manage": "EzKey settings and all enrollments"
+    "manage": "EzKey settings and all enrollments",
+    "totpTitle": "TOTP codes",
+    "totpCount": {
+      "zero": "No code",
+      "one": "$n code",
+      "other": "$n codes"
+    },
+    "totpExpand": "Expand the TOTP codes",
+    "totpCollapse": "Collapse the TOTP codes"
   },
   "about": {
     "title": "About EzKey",

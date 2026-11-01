@@ -11,6 +11,7 @@ import 'package:open_authenticator/ezkey/pages/enrollment_page.dart';
 import 'package:open_authenticator/ezkey/pages/ezkey_page.dart';
 import 'package:open_authenticator/ezkey/widgets/enrollment_tile.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
+import 'package:open_authenticator/model/totp/repository.dart';
 import 'package:open_authenticator/spacing.dart';
 import 'package:open_authenticator/widgets/button_text.dart';
 import 'package:open_authenticator/widgets/clickable.dart';
@@ -28,8 +29,10 @@ List<Widget> ezkeyHomeZones(List<Widget> totpChildren) => ezkeyAvailable && totp
 
 /// The home zones: TOTP (upstream content, unchanged) above, EzKey below.
 ///
-/// Expanded, both zones are framed. Collapsed (#36), the upstream content takes the full height
-/// without a frame, so the app looks like the original, and EzKey is a thin bar at the bottom.
+/// Expanded, both zones are framed. With EzKey collapsed (#36), the upstream content takes the full
+/// height without a frame, so the app looks like the original, and EzKey is a thin bar at the bottom.
+/// With the TOTP zone collapsed (#44), it is a thin bar at the top and EzKey takes the full height; the
+/// upstream content stays in the tree, hidden, so it keeps its state.
 class EzkeyHomeZones extends ConsumerWidget {
   /// The upstream home content (TOTP list or empty state, and its add button).
   final Widget totpZone;
@@ -45,28 +48,51 @@ class EzkeyHomeZones extends ConsumerWidget {
     bool hasEnrollments = ref.watch(ezkeyInstallationsProvider).value?.isNotEmpty ?? false;
     EzkeyHomeZoneState state = ref.watch(ezkeyHomeZoneStateProvider).value ?? .auto;
     bool expanded = state.isExpanded(hasEnrollments: hasEnrollments);
+    bool totpExpanded = state.isTotpExpanded;
+    // The same widget types in every state, so the upstream content keeps its state.
     return SafeArea(
       top: false,
       child: Column(
         crossAxisAlignment: .stretch,
         children: [
-          Expanded(
-            // Same widget tree framed or not, so the upstream content keeps its state.
-            child: _ZoneFrame(
-              framed: expanded,
-              margin: const EdgeInsets.fromLTRB(kSpace, 0, kSpace, kSpace),
-              child: totpZone,
-            ),
-          ),
           AnimatedSize(
             duration: const Duration(milliseconds: 200),
-            alignment: .bottomCenter,
-            child: expanded
-                ? const _ZoneFrame(
-                    margin: EdgeInsets.fromLTRB(kSpace, 0, kSpace, kSpace),
-                    child: EzkeyHomeZone(),
-                  )
-                : const _CollapsedBar(),
+            alignment: .topCenter,
+            child: totpExpanded ? const SizedBox(width: double.infinity) : const _TotpCollapsedBar(),
+          ),
+          Expanded(
+            flex: totpExpanded ? 1 : 0,
+            child: SizedBox(
+              height: totpExpanded ? null : 0,
+              child: Visibility(
+                visible: totpExpanded,
+                maintainState: true,
+                child: _ZoneFrame(
+                  framed: expanded,
+                  margin: const EdgeInsets.fromLTRB(kSpace, 0, kSpace, kSpace),
+                  child: Column(
+                    crossAxisAlignment: .stretch,
+                    children: [
+                      expanded ? const _TotpHeader() : const SizedBox.shrink(),
+                      Expanded(child: totpZone),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            flex: totpExpanded ? 0 : 1,
+            child: AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              alignment: .bottomCenter,
+              child: expanded
+                  ? _ZoneFrame(
+                      margin: EdgeInsets.fromLTRB(kSpace, totpExpanded ? 0 : kSpace, kSpace, kSpace),
+                      child: EzkeyHomeZone(fill: !totpExpanded),
+                    )
+                  : const _CollapsedBar(),
+            ),
           ),
         ],
       ),
@@ -74,8 +100,103 @@ class EzkeyHomeZones extends ConsumerWidget {
   }
 }
 
-/// Expands or collapses the EzKey home zone, and remembers the choice.
+/// Expands or collapses the EzKey home zone, and remembers the choice. Collapsing it expands the TOTP zone.
 void _setExpanded(WidgetRef ref, bool expanded) => ref.read(ezkeyHomeZoneStateProvider.notifier).changeValue(expanded ? .expanded : .collapsed);
+
+/// Expands or collapses the TOTP home zone, and remembers the choice. Collapsing it expands the EzKey zone.
+void _setTotpExpanded(WidgetRef ref, bool expanded) => ref.read(ezkeyHomeZoneStateProvider.notifier).changeValue(expanded ? .expanded : .totpCollapsed);
+
+/// The header of the TOTP zone while both zones are expanded: the app logo, the name, and a chevron to
+/// collapse it.
+class _TotpHeader extends ConsumerWidget {
+  /// Creates a new TOTP header instance.
+  const _TotpHeader();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => Padding(
+    padding: const EdgeInsets.fromLTRB(kSpace, kSpace / 2, kSpace, 0),
+    child: Row(
+      children: [
+        const SizedScalableImage(
+          asset: 'assets/images/logo.si',
+          width: 24,
+          height: 24,
+        ),
+        const SizedBox(width: kSpace),
+        Expanded(
+          child: Text(
+            translations.ezkey.home.totpTitle,
+            style: context.theme.typography.body.md.copyWith(fontWeight: FontWeight.w600),
+          ),
+        ),
+        // Icon only: a tooltip on long press, which also labels it for screen readers.
+        Tooltip(
+          message: translations.ezkey.home.totpCollapse,
+          child: ClickableButton.icon(
+            key: const ValueKey('ezkey-home-totp-collapse'),
+            variant: .ghost,
+            onPress: () => _setTotpExpanded(ref, false),
+            child: const Icon(FLucideIcons.chevronUp),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// The collapsed TOTP zone: a thin bar at the top with the app logo, the name, the number of codes,
+/// and a chevron. Adding a TOTP needs the zone expanded, where upstream's add button is.
+class _TotpCollapsedBar extends ConsumerWidget {
+  /// Creates a new TOTP collapsed bar instance.
+  const _TotpCollapsedBar();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    int? count = ref.watch(totpRepositoryProvider).value?.length;
+    return Semantics(
+      button: true,
+      label: translations.ezkey.home.totpExpand,
+      child: GestureDetector(
+        key: const ValueKey('ezkey-home-totp-expand'),
+        behavior: .opaque,
+        onTap: () => _setTotpExpanded(ref, true),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border(bottom: BorderSide(color: context.theme.colors.border, width: 2)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: kBigSpace, vertical: kSpace),
+            child: Row(
+              children: [
+                const SizedScalableImage(
+                  asset: 'assets/images/logo.si',
+                  width: 24,
+                  height: 24,
+                ),
+                const SizedBox(width: kSpace),
+                Expanded(
+                  child: Text(
+                    translations.ezkey.home.totpTitle,
+                    style: context.theme.typography.body.md.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                ),
+                if (count != null)
+                  Padding(
+                    padding: const EdgeInsets.only(right: kSpace),
+                    child: Text(
+                      translations.ezkey.home.totpCount(n: count),
+                      style: context.theme.typography.body.sm.copyWith(color: context.theme.colors.mutedForeground),
+                    ),
+                  ),
+                const Icon(FLucideIcons.chevronDown),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 /// The collapsed EzKey zone: a thin bar with the logo, the name, "about", and a chevron.
 class _CollapsedBar extends ConsumerWidget {
@@ -140,12 +261,17 @@ class _AboutButton extends StatelessWidget {
 
 /// The EzKey home zone: the enrollments, "check for requests" and the add button.
 class EzkeyHomeZone extends ConsumerWidget {
-  /// The most enrollment rows shown before the list scrolls.
+  /// The most enrollment rows shown before the list scrolls, unless the zone [fill]s the screen.
   static const double _maxListHeight = 200;
+
+  /// Whether the zone takes the full height (TOTP zone collapsed, #44): the list then scrolls in all the
+  /// space there is.
+  final bool fill;
 
   /// Creates a new EzKey home zone instance.
   const EzkeyHomeZone({
     super.key,
+    this.fill = false,
   });
 
   @override
@@ -157,7 +283,7 @@ class EzkeyHomeZone extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.all(kSpace),
       child: Column(
-        mainAxisSize: .min,
+        mainAxisSize: fill ? .max : .min,
         crossAxisAlignment: .stretch,
         children: [
           Row(
@@ -207,31 +333,37 @@ class EzkeyHomeZone extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: kSpace),
-          if (installations.hasError)
+          if (installations.hasError) ...[
             Text(
               translations.ezkey.home.loadError,
               style: context.theme.typography.body.sm.copyWith(color: context.theme.colors.destructive),
-            )
-          else if (installations.isLoading && !installations.hasValue)
-            const Center(child: FCircularProgress())
-          else if (enrollments.isEmpty)
+            ),
+            if (fill) const Spacer(),
+          ] else if (installations.isLoading && !installations.hasValue) ...[
+            const Center(child: FCircularProgress()),
+            if (fill) const Spacer(),
+          ] else if (enrollments.isEmpty) ...[
             Text(
               translations.ezkey.home.empty,
               style: context.theme.typography.body.sm.copyWith(color: context.theme.colors.mutedForeground),
-            )
-          else ...[
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: _maxListHeight),
-              child: SingleChildScrollView(
-                child: FTileGroup(
-                  children: [
-                    // Phase 1 shows the installations flat (ADR-0003); #26 frames each one.
-                    for (EzkeyEnrollment enrollment in enrollments)
-                      EzkeyEnrollmentTile(
-                        enrollment: enrollment,
-                        onPress: () => EzkeyEnrollmentPage.open(context, enrollment),
-                      ),
-                  ],
+            ),
+            if (fill) const Spacer(),
+          ] else ...[
+            Flexible(
+              fit: fill ? .tight : .loose,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: fill ? double.infinity : _maxListHeight),
+                child: SingleChildScrollView(
+                  child: FTileGroup(
+                    children: [
+                      // Phase 1 shows the installations flat (ADR-0003); #26 frames each one.
+                      for (EzkeyEnrollment enrollment in enrollments)
+                        EzkeyEnrollmentTile(
+                          enrollment: enrollment,
+                          onPress: () => EzkeyEnrollmentPage.open(context, enrollment),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
