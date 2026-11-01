@@ -27,6 +27,7 @@ The two tracks alternate, one item at a time, chosen by what is done and how it 
 - **Re-integration cost:** how easily the item re-applies after an upstream sync (ADR-0003). It counts more than the size of the diff.
 - **UI practice:** reuse upstream's widgets and patterns (forui, `AppScaffold`, settings entries, dialogs, `Result` handling) instead of parallel ones. Upstream must still look like upstream wherever EzKey is unused.
 - **Portability:** no Android-only assumption (ADR-0004).
+- **Characterize first:** before changing an anchor point, pin its current behaviour with characterization tests (test-only PR), so a change or an upstream sync that breaks it shows up red. #55 covered the home page, `otpauth://` parsing, deep links, backups and Clear data.
 
 ## Inventory
 
@@ -54,4 +55,4 @@ First pass on 2026-10-30. Facts checked in the code; ideas are hypotheses until 
 | Item | Issue | Status |
 | --- | --- | --- |
 | H1 Clear data | #53 | Done (PR #54): extra warning when enrollments exist, keys deleted right after the clear |
-| Anchor-point tests | #55 | In progress: home page (PR #56), `otpauth://` parsing (PR #57), deep links (`model/app_links/`) |
+| Anchor-point tests | #55 | Done: home page (PR #56), `otpauth://` parsing (PR #57), deep links (PR #58), backups (`model/backup/`, with a committed fixture), Clear data (covered by the hook tests of PR #54) |
