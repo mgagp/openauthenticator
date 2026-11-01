@@ -1,17 +1,24 @@
-import 'package:ezkey_dart/ezkey_dart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:open_authenticator/ezkey/scan.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
+import 'package:open_authenticator/model/app_links/otpauth_totp.dart';
+import 'package:open_authenticator/pages/totp.dart';
 import 'package:open_authenticator/widgets/app_scaffold.dart';
 import 'package:open_authenticator/widgets/clickable.dart';
 import 'package:open_authenticator/widgets/dialog/error_dialog.dart';
 import 'package:open_authenticator/widgets/scan/scanner.dart';
 import 'package:open_authenticator/ezkey/toast.dart';
+import 'package:open_authenticator/widgets/waiting_overlay.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 /// Scans an EzKey invitation QR code and pops with its raw content.
-class EzkeyScanPage extends StatefulWidget {
+///
+/// A TOTP QR code goes to upstream's TOTP add page instead, as upstream's scanner would send it
+/// (harmonization H6); [scan] then returns `null`.
+class EzkeyScanPage extends ConsumerStatefulWidget {
   /// Creates a new EzKey scan page instance.
   const EzkeyScanPage({
     super.key,
@@ -24,11 +31,11 @@ class EzkeyScanPage extends StatefulWidget {
   );
 
   @override
-  State<StatefulWidget> createState() => _EzkeyScanPageState();
+  ConsumerState<EzkeyScanPage> createState() => _EzkeyScanPageState();
 }
 
 /// The EzKey scan page state.
-class _EzkeyScanPageState extends State<EzkeyScanPage> {
+class _EzkeyScanPageState extends ConsumerState<EzkeyScanPage> {
   @override
   void initState() {
     super.initState();
@@ -52,14 +59,21 @@ class _EzkeyScanPageState extends State<EzkeyScanPage> {
     children: [
       QrCodeScanner(
         onScan: (barcode) async {
-          try {
-            EnrollmentCode.parse(barcode);
-          } on EzkeyValidationException {
-            showEzkeyErrorToast(context, text: translations.ezkey.scan.notAnInvitation);
-            return true;
+          if (isEzkeyInvitation(barcode)) {
+            Navigator.pop(context, barcode);
+            return false;
           }
-          Navigator.pop(context, barcode);
-          return false;
+          Uri? uri = Uri.tryParse(barcode);
+          if (uri != null && (uri as OtpAuthTotpLink).isValid) {
+            // Same as upstream's scanner (lib/pages/scan.dart): the TOTP page replaces the routes above home.
+            await showWaitingOverlay(
+              context,
+              future: TotpPage.openFromUri(context, ref, uri),
+            );
+            return false;
+          }
+          showEzkeyErrorToast(context, text: translations.ezkey.scan.notAnInvitation);
+          return true;
         },
         onError: (error, listener) => ErrorDialog.openDialog(
           context,

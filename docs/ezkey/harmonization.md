@@ -55,5 +55,6 @@ First pass on 2026-10-30. Facts checked in the code; ideas are hypotheses until 
 | Item | Issue | Status |
 | --- | --- | --- |
 | H1 Clear data | #53 | Done (PR #54): extra warning when enrollments exist, keys deleted right after the clear |
-| H2 Backups | #60 | Note in the "Backup now" and restore password dialogs when this device holds EzKey enrollments (not included; enroll again on another device) |
+| H2 Backups | #60 | Done (PR #61): note in the "Backup now" and restore password dialogs when this device holds EzKey enrollments (not included; enroll again on another device) |
 | Anchor-point tests | #55 | Done: home page (PR #56), `otpauth://` parsing (PR #57), deep links (PR #58), backups (`model/backup/`, with a committed fixture), Clear data (covered by the hook tests of PR #54) |
+| H6 QR scanner | #64 | Both scanners take both kinds of code: upstream's sends an EzKey invitation to the enrollment flow (the enroll page takes the scanner's place, like upstream's TOTP page), EzKey's sends a TOTP code to upstream's TOTP page. Upstream's scanner characterized first (PR #65) |
