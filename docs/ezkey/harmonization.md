@@ -53,4 +53,5 @@ First pass on 2026-10-30. Facts checked in the code; ideas are hypotheses until 
 
 | Item | Issue | Status |
 | --- | --- | --- |
-| — | — | Nothing taken yet |
+| H1 Clear data | #53 | Done (PR #54): extra warning when enrollments exist, keys deleted right after the clear |
+| Anchor-point tests | #55 | In progress: home page (PR #56), `otpauth://` parsing (PR #57), deep links (`model/app_links/`) |
