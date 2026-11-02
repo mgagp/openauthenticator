@@ -60,7 +60,8 @@ jobs:
             command: flutter build windows --debug
             # Visual Studio 2026 rejects <experimental/coroutine>, which local_auth_windows still uses (an
             # upstream dependency, left as is). MSBuild passes CL to every compiler call.
-            cl: /D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS
+            # The dash form, because Git Bash rewrites a value starting with a slash as a path.
+            cl: -D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS
           - target: macos
             os: macos-latest
             command: flutter build macos --debug
