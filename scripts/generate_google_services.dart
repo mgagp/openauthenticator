@@ -73,7 +73,7 @@ void writeGoogleServicesJson(Map<String, String> options) {
   stdout.writeln('Wrote ${output.path} (project ${options['projectId']}, package $packageName).');
 }
 
-/// Writes <platform>/Runner/GoogleService-Info.plist, in the format the Firebase console downloads.
+/// Writes `<platform>/Runner/GoogleService-Info.plist`, in the format the Firebase console downloads.
 void writeGoogleServiceInfoPlist(String platform, Map<String, String> options) {
   Map<String, Object> values = {
     'API_KEY': options['apiKey']!,
