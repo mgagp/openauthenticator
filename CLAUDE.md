@@ -139,7 +139,7 @@ The only CI workflow is `.github/workflows/docs.yml` (docs dispatch): nothing bu
 
 ## Development workflow (this fork)
 
-Decisions, trade-offs and design notes live in [`docs/`](docs/README.md) (index, writing rules, ADRs). Record a decision in the PR that applies it: a line in the owning document, or an ADR when there are real alternatives.
+Decisions, trade-offs and design notes live in [`docs/`](docs/README.md) (index, writing rules, ADRs). Record a decision in the PR that applies it: a line in the owning document, or an ADR when there are real alternatives. Before proposing a change, read [`docs/decision-guide.md`](docs/decision-guide.md): it says when to ask the maintainer first and what to weigh.
 
 Work happens on the fork `mgagp/openauthenticator` (`origin`). `upstream` is `openauthenticator-app/openauthenticator`, fetch-only (push URL disabled); sync with `git fetch upstream` + a PR. Never open PRs or issues against upstream: `gh` defaults to the parent repo on forks, so the default is pinned with `gh repo set-default mgagp/openauthenticator` — pass `--repo mgagp/openauthenticator` if in doubt. Contributing a change upstream is a separate, explicit decision.
 

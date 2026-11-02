@@ -2,6 +2,12 @@
 
 Decision records and design notes for this fork. `CLAUDE.md` holds the operating instructions (toolchain, commands, workflow); this folder holds the **why**: decisions, trade-offs and designs that future sessions must be able to rely on.
 
+## Direction
+
+This fork explores integrating EzKey into Open Authenticator while staying aligned with upstream (`CLAUDE.md` § Upstream alignment). Every divergence is kept small, ledgered and easy to re-apply, so that the work can either be offered upstream or stand on its own. Every platform upstream ships stays buildable ([ADR-0004](adr/0004-ezkey-multi-platform-posture.md)). The work alternates between the EzKey track and the harmonization track ([`ezkey/harmonization.md`](ezkey/harmonization.md)).
+
+This direction evolves with the project. When it changes, update this section in the PR that records the change.
+
 ## Rules
 
 1. **One canonical place per concept.** Link to the source of truth; never copy it. EzKey protocol and behaviour live in the EzKey repository (`mgagp/ezkey`): link them, do not restate them.
@@ -16,6 +22,7 @@ Decision records and design notes for this fork. `CLAUDE.md` holds the operating
 | [`upstream-activity.md`](upstream-activity.md) | How often upstream changes each area and each file the fork touches: the sync cost of a divergence |
 | [`ezkey/integration.md`](ezkey/integration.md) | EzKey integration design: layers, contract conformance, upstream files touched, lab setup |
 | [`ezkey/harmonization.md`](ezkey/harmonization.md) | EzKey × Open Authenticator features: the two tracks, integration levels, inventory of upstream features, tracking |
+| [`decision-guide.md`](decision-guide.md) | When to ask the maintainer, what to weigh before proposing a change, where to record the outcome |
 | [`adr/`](adr/) | Decisions with real trade-offs (below) |
 
 ### Architecture decision records
