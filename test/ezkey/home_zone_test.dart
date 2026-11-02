@@ -46,6 +46,21 @@ class _MemoryZoneState extends EzkeyHomeZoneStateEntry {
   Future<void> changeValue(EzkeyHomeZoneState value) async => state = AsyncData(value);
 }
 
+/// Keeps the zone split in memory instead of the shared preferences.
+class _MemorySplit extends EzkeyHomeZoneSplitEntry {
+  /// The initial share.
+  final double initial;
+
+  /// Creates a new memory split instance.
+  _MemorySplit(this.initial);
+
+  @override
+  FutureOr<double> build() => initial;
+
+  @override
+  Future<void> changeValue(double value) async => state = AsyncData(value);
+}
+
 /// A TOTP repository that holds a fixed list, without the database.
 class _FixedTotps extends TotpRepository {
   /// The TOTPs.
@@ -165,6 +180,7 @@ void main() {
 
   group('EzkeyHomeZones', () {
     late CryptoStore cryptoStore;
+    late _MemorySplit split;
 
     setUpAll(() => cryptoStore = CryptoStore.fromPassword('password', Salt.generate()));
 
@@ -175,6 +191,7 @@ void main() {
       EzkeyHomeZoneState state = .auto,
       int totpCount = 0,
       Widget totpZone = const Text('totp'),
+      double share = 0,
     }) async {
       List<Totp> totps = [
         for (int i = 0; i < totpCount; i++) DecryptedTotp.create(cryptoStore: cryptoStore, uuid: 'uuid-$i', secret: 'JBSWY3DPEHPK3PXP', label: 'totp-$i')!,
@@ -185,6 +202,7 @@ void main() {
             ezkeyEnrollmentsProvider.overrideWith(() => _FixedEnrollments(enrollments)),
             ezkeyHomeZoneStateProvider.overrideWith(() => _MemoryZoneState(state)),
             totpRepositoryProvider.overrideWith(() => _FixedTotps(totps)),
+            ezkeyHomeZoneSplitProvider.overrideWith(() => split = _MemorySplit(share)),
           ],
           child: TranslationProvider(
             child: MaterialApp(
@@ -295,6 +313,110 @@ void main() {
       expect(find.byKey(const ValueKey('ezkey-home-totp-expand')), findsOneWidget);
       expect(find.text(translations.ezkey.home.totpCount(n: 1)), findsOneWidget);
       expect(find.text(translations.ezkey.home.empty), findsOneWidget);
+    });
+
+    /// The divider between the zones.
+    Finder divider() => find.byKey(const ValueKey('ezkey-home-split'));
+
+    /// The height of the EzKey zone.
+    double ezkeyHeight(WidgetTester tester) => tester.getSize(find.byType(EzkeyHomeZone)).height;
+
+    testWidgets('shows the divider only while both zones are expanded', (tester) async {
+      await pumpZones(tester, [testEnrollment(1)]);
+
+      expect(divider(), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('ezkey-home-collapse')));
+      await tester.pumpAndSettle();
+
+      expect(divider(), findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('ezkey-home-expand')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('ezkey-home-totp-collapse')));
+      await tester.pumpAndSettle();
+
+      expect(divider(), findsNothing);
+    });
+
+    testWidgets('lets the EzKey zone take the height it needs until the divider is moved', (tester) async {
+      await pumpZones(tester, [testEnrollment(1)]);
+
+      expect(tester.widget<EzkeyHomeZone>(find.byType(EzkeyHomeZone)).fill, isFalse);
+    });
+
+    testWidgets('dragging the divider up gives EzKey more height, and remembers it', (tester) async {
+      await pumpZones(tester, [testEnrollment(1)]);
+      double before = ezkeyHeight(tester);
+
+      await tester.drag(divider(), const Offset(0, -150));
+      await tester.pumpAndSettle();
+
+      expect(ezkeyHeight(tester), greaterThan(before + 100));
+      expect(split.state.value, greaterThan(0));
+      expect(tester.widget<EzkeyHomeZone>(find.byType(EzkeyHomeZone)).fill, isTrue);
+    });
+
+    testWidgets('the divider stops at the limits, so neither zone gets too small', (tester) async {
+      await pumpZones(tester, [testEnrollment(1)]);
+
+      await tester.drag(divider(), const Offset(0, -2000));
+      await tester.pumpAndSettle();
+
+      expect(split.state.value, lessThanOrEqualTo(EzkeyHomeZoneSplitEntry.maxShare));
+      expect(tester.getSize(find.text('totp')).height, greaterThan(0));
+      expect(tester.getTopLeft(divider()).dy, greaterThanOrEqualTo(160));
+
+      await tester.drag(divider(), const Offset(0, 2000));
+      await tester.pumpAndSettle();
+
+      expect(split.state.value, greaterThanOrEqualTo(EzkeyHomeZoneSplitEntry.minShare));
+      expect(ezkeyHeight(tester), greaterThanOrEqualTo(220));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a remembered share sizes the zones', (tester) async {
+      await pumpZones(tester, [testEnrollment(1)], share: 0.45);
+      double small = ezkeyHeight(tester);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await pumpZones(tester, [testEnrollment(1)], share: 0.7);
+
+      expect(ezkeyHeight(tester), closeTo(small + 0.25 * (600 - 24), 1));
+    });
+
+    testWidgets('the smallest share still fits a long enrollment list', (tester) async {
+      await pumpZones(tester, [for (int i = 1; i <= 12; i++) testEnrollment(i)], share: EzkeyHomeZoneSplitEntry.minShare);
+
+      expect(tester.takeException(), isNull);
+      expect(find.text(translations.ezkey.home.check), findsOneWidget);
+    });
+
+    testWidgets('a double tap on the divider restores the automatic height', (tester) async {
+      await pumpZones(tester, [testEnrollment(1)], share: 0.6);
+
+      await tester.tap(divider());
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(divider());
+      await tester.pumpAndSettle();
+
+      expect(split.state.value, 0);
+      expect(tester.widget<EzkeyHomeZone>(find.byType(EzkeyHomeZone)).fill, isFalse);
+    });
+
+    testWidgets('screen readers can adjust the divider', (tester) async {
+      await pumpZones(tester, [testEnrollment(1)], share: 0.55);
+
+      tester.semantics.increase(find.semantics.byLabel(translations.ezkey.home.split));
+      await tester.pumpAndSettle();
+
+      expect(split.state.value, closeTo(0.65, 0.001));
+
+      tester.semantics.decrease(find.semantics.byLabel(translations.ezkey.home.split));
+      await tester.pump();
+      tester.semantics.decrease(find.semantics.byLabel(translations.ezkey.home.split));
+      await tester.pumpAndSettle();
+
+      expect(split.state.value, closeTo(0.45, 0.001));
     });
   });
 
