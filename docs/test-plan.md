@@ -8,6 +8,7 @@ Status: **draft v1 (2026-10-26)**, absolute angle only (the project for itself).
 - **Proportional.** About 9.8k lines in `lib/model`, ~6k in `lib/widgets` + `lib/pages`. We aim for a small number of high-value tests per critical module, not coverage numbers.
 - **Upstream alignment.** We test upstream code as it is, through its public API, without changing it to make it testable (see `CLAUDE.md`). When a seam is missing, the test is adapted or the gap is recorded here (§5).
 - **Deterministic, host-only by default.** Tests run with `flutter test` on the dev machine (and later in CI): no network, no device, no real clock where it matters.
+- **Accessibility through tests.** Screen-reader behaviour is checked with semantics-enabled widget tests (labels, actions, values), not by manual passes with TalkBack or VoiceOver.
 - **No new test dependencies by default.** We use what is already resolved: `flutter_test`, `package:http/testing.dart` (`MockClient`), `fake_async`, `clock`, drift's in-memory database (`sqlite3` 3.x bundles its native library), and `SharedPreferences.setMockInitialValues`. Adding `mocktail` or similar is a decision to take with the user.
 
 ## 2. Test levels
