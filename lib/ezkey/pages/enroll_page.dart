@@ -26,11 +26,11 @@ class EzkeyEnrollPage extends ConsumerStatefulWidget {
     required this.bound,
   });
 
-  /// Opens the page for [bound].
-  static Future<EzkeyEnrollment?> open(BuildContext context, EzkeyBoundEnrollment bound) => Navigator.push<EzkeyEnrollment>(
-    context,
-    MaterialPageRoute(builder: (context) => EzkeyEnrollPage(bound: bound)),
-  );
+  /// Opens the page for [bound], in place of the current route when [replace] is `true`.
+  static Future<EzkeyEnrollment?> open(BuildContext context, EzkeyBoundEnrollment bound, {bool replace = false}) {
+    MaterialPageRoute<EzkeyEnrollment> route = MaterialPageRoute(builder: (context) => EzkeyEnrollPage(bound: bound));
+    return replace ? Navigator.pushReplacement<EzkeyEnrollment, void>(context, route) : Navigator.push<EzkeyEnrollment>(context, route);
+  }
 
   @override
   ConsumerState<ConsumerStatefulWidget> createState() => _EzkeyEnrollPageState();

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:open_authenticator/ezkey/scan.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/model/app_links/otpauth_totp.dart';
 import 'package:open_authenticator/pages/totp.dart';
@@ -54,6 +55,9 @@ class _ScanPageState extends ConsumerState<ScanPage> {
         onScan: (barcode) async {
           Uri? uri = Uri.tryParse(barcode);
           if (uri == null || !(uri as OtpAuthTotpLink).isValid) {
+            if (isEzkeyScan(barcode)) {
+              return onEzkeyScan(context, ref, barcode);
+            }
             showErrorToast(context, text: translations.error.scan.noUri);
             return true;
           }
