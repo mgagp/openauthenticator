@@ -62,11 +62,13 @@ jobs:
             # upstream dependency, left as is). MSBuild passes CL to every compiler call.
             # The dash form, because Git Bash rewrites a value starting with a slash as a path.
             cl: -D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS
+          # Intel runners: the arm64 pool repeatedly failed to pick up jobs ("not acquired by Runner",
+          # capacity constraints, 2026-11-02). Building on either architecture checks the same code.
           - target: macos
-            os: macos-latest
+            os: macos-15-intel
             command: flutter build macos --debug
           - target: ios
-            os: macos-latest
+            os: macos-15-intel
             command: flutter build ios --debug --no-codesign
     steps:
       - uses: actions/checkout@v5
