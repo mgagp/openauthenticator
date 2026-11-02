@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: ./.github/actions/setup
 
@@ -58,6 +58,9 @@ jobs:
           - target: windows
             os: windows-latest
             command: flutter build windows --debug
+            # Visual Studio 2026 rejects <experimental/coroutine>, which local_auth_windows still uses (an
+            # upstream dependency, left as is). MSBuild passes CL to every compiler call.
+            cl: /D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS
           - target: macos
             os: macos-latest
             command: flutter build macos --debug
@@ -65,11 +68,11 @@ jobs:
             os: macos-latest
             command: flutter build ios --debug --no-codesign
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install JDK 17
         if: matrix.target == 'android'
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -82,10 +85,12 @@ jobs:
 
       - uses: ./.github/actions/setup
 
-      - name: Write google-services.json
-        if: matrix.target == 'android'
+      - name: Write the Firebase client files
+        if: matrix.target == 'android' || matrix.target == 'ios' || matrix.target == 'macos'
         run: dart scripts/generate_google_services.dart
 
       - name: Build
         shell: bash
+        env:
+          CL: ${{ matrix.cl }}
         run: ${{ matrix.command }}
