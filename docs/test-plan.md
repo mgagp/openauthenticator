@@ -69,7 +69,7 @@ Legend for effort: S < ½ day, M ≈ 1 day, L > 1 day.
 ## 4. Sequencing
 
 1. **Lot 1 — P1 (#1–#4)**: four test files, pure Dart, fast. Each can be a test-only PR (Claude-mergeable when green).
-2. **CI** right after Lot 1: a GitHub Actions workflow that uses `.flutter-version`, runs `pub get --enforce-lockfile`, the codegen steps, `flutter analyze`, the scoped format check and `flutter test`. It is a fork-only file, but needs the `Workflows` token permission.
+2. **CI**: done in #75 (`.github/workflows/ci.yml`, described in `CLAUDE.md`). It runs the checks and the tests, and builds every platform.
 3. **Lot 2 — P2 (#5–#8)**: introduces the shared test helpers (in-memory DB, fake secure storage, `ProviderContainer` setup) under `test/helpers/`.
 4. **Lot 3 — P3**, then **P4** as needed.
 
