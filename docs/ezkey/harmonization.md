@@ -24,7 +24,10 @@ The two tracks alternate, one item at a time, chosen by what is done and how it 
   1. a new file reached through an existing hook;
   2. an extension point upstream already has (a provider, a settings entry, a link handler);
   3. a small, ledgered edit in an upstream file (ADR-0001 D3, `integration.md` § Upstream files touched).
-- **Re-integration cost:** how easily the item re-applies after an upstream sync (ADR-0003). It counts more than the size of the diff.
+- **Divergence cost**, in three kinds. Weigh each one separately, because a change can be free on one and costly on another:
+  1. **Sync cost:** how easily the item re-applies after an upstream sync (ADR-0003). It depends on the upstream files touched and how often upstream changes them ([`../upstream-activity.md`](../upstream-activity.md)). It counts more than the size of the diff.
+  2. **Product divergence:** how far the app looks or behaves differently from upstream, even when all the code lives under `lib/ezkey/`. Example: buttons added to the TOTP zone header (H15). Changes to the parts the user knows as upstream's (TOTP list, settings, dialogs) are the user's decision.
+  3. **Offer cost:** what upstream would have to accept if the work were offered to it: new UI in its own parts, new or changed strings in its five community-maintained locales, new dependencies.
 - **UI practice:** reuse upstream's widgets and patterns (forui, `AppScaffold`, settings entries, dialogs, `Result` handling) instead of parallel ones. Upstream must still look like upstream wherever EzKey is unused.
 - **Portability:** no Android-only assumption (ADR-0004).
 - **Characterize first:** before changing an anchor point, pin its current behaviour with characterization tests (test-only PR), so a change or an upstream sync that breaks it shows up red. #55 covered the home page, `otpauth://` parsing, deep links, backups and Clear data.
@@ -49,6 +52,7 @@ First pass on 2026-10-30. Facts checked in the code; ideas are hypotheses until 
 | H12 | **Error handling** (`utils/result/`, `handler.dart`, Sentry) | EzKey has its own toasts (`ezkey/toast.dart`) and messages | Route EzKey errors through `Result` and the handler where it fits; decide what Sentry may receive (never EzKey payloads) | L2 | New code in `lib/ezkey/` using the upstream handler | Medium |
 | H13 | **Translations** (`lib/i18n/`, community-maintained through the website) | `ezkey` namespace in en and fr only; other locales fall back to English | Decide how the `ezkey` strings reach other locales without entering upstream's community pipeline | L1 | New files only | Low |
 | H14 | **Images / logos cache** (`TotpImageCacheManager`) | EzKey shows its own logo, no per-integration image | Possibly show integration or installation branding (signed instance-info, #26) through the same cache | L2 | Upstream cache manager (read only) | Low |
+| H15 | **Home zone headers** (fork code: `_TotpHeader` in `lib/ezkey/home_zone.dart`) | The EzKey header has ⓘ (about) and a settings shortcut; the TOTP header has neither | Give both headers the same pattern, or keep the TOTP header minimal on purpose (#69) | L1 | Fork code only: no sync cost, but product divergence and offer cost (§ Method) | To decide |
 
 ## Tracking
 
