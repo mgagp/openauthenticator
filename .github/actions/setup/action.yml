@@ -1,0 +1,29 @@
+name: Set up the app
+description: Installs the reference Flutter, the locked dependencies, and the generated files a fresh clone needs (CLAUDE.md, "Setup and generated files").
+
+runs:
+  using: composite
+  steps:
+    - name: Read the reference Flutter version
+      id: flutter-version
+      shell: bash
+      run: echo "version=$(tr -d '[:space:]' < .flutter-version)" >> "$GITHUB_OUTPUT"
+
+    - name: Install Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        channel: stable
+        flutter-version: ${{ steps.flutter-version.outputs.version }}
+        cache: true
+
+    - name: Get the locked dependencies
+      shell: bash
+      run: flutter pub get --enforce-lockfile
+
+    - name: Generate files
+      shell: bash
+      run: |
+        dart run open_authenticator:compile_svg
+        dart run build_runner build --delete-conflicting-outputs
+        dart run slang
+        dart run open_authenticator:generate
