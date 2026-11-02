@@ -53,6 +53,45 @@ First pass on 2026-10-30. Facts checked in the code; ideas are hypotheses until 
 | H13 | **Translations** (`lib/i18n/`, community-maintained through the website) | `ezkey` namespace in en and fr only; other locales fall back to English | Decide how the `ezkey` strings reach other locales without entering upstream's community pipeline | L1 | New files only | Low |
 | H14 | **Images / logos cache** (`TotpImageCacheManager`) | EzKey shows its own logo, no per-integration image | Possibly show integration or installation branding (signed instance-info, #26) through the same cache | L2 | Upstream cache manager (read only) | Low |
 | H15 | **Home zone headers** (fork code: `_TotpHeader` in `lib/ezkey/home_zone.dart`) | The EzKey header has ⓘ (about) and a settings shortcut; the TOTP header has neither | Give both headers the same pattern, or keep the TOTP header minimal on purpose (#69) | L1 | Fork code only: no sync cost, but product divergence and offer cost (§ Method) | To decide |
+| H16 | **Backups, export and import** (`model/backup/`) | Backups say that enrollments are not included (H2), but they keep no record of them | Add an inventory of enrollments to backups (service, tenant, server, date; never a key), so that a restore lists what to re-enroll | L1–L2 | Upstream backup format, or a separate file next to it; needs an ADR and a fixture test (backup compatibility) | Medium |
+| H17 | **Recovery after restore or device change** | Each administrator has to send a new invitation | A device-replacement or re-enrollment flow. EzKey first: it is beyond EzKey's reference app | L2 | EzKey protocol, then a new EzKey page | Low (depends on EzKey) |
+| H18 | **Delete account / unenroll** (`delete_account.dart` for the backend account) | "Remove" is local only: the server enrollment stays active (no device-side unenroll in the Auth API) | Unenroll from the server when the user removes an enrollment or clears data. EzKey first | L1 | EzKey Auth API, then the existing remove action | Medium (depends on EzKey) |
+
+## Parity with Open Authenticator's features
+
+Open Authenticator is built around a few promises: secrets encrypted under a master password, backups that can be exported and re-imported on another device, optional sync, and app unlock. EzKey cannot simply copy these promises. Its device key is created inside the hardware key store (StrongBox, TEE, later Secure Enclave or a TPM, ADR-0002), and nothing can export it. This section sorts every upstream feature by what it can mean for EzKey, so that the app keeps its character without promising what the hardware forbids.
+
+Some equivalents go beyond what EzKey's reference mobile app does, for example an inventory of enrollments in backups. Raise them with the EzKey project before building anything that needs a change on its side.
+
+**Categories:**
+- **Shared:** the feature already serves EzKey as it is.
+- **Equivalent:** a different mechanism keeps the same promise for EzKey.
+- **By design:** parity is impossible, because the key cannot leave the device. The app says so instead of staying silent.
+- **EzKey first:** an equivalent needs a change in EzKey (protocol, Auth API or SDK) before the app can offer it.
+- **Not applicable:** the feature has no EzKey meaning.
+
+| Feature (upstream) | Category | What it means for EzKey | Item |
+| --- | --- | --- | --- |
+| **Master password**: TOTP secrets encrypted with the derived key (`model/crypto/`) | Equivalent | The secret that matters, the device key, is protected by the hardware, not by the master password. The equivalent of the promise "nothing works without me" is a **gate on key use**: local confirmation before approvals (#34), possibly with the master password as the confirmation method, or a hardware key that requires user authentication. Encrypting the enrollment records under the master password adds little, since they hold no secret that can sign | H5, H4 |
+| **Change master password** (re-encrypts every TOTP) | Not applicable, unless H5 encrypts records | Nothing to re-encrypt today | H5 |
+| **Save derived key** | Not applicable | — | — |
+| **App unlock** (none, local auth, master password) | Shared | It already protects the EzKey zone. Its overlap with "confirm before approvals" is still to be explained | H4 |
+| **Backup now / Export** (encrypted file, shareable) | By design for the key; Equivalent for an **inventory** | The key cannot be backed up. A backup could carry the list of enrollments (service, tenant, server, date, no key) so that after a restore the user knows what to re-enroll. Today the dialogs only explain the absence (PR #61) | H2 → H16 |
+| **Import / Restore** a backup on another device | By design for the key; EzKey first for a **recovery flow** | Restoring cannot bring enrollments back. With an inventory, a restore could list "to re-enroll". Re-enrolling still needs a new invitation from each administrator, unless EzKey defines a device-replacement flow | H2 → H16, H17 |
+| **Sync / shared storage / account** (`model/backend/`) | By design | Each device enrolls on its own. Several devices for one person means several enrollments, which EzKey allows. Say "this device only" on the EzKey screens | H3 |
+| **Contributor Plan TOTP limit** | Not applicable | Enrollments do not count toward the TOTP limit, which exists to protect the sync server | — |
+| **Clear data** | Shared, made aware | Done: warning and immediate key deletion | H1 |
+| **Delete account** | EzKey first | The closest equivalent is unenrolling from the server. The Auth API has no device-side unenroll, so "remove" is local only and the server enrollment stays active | H18 |
+| **Add by QR, manually, deep link** | Shared / Equivalent / EzKey first | QR: done, one scanner for both (H6). Manual entry: debug only (#38); it is needed on desktop (ADR-0004 D5). Deep link: EzKey has no link format yet | H6, H8 |
+| **Search, logos, copy button** | Equivalent / Not applicable | Search over enrollments is to decide; logos through signed instance info (#26); copying has no EzKey meaning | H9, H14 |
+| **Theme, locale, onboarding, translations** | Shared / Equivalent | The theme and the locale already apply to EzKey. An intro step and the other locales are still to do | H11, H13 |
+| **Change backend URL** | Not applicable | Each enrollment carries its own Auth API URL | — |
+| **Legacy migrator** | Not applicable | — | — |
+
+**Order the categories suggest:**
+1. Equivalents that protect the user: the key-use gate (H4, H5).
+2. The inventory in backups (H16). It changes upstream's backup format or adds a file next to it, so it needs an ADR and a fixture test.
+3. "EzKey first" items (H17, H18, H8), raised in the EzKey repository; the app follows once EzKey supports them.
 
 ## Tracking
 
