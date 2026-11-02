@@ -45,3 +45,23 @@ class EzkeyHomeZoneStateEntry extends EnumSettingsEntry<EzkeyHomeZoneState> {
   @protected
   List<EzkeyHomeZoneState> get values => EzkeyHomeZoneState.values;
 }
+
+/// The EzKey zone's share of the home height while both zones are expanded (#32), remembered across
+/// launches. `0` (the default) lets the EzKey zone take the height it needs, up to a cap.
+final ezkeyHomeZoneSplitProvider = AsyncNotifierProvider.autoDispose<EzkeyHomeZoneSplitEntry, double>(EzkeyHomeZoneSplitEntry.new);
+
+/// Remembers where the user dragged the divider between the home zones.
+class EzkeyHomeZoneSplitEntry extends SettingsEntry<double> {
+  /// The smallest share the EzKey zone can be given.
+  static const double minShare = 0.25;
+
+  /// The largest share the EzKey zone can be given.
+  static const double maxShare = 0.75;
+
+  /// Creates a new EzKey home zone split entry instance.
+  EzkeyHomeZoneSplitEntry()
+    : super(
+        key: 'ezkeyHomeZoneSplit',
+        defaultValue: 0,
+      );
+}

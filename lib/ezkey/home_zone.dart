@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:ezkey_dart/ezkey_dart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -33,7 +35,10 @@ List<Widget> ezkeyHomeZones(List<Widget> totpChildren) => ezkeyAvailable && totp
 /// height without a frame, so the app looks like the original, and EzKey is a thin bar at the bottom.
 /// With the TOTP zone collapsed (#44), it is a thin bar at the top and EzKey takes the full height; the
 /// upstream content stays in the tree, hidden, so it keeps its state.
-class EzkeyHomeZones extends ConsumerWidget {
+///
+/// While both zones are expanded, a divider between them sets how the height is shared (#32): drag it,
+/// or use the screen reader's adjust actions; a double tap restores the automatic height.
+class EzkeyHomeZones extends ConsumerStatefulWidget {
   /// The upstream home content (TOTP list or empty state, and its add button).
   final Widget totpZone;
 
@@ -44,60 +49,225 @@ class EzkeyHomeZones extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<EzkeyHomeZones> createState() => _EzkeyHomeZonesState();
+}
+
+/// The EzKey home zones state.
+class _EzkeyHomeZonesState extends ConsumerState<EzkeyHomeZones> {
+  /// How much a screen reader's adjust action changes the EzKey zone's share.
+  static const double _shareStep = 0.1;
+
+  /// The smallest EzKey zone height the divider allows: its header, check and add buttons stay usable.
+  static const double _minEzkeyHeight = 240;
+
+  /// The smallest TOTP zone height the divider allows.
+  static const double _minTotpHeight = 160;
+
+  /// Finds the EzKey zone, to measure the automatic height a drag starts from.
+  final GlobalKey _ezkeyZoneKey = GlobalKey();
+
+  /// The height the two zones share, from the last layout.
+  double _sharedHeight = 0;
+
+  /// The EzKey zone's share while the divider is being dragged, saved when the drag ends.
+  double? _dragShare;
+
+  @override
+  Widget build(BuildContext context) {
     bool hasEnrollments = ref.watch(ezkeyInstallationsProvider).value?.isNotEmpty ?? false;
     EzkeyHomeZoneState state = ref.watch(ezkeyHomeZoneStateProvider).value ?? .auto;
     bool expanded = state.isExpanded(hasEnrollments: hasEnrollments);
     bool totpExpanded = state.isTotpExpanded;
+    double savedShare = ref.watch(ezkeyHomeZoneSplitProvider).value ?? 0;
     // The same widget types in every state, so the upstream content keeps its state.
     return SafeArea(
       top: false,
-      child: Column(
-        crossAxisAlignment: .stretch,
-        children: [
-          AnimatedSize(
-            duration: const Duration(milliseconds: 200),
-            alignment: .topCenter,
-            child: totpExpanded ? const SizedBox(width: double.infinity) : const _TotpCollapsedBar(),
-          ),
-          Expanded(
-            flex: totpExpanded ? 1 : 0,
-            child: SizedBox(
-              height: totpExpanded ? null : 0,
-              child: Visibility(
-                visible: totpExpanded,
-                maintainState: true,
-                child: _ZoneFrame(
-                  framed: expanded,
-                  margin: const EdgeInsets.fromLTRB(kSpace, 0, kSpace, kSpace),
-                  child: Column(
-                    crossAxisAlignment: .stretch,
-                    children: [
-                      expanded ? const _TotpHeader() : const SizedBox.shrink(),
-                      Expanded(child: totpZone),
-                    ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          _sharedHeight = constraints.maxHeight - _SplitHandle.height;
+          // Too little height for both minimums (small window, landscape): no divider.
+          bool split = expanded && totpExpanded && _minShare <= _maxShare;
+          // A share of 0 means automatic: the EzKey zone takes the height it needs. A remembered share is
+          // kept within this screen's limits.
+          double share = split ? (_dragShare ?? (savedShare > 0 ? _clampShare(savedShare) : 0)) : 0;
+          int ezkeyFlex = totpExpanded ? (share * 1000).round() : 1;
+          int totpFlex = totpExpanded ? (share > 0 ? 1000 - ezkeyFlex : 1) : 0;
+          return Column(
+            crossAxisAlignment: .stretch,
+            children: [
+              AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                alignment: .topCenter,
+                child: totpExpanded ? const SizedBox(width: double.infinity) : const _TotpCollapsedBar(),
+              ),
+              Expanded(
+                flex: totpFlex,
+                child: SizedBox(
+                  height: totpExpanded ? null : 0,
+                  child: Visibility(
+                    visible: totpExpanded,
+                    maintainState: true,
+                    child: _ZoneFrame(
+                      framed: expanded,
+                      // The divider holds the space between the zones.
+                      margin: EdgeInsets.fromLTRB(kSpace, 0, kSpace, split ? 0 : kSpace),
+                      child: Column(
+                        crossAxisAlignment: .stretch,
+                        children: [
+                          expanded ? const _TotpHeader() : const SizedBox.shrink(),
+                          Expanded(child: widget.totpZone),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
-          Expanded(
-            flex: totpExpanded ? 0 : 1,
-            child: AnimatedSize(
-              duration: const Duration(milliseconds: 200),
-              alignment: .bottomCenter,
-              child: expanded
-                  ? _ZoneFrame(
-                      margin: EdgeInsets.fromLTRB(kSpace, totpExpanded ? 0 : kSpace, kSpace, kSpace),
-                      child: EzkeyHomeZone(fill: !totpExpanded),
+              split
+                  ? _SplitHandle(
+                      share: share > 0 ? share : _measuredShare(),
+                      step: _shareStep,
+                      onDragStart: _startDrag,
+                      onDrag: (delta) => setState(() => _dragShare = _clampShare(_dragShare! - delta / _sharedHeight)),
+                      onDragEnd: _endDrag,
+                      onAdjust: (step) => _saveShare(_clampShare((share > 0 ? share : _measuredShare()) + step * _shareStep)),
+                      onReset: () => _saveShare(0),
                     )
-                  : const _CollapsedBar(),
-            ),
-          ),
-        ],
+                  : const SizedBox.shrink(),
+              Expanded(
+                key: _ezkeyZoneKey,
+                flex: ezkeyFlex,
+                child: AnimatedSize(
+                  duration: const Duration(milliseconds: 200),
+                  alignment: .bottomCenter,
+                  child: expanded
+                      ? _ZoneFrame(
+                          margin: EdgeInsets.fromLTRB(kSpace, totpExpanded ? 0 : kSpace, kSpace, kSpace),
+                          child: EzkeyHomeZone(fill: !totpExpanded || share > 0),
+                        )
+                      : const _CollapsedBar(),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
+
+  /// The EzKey zone's share of the height in the last layout (automatic height included).
+  double _measuredShare() {
+    RenderBox? box = _ezkeyZoneKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize || _sharedHeight <= 0) {
+      return _clampShare(0);
+    }
+    return _clampShare(box.size.height / _sharedHeight);
+  }
+
+  /// The smallest share the EzKey zone can have on this screen.
+  double get _minShare => _sharedHeight <= 0 ? 1 : math.max(EzkeyHomeZoneSplitEntry.minShare, _minEzkeyHeight / _sharedHeight);
+
+  /// The largest share the EzKey zone can have on this screen.
+  double get _maxShare => _sharedHeight <= 0 ? 0 : math.min(EzkeyHomeZoneSplitEntry.maxShare, 1 - _minTotpHeight / _sharedHeight);
+
+  /// Keeps [share] between the limits, so neither zone gets too small to use.
+  double _clampShare(double share) => share.clamp(_minShare, _maxShare);
+
+  /// Starts a drag from the current share.
+  void _startDrag() {
+    double saved = ref.read(ezkeyHomeZoneSplitProvider).value ?? 0;
+    setState(() => _dragShare = saved > 0 ? saved : _measuredShare());
+  }
+
+  /// Ends a drag, and remembers where it ended.
+  void _endDrag() {
+    double? share = _dragShare;
+    if (share != null) {
+      _saveShare(share);
+    }
+  }
+
+  /// Remembers [share] (`0` for automatic), and drops the drag value.
+  void _saveShare(double share) {
+    ref.read(ezkeyHomeZoneSplitProvider.notifier).changeValue(share);
+    setState(() => _dragShare = null);
+  }
+}
+
+/// The divider between the expanded zones: a grip to drag, a slider for screen readers.
+class _SplitHandle extends StatelessWidget {
+  /// The divider height, which is also the space between the zones.
+  static const double height = 24;
+
+  /// The EzKey zone's share, measured while automatic.
+  final double share;
+
+  /// How much one adjust action changes [share].
+  final double step;
+
+  /// Called when a drag starts.
+  final VoidCallback onDragStart;
+
+  /// Called with the vertical distance of each drag move (downwards is positive).
+  final ValueChanged<double> onDrag;
+
+  /// Called when a drag ends.
+  final VoidCallback onDragEnd;
+
+  /// Called with `1` to make the EzKey zone bigger, `-1` to make it smaller.
+  final ValueChanged<int> onAdjust;
+
+  /// Called to restore the automatic height.
+  final VoidCallback onReset;
+
+  /// Creates a new split handle instance.
+  const _SplitHandle({
+    required this.share,
+    required this.step,
+    required this.onDragStart,
+    required this.onDrag,
+    required this.onDragEnd,
+    required this.onAdjust,
+    required this.onReset,
+  });
+
+  /// Describes [share] for screen readers.
+  static String _describe(double share) => translations.ezkey.home.splitValue(percent: (share * 100).round());
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    key: const ValueKey('ezkey-home-split'),
+    slider: true,
+    label: translations.ezkey.home.split,
+    value: _describe(share),
+    increasedValue: _describe(share + step),
+    decreasedValue: _describe(share - step),
+    hint: translations.ezkey.home.splitReset,
+    onIncrease: () => onAdjust(1),
+    onDecrease: () => onAdjust(-1),
+    child: MouseRegion(
+      cursor: SystemMouseCursors.resizeRow,
+      child: GestureDetector(
+        behavior: .opaque,
+        onVerticalDragStart: (details) => onDragStart(),
+        onVerticalDragUpdate: (details) => onDrag(details.delta.dy),
+        onVerticalDragEnd: (details) => onDragEnd(),
+        onDoubleTap: onReset,
+        child: SizedBox(
+          height: height,
+          child: Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: context.theme.colors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 /// Expands or collapses the EzKey home zone, and remembers the choice. Collapsing it expands the TOTP zone.

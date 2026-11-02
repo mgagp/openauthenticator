@@ -14,7 +14,10 @@
       "other": "$n codes"
     },
     "totpExpand": "Expand the TOTP codes",
-    "totpCollapse": "Collapse the TOTP codes"
+    "totpCollapse": "Collapse the TOTP codes",
+    "split": "Divider between the TOTP codes and EzKey",
+    "splitValue": "EzKey: $percent %",
+    "splitReset": "Double-tap to restore the automatic height"
   },
   "about": {
     "title": "About EzKey",
