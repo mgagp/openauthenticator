@@ -4,9 +4,10 @@ import 'package:forui/forui.dart';
 import 'package:open_authenticator/ezkey/local_confirmation.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/pages/settings/entries/widgets.dart';
+import 'package:open_authenticator/utils/app_unlock_interaction.dart';
 
 /// "Confirm before approvals": the user's approval protection, shown as an upstream settings
-/// checkbox. Turning it off asks for the device credential first (#34).
+/// checkbox. Turning it off asks for a confirmation first (#34, #83).
 class EzkeyApprovalSecurityTile extends CheckboxSettingsEntryWidget<EzkeyApprovalSecurityEntry, EzkeyApprovalSecurity> {
   /// Creates a new EzKey approval security tile instance.
   EzkeyApprovalSecurityTile({
@@ -22,5 +23,6 @@ class EzkeyApprovalSecurityTile extends CheckboxSettingsEntryWidget<EzkeyApprova
   bool isEnabled(EzkeyApprovalSecurity? value) => value == .confirmBeforeApprovals;
 
   @override
-  void changeValue(BuildContext context, WidgetRef ref, bool newValue) => ref.read(ezkeyApprovalSecurityProvider.notifier).change(newValue ? .confirmBeforeApprovals : .standard);
+  void changeValue(BuildContext context, WidgetRef ref, bool newValue) =>
+      ref.read(ezkeyApprovalSecurityProvider.notifier).change(newValue ? .confirmBeforeApprovals : .standard, context.appUnlockInteraction);
 }

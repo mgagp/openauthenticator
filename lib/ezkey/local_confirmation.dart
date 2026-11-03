@@ -11,7 +11,12 @@ import 'package:local_auth_darwin/types/auth_messages_macos.dart';
 // ignore: depend_on_referenced_packages
 import 'package:local_auth_windows/local_auth_windows.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
+import 'package:open_authenticator/model/app_unlock/interaction.dart';
+import 'package:open_authenticator/model/app_unlock/methods/method.dart';
+import 'package:open_authenticator/model/app_unlock/reason.dart';
+import 'package:open_authenticator/model/settings/app_unlock_method.dart';
 import 'package:open_authenticator/model/settings/entry.dart';
+import 'package:open_authenticator/utils/result/result.dart';
 
 /// The approval protection the user chose, as in the EzKey reference app (#34).
 enum EzkeyApprovalSecurity {
@@ -39,14 +44,15 @@ class EzkeyApprovalSecurityEntry extends EnumSettingsEntry<EzkeyApprovalSecurity
   List<EzkeyApprovalSecurity> get values => EzkeyApprovalSecurity.values;
 
   /// Changes the protection to [value] and returns whether it changed. Raising it is immediate;
-  /// lowering it first asks for the device credential, so a holder of an unlocked phone cannot turn
-  /// the protection off just before approving (EzKey reference app, "settings downgrade" finding).
-  Future<bool> change(EzkeyApprovalSecurity value) async {
+  /// lowering it first asks for a confirmation (see [confirmWithAppUnlockMethod]) through
+  /// [interaction], so a holder of an unlocked phone cannot turn the protection off just before
+  /// approving (EzKey reference app, "settings downgrade" finding).
+  Future<bool> change(EzkeyApprovalSecurity value, AppUnlockInteraction interaction) async {
     EzkeyApprovalSecurity current = await future;
     if (value == current) {
       return false;
     }
-    if (value == .standard && !await ref.read(ezkeyDowngradeConfirmationProvider)()) {
+    if (value == .standard && !await ref.read(ezkeyDowngradeConfirmationProvider)(interaction)) {
       return false;
     }
     await changeValue(value);
@@ -65,26 +71,46 @@ bool ezkeyApprovalNeedsConfirmation(EzkeyEnrollment enrollment, EzkeyApprovalSec
 /// The enrollment-level policy: not carried by the protocol yet, so never required.
 bool _enrollmentPolicyRequiresConfirmation(EzkeyEnrollment enrollment) => false;
 
-/// Asks the user to confirm an approval with the device credential or a biometric.
+/// Asks the user to confirm an approval (see [confirmWithAppUnlockMethod]).
 ///
 /// Contract §4 (ADR-0002 decision 2): Approve only, never Deny or leave-as-deny. This is an app-level
 /// presence check, not a proof the server can verify.
-final ezkeyApprovalConfirmationProvider = Provider<Future<bool> Function()>(
+final ezkeyApprovalConfirmationProvider = Provider<Future<bool> Function(AppUnlockInteraction interaction)>(
   (ref) =>
-      () => confirmWithDevice(
+      (interaction) => confirmWithAppUnlockMethod(
+        ref,
+        interaction,
         title: translations.ezkey.attempt.confirmTitle,
         reason: translations.ezkey.attempt.confirmReason,
       ),
 );
 
-/// Asks the user to confirm turning the approval protection off.
-final ezkeyDowngradeConfirmationProvider = Provider<Future<bool> Function()>(
+/// Asks the user to confirm turning the approval protection off (see [confirmWithAppUnlockMethod]).
+final ezkeyDowngradeConfirmationProvider = Provider<Future<bool> Function(AppUnlockInteraction interaction)>(
   (ref) =>
-      () => confirmWithDevice(
+      (interaction) => confirmWithAppUnlockMethod(
+        ref,
+        interaction,
         title: translations.ezkey.security.downgradeTitle,
         reason: translations.ezkey.security.downgradeReason,
       ),
 );
+
+/// The device credential prompt, replaceable in tests (see [confirmWithDevice]).
+final ezkeyDeviceConfirmationProvider = Provider<Future<bool> Function({required String title, required String reason})>((ref) => confirmWithDevice);
+
+/// Returns whether the user confirmed with the app unlock method they chose (#83): an EzKey approval
+/// is one of upstream's sensitive actions, so the master password or upstream's local auth prompt is
+/// asked through [interaction]. Without an app unlock method, upstream would ask for the master
+/// password; the device credential is asked instead, with [title] and [reason], as before #83.
+Future<bool> confirmWithAppUnlockMethod(Ref ref, AppUnlockInteraction interaction, {required String title, required String reason}) async {
+  String unlockMethodId = await ref.read(appUnlockMethodSettingsEntryProvider.future);
+  if (unlockMethodId == NoneAppUnlockMethod.kMethodId) {
+    return await ref.read(ezkeyDeviceConfirmationProvider)(title: title, reason: reason);
+  }
+  Result result = await ref.read(appUnlockMethodSettingsEntryProvider.notifier).unlockWithCurrentMethod(interaction, UnlockReason.sensibleAction);
+  return result is ResultSuccess;
+}
 
 /// Returns whether the user confirmed with the device credential or a biometric. A device without a
 /// screen lock has nothing to confirm with, so the action goes on; a cancelled or failed prompt

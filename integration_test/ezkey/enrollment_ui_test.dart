@@ -33,7 +33,7 @@ void main() {
       // The emulator has no screen lock to confirm with; the Pixel pilot covers the real prompt.
       ProviderContainer container = ProviderContainer(
         overrides: [
-          ezkeyApprovalConfirmationProvider.overrideWithValue(() async => true),
+          ezkeyApprovalConfirmationProvider.overrideWithValue((_) async => true),
         ],
       );
       addTearDown(container.dispose);

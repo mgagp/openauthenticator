@@ -77,7 +77,7 @@ void main() {
         overrides: [
           ezkeyAuthenticatorProvider.overrideWith((ref) async => authenticator),
           ezkeyApprovalSecurityProvider.overrideWith(() => _MemorySecurity(security)),
-          ezkeyApprovalConfirmationProvider.overrideWithValue(() async {
+          ezkeyApprovalConfirmationProvider.overrideWithValue((_) async {
             confirmations++;
             return confirmed;
           }),
