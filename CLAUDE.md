@@ -18,12 +18,19 @@ scripts/with-env.sh                          # no args: print resolved JAVA_HOME
 
 Flutter does not honor `JAVA_HOME` when Android Studio's bundled JBR is installed (its `flutter config --jdk-dir` setting wins), so the wrapper also syncs that user-global setting to `JAVA_HOME`. Do not search the filesystem for a JDK; read `dev-env.local`. If it is missing, ask the user for the paths.
 
-### Decision: desktop targets disabled (Android is the primary target)
+### Windows desktop target (Linux stays disabled)
 
-- **Decision** (issue #3, 2026-10-26): the Windows desktop target is out of scope for now (no Visual Studio needed), and Linux cannot be built on the Windows dev machine anyway. Both are disabled in Flutter's user-global config: `flutter config --no-enable-windows-desktop --no-enable-linux-desktop`.
-- **Why**: when a project has a `windows/` or `linux/` folder *and* that desktop target is enabled (the default in current Flutter), every `flutter pub get` creates `<platform>/flutter/ephemeral/.plugin_symlinks/` — symlinks the CMake build uses to reach native plugin code (`flutter_tools/lib/src/flutter_plugins.dart`, `createPluginSymlinks`). Windows only lets a non-admin create symlinks in Developer Mode, so `pub get` failed with "Building with plugins requires symlink support" (`ERROR_PRIVILEGE_NOT_HELD`). Android/iOS never need these symlinks. Disabling the unused targets avoids changing a system security setting.
-- **Consequence**: `windows/` and `linux/` stay in the repo untouched but are ignored by the tooling; `flutter build windows|linux` and those devices are unavailable. The setting is per user account, so it affects every Flutter project on the machine. `flutter doctor` still reports Visual Studio as missing — expected.
-- **To re-enable** (when Windows becomes a target): enable Windows Developer Mode (`start ms-settings:developers`) or work from an elevated terminal, install Visual Studio with the "Desktop development with C++" workload, run `flutter config --enable-windows-desktop` (and/or `--enable-linux-desktop`), then `flutter pub get` and `flutter doctor`. Update this section.
+- **Current state** (issue #49, 2026-11-03, reverses #3 for Windows): the Windows desktop target is enabled and builds locally. Prerequisites on the dev machine: Windows Developer Mode on (plugin symlinks, see below) and **Visual Studio Build Tools 2022** with the "Desktop development with C++" workload (`winget install Microsoft.VisualStudio.2022.BuildTools --override "--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended --passive --wait"`). Nothing to add to `PATH`: Flutter finds Visual Studio through `vswhere`.
+  ```sh
+  scripts/with-env.sh flutter build windows --debug     # ~6 min cold -> build/windows/x64/runner/Debug/open_authenticator.exe
+  scripts/with-env.sh flutter run -d windows
+  ```
+- **Why 2022 and not 2026**: VS 2026's STL rejects `<experimental/coroutine>`, which upstream's `local_auth_windows` still includes (error STL1011). CI runs on VS 2026 (`windows-latest`) and silences it with `-D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS` (`.github/workflows/ci.yml`); locally, 2022 builds with no workaround.
+- **Expected warnings**: `LNK4099` "PDB 'libcurl-d.pdb' was not found" from the prebuilt Firebase C++ SDK (debug symbols missing from upstream's dependency); harmless.
+- **Plugin symlinks**: when a desktop target is enabled, `flutter pub get` and the build create `<platform>/flutter/ephemeral/.plugin_symlinks/`, symlinks the CMake build uses to reach native plugin code (`flutter_tools/lib/src/flutter_plugins.dart`, `createPluginSymlinks`). Windows only lets a non-admin create symlinks in Developer Mode; without it, `pub get` fails with "Building with plugins requires symlink support" (`ERROR_PRIVILEGE_NOT_HELD`). This is why #3 disabled the target.
+- **Generated files**: like `macos/Flutter/GeneratedPluginRegistrant.swift`, `pub get` rewrites `windows/flutter/generated_plugin_registrant.{cc,h}` and `generated_plugins.cmake` with LF endings, which git reports as modified with no content diff. Discard them with `git restore`.
+- **Linux** stays disabled (`flutter config --no-enable-linux-desktop`): it cannot be built on this Windows machine. CI builds it. The `flutter config` settings are per user account, so they affect every Flutter project on the machine.
+- **EzKey on Windows**: hidden until there is a Windows key store (ADR-0004).
 
 ## Setup and generated files
 
