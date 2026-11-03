@@ -9,7 +9,7 @@ This fork follows upstream exactly (CLAUDE.md, "Upstream alignment", issue #8). 
 
 ## Decision
 
-- **D1, dependency reference.** `ezkey_dart` is a git dependency of `pubspec.yaml`, `url: https://github.com/mgagp/ezkey`, `path: ezkey_dart`, pinned with `ref:` to a commit. `pubspec.lock` records the resolved commit. Re-pin to `main` when mgagp/ezkey#1068 (SDK 0.3.0) merges, and re-pin deliberately on every SDK update (one PR, tests run).
+- **D1, dependency reference.** `ezkey_dart` is a git dependency of `pubspec.yaml`, `url: https://github.com/mgagp/ezkey`, `path: ezkey_dart`, pinned with `ref:` to a commit. `pubspec.lock` records the resolved commit. It points to a commit on EzKey `main` (since #29, 2026-11-03: `d5307bc`, the merge of mgagp/ezkey#1068, SDK 0.3.0). Re-pin deliberately on every SDK update (one PR, tests run).
 - **D2, native key store as a local plugin.** The Android Keystore implementation lives in a small Flutter plugin package inside the fork (`packages/ezkey_keystore/`, Android only, Kotlin), referenced by path. Flutter registers plugins automatically, so `android/app/.../MainActivity.kt` (upstream) stays untouched.
 - **D3, code placement.** EzKey Dart code goes in new files under `lib/ezkey/`. Upstream files only receive the hooks the UI needs (a route, an entry point). Each PR lists the upstream files it touches, and [`docs/ezkey/integration.md`](../ezkey/integration.md) keeps the cumulative ledger.
 - **D4, new transitive packages.** The SDK brings `cryptography`, `pointycastle` and `unorm_dart`. `http` and `args` are already in the lock; no version conflict was found (2026-10-27).
