@@ -1,0 +1,109 @@
+name: CI
+
+# Fork-only workflow (#75): checks the code and builds every platform upstream ships (ADR-0004).
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Analyze, format and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Check the format of the files that differ from upstream
+        run: |
+          git remote add upstream https://github.com/openauthenticator-app/openauthenticator.git
+          git fetch --quiet --depth=1 upstream main
+          files=$( (git diff --name-only --diff-filter=d FETCH_HEAD -- '*.dart'; git ls-files --others --exclude-standard -- '*.dart') | sort -u)
+          [ -z "$files" ] || dart format --output=none --set-exit-if-changed $files
+
+      - name: Test
+        run: flutter test
+
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: android
+            os: ubuntu-latest
+            command: flutter build apk --debug
+          - target: linux
+            os: ubuntu-latest
+            command: flutter build linux --debug
+          - target: windows
+            os: windows-latest
+            command: flutter build windows --debug
+            # Visual Studio 2026 rejects <experimental/coroutine>, which local_auth_windows still uses (an
+            # upstream dependency, left as is). MSBuild passes CL to every compiler call.
+            # The dash form, because Git Bash rewrites a value starting with a slash as a path.
+            cl: -D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS
+          # Intel runners: the arm64 pool repeatedly failed to pick up jobs ("not acquired by Runner",
+          # capacity constraints, 2026-11-02). Building on either architecture checks the same code.
+          - target: macos
+            os: macos-15-intel
+            # Upstream's project signs with its own Apple team; Flutter passes FLUTTER_XCODE_* to xcodebuild as
+            # build settings, which turns signing off for this check build.
+            command: FLUTTER_XCODE_CODE_SIGNING_ALLOWED=NO FLUTTER_XCODE_CODE_SIGNING_REQUIRED=NO flutter build macos --debug
+          - target: ios
+            os: macos-15-intel
+            command: flutter build ios --debug --no-codesign
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install JDK 17
+        if: matrix.target == 'android'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # Plugins use APIs of the newest Apple SDKs (e.g. NWPath.isUltraConstrained), which the image's default
+      # Xcode lacks.
+      - name: Select the newest stable Xcode
+        if: matrix.target == 'macos' || matrix.target == 'ios'
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Install the Linux build dependencies
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libsecret-1-dev libpolkit-gobject-1-dev libcurl4-openssl-dev
+
+      - uses: ./.github/actions/setup
+
+      - name: Write the Firebase client files
+        if: matrix.target == 'android' || matrix.target == 'ios' || matrix.target == 'macos'
+        run: dart scripts/generate_google_services.dart
+
+      - name: Build
+        shell: bash
+        env:
+          CL: ${{ matrix.cl }}
+        run: ${{ matrix.command }}

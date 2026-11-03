@@ -53,12 +53,12 @@ flutter run
 Debug build on a physical device, with no change to upstream files:
 
 ```sh
-scripts/with-env.sh dart scripts/generate_google_services.dart   # once: writes gitignored android/app/google-services.json
+scripts/with-env.sh dart scripts/generate_google_services.dart   # once: writes the gitignored Firebase client files (Android, iOS, macOS)
 scripts/with-env.sh flutter build apk --debug                    # ~6.5 min cold, ~226 MB (all ABIs, JIT)
 adb install build/app/outputs/flutter-apk/app-debug.apk          # or: scripts/with-env.sh flutter run -d <device>
 ```
 
-- **`google-services.json`**: the upstream Gradle file applies the Google Services plugin, which refuses to build without this file, and upstream does not ship it. `scripts/generate_google_services.dart` derives it from the Android options in the upstream-tracked `lib/model/migrator/firebase_options.dart` (same Firebase project; these are public client identifiers, not secrets). Firebase is only used by the legacy-storage migrator. Do not create our own Firebase project.
+- **`google-services.json`**: the upstream Gradle file applies the Google Services plugin, which refuses to build without this file, and upstream does not ship it. The Xcode projects likewise list `ios/Runner/GoogleService-Info.plist` and `macos/Runner/GoogleService-Info.plist` as resources. `scripts/generate_google_services.dart` derives all three from the matching options in the upstream-tracked `lib/model/migrator/firebase_options.dart` (same Firebase project; these are public client identifiers, not secrets). Firebase is only used by the legacy-storage migrator. Do not create our own Firebase project.
 - **NDK**: Flutter 3.47 requires NDK `28.2.13676358`. Gradle's auto-install fails ("Package ndk not found"): in cmdline-tools 23.0, `sdkmanager` is a deprecated shim over the new `android` CLI, and the `;` in `ndk;<version>` gets split. Install it manually with the new syntax: `"$ANDROID_HOME/cmdline-tools/latest/bin/android.exe" --no-metrics sdk install ndk/28.2.13676358` (list packages with `... sdk list`). Do the same when a future Flutter needs another NDK.
 - **Release builds** need upstream's signing key (`android/key.properties`, not in the repo), so only debug (or profile) builds are possible here.
 - **App identity**: the build keeps the upstream `applicationId` `app.openauthenticator` (no `.dev` suffix, to avoid divergence). It cannot be installed over the Play Store app (signature mismatch). The official app was uninstalled from the dev Pixel on 2026-10-26 with the user's explicit consent. **Never uninstall or replace an installed `app.openauthenticator` on any device without asking**: uninstalling wipes its TOTP data.
@@ -114,7 +114,7 @@ Fork-only addition (#16): `integration_test` (`sdk: flutter`) is in `dev_depende
 - **Pixel (StrongBox, final checks):** only with the user's go-ahead; installing a build replaces the app on the phone (see "Android device build").
 - Recreate the AVD if missing: `echo no | "$LOCALAPPDATA/Android/Sdk/cmdline-tools/latest/bin/avdmanager.bat" create avd -n oa_api35 -k "system-images;android-35;google_apis_playstore;x86_64" -d pixel_7` (needs `JAVA_HOME` from `dev-env.local`).
 
-The only CI workflow is `.github/workflows/docs.yml` (docs dispatch): nothing builds or tests the app in CI yet (when added, it should use `.flutter-version` and `--enforce-lockfile`).
+**CI** (fork-only, #75): `.github/workflows/ci.yml` runs on every PR to `main` and every push to it. A Linux job runs `pub get --enforce-lockfile`, the codegen, `flutter analyze`, the scoped format check and `flutter test`. A build matrix makes a debug build for Android, Linux, Windows, macOS and iOS (`--no-codesign`). The shared setup (Flutter from `.flutter-version`, the lock, the codegen) is `.github/actions/setup`. Pushing a workflow file needs a token with the `Workflows` permission. Upstream's `docs.yml` (docs dispatch) is left as is.
 
 ## Architecture
 
@@ -159,7 +159,7 @@ Work happens on the fork `mgagp/openauthenticator` (`origin`). `upstream` is `op
    - **The user merges** anything whose correctness needs human judgment: app behavior and UI, crypto/auth/sync logic, security-sensitive or data-migration changes, and changes to this workflow or to `CLAUDE.md` itself.
    - When unsure which category applies, leave it to the user.
 
-There is no CI yet, so checks are run locally (through `scripts/with-env.*`) and reported in the PR.
+Checks run locally (through `scripts/with-env.*`) and in CI; the PR reports both. A PR whose CI is red is not merged.
 
 ## Packaging
 
