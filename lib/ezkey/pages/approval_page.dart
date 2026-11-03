@@ -8,6 +8,7 @@ import 'package:open_authenticator/ezkey/messages.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/spacing.dart';
+import 'package:open_authenticator/utils/app_unlock_interaction.dart';
 import 'package:open_authenticator/widgets/app_scaffold.dart';
 import 'package:open_authenticator/widgets/button_text.dart';
 import 'package:open_authenticator/widgets/clickable.dart';
@@ -207,7 +208,10 @@ class _EzkeyApprovalPageState extends ConsumerState<EzkeyApprovalPage> {
     if (!ezkeyApprovalNeedsConfirmation(widget.enrollment, security)) {
       return true;
     }
-    return await ref.read(ezkeyApprovalConfirmationProvider)();
+    if (!mounted) {
+      return false;
+    }
+    return await ref.read(ezkeyApprovalConfirmationProvider)(context.appUnlockInteraction);
   }
 
   /// Denies the attempt once when the user leaves it undecided (contract §3): no prompt, no retry,

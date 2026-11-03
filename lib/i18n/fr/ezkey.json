@@ -63,7 +63,7 @@
     "title": "Sécurité",
     "confirm": {
       "title": "Confirmer avant d'approuver",
-      "subtitle": "Demander votre empreinte, votre visage ou le code de l'appareil avant d'approuver une connexion. Refuser ne le demande jamais."
+      "subtitle": "Avant d'approuver une connexion, demander ce qui déverrouille l'app : mot de passe maître, empreinte, visage ou code de l'appareil. Refuser ne le demande jamais."
     },
     "downgradeTitle": "Désactiver la confirmation",
     "downgradeReason": "Confirmez que c'est vous pour ne plus confirmer avant d'approuver."

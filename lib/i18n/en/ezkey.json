@@ -63,7 +63,7 @@
     "title": "Security",
     "confirm": {
       "title": "Confirm before approvals",
-      "subtitle": "Ask for your fingerprint, face or device code before approving a sign-in. Declining never asks."
+      "subtitle": "Before approving a sign-in, ask for what unlocks the app: master password, fingerprint, face or device code. Declining never asks."
     },
     "downgradeTitle": "Turn off confirmation",
     "downgradeReason": "Confirm it is you to stop confirming before approvals."
