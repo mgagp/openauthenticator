@@ -33,6 +33,7 @@ This direction evolves with the project. When it changes, update this section in
 | [0002](adr/0002-ezkey-key-and-secret-storage.md) | Where the EzKey device key and enrollment secrets live on Android | Accepted |
 | [0003](adr/0003-ezkey-on-the-home-screen.md) | How EzKey appears on the home screen, in phases, and how upstream changes are judged by re-integration | Accepted |
 | [0004](adr/0004-ezkey-multi-platform-posture.md) | How EzKey stays portable to every upstream platform: availability rule, one key store channel contract, tiers, desktop enrollment | Proposed |
+| [0005](adr/0005-ezkey-enrollment-inventory-in-backups.md) | EzKey enrollment inventory inside the backup file, encrypted, display data only, so a restore lists what to re-enroll | Accepted |
 
 ## Writing an ADR
 

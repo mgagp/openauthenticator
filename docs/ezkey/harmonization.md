@@ -53,7 +53,7 @@ First pass on 2026-10-30. Facts checked in the code; ideas are hypotheses until 
 | H13 | **Translations** (`lib/i18n/`, community-maintained through the website) | `ezkey` namespace in en and fr only; other locales fall back to English | Decide how the `ezkey` strings reach other locales without entering upstream's community pipeline | L1 | New files only | Low |
 | H14 | **Images / logos cache** (`TotpImageCacheManager`) | EzKey shows its own logo, no per-integration image | Possibly show integration or installation branding (signed instance-info, #26) through the same cache | L2 | Upstream cache manager (read only) | Low |
 | H15 | **Home zone headers** (fork code: `_TotpHeader` in `lib/ezkey/home_zone.dart`) | The EzKey header has ⓘ (about) and a settings shortcut; the TOTP header has neither | Give both headers the same pattern, or keep the TOTP header minimal on purpose (#69) | L1 | Fork code only: no sync cost, but product divergence and offer cost (§ Method) | To decide |
-| H16 | **Backups, export and import** (`model/backup/`) | Backups say that enrollments are not included (H2), but they keep no record of them | Add an inventory of enrollments to backups (service, tenant, server, date; never a key), so that a restore lists what to re-enroll | L1–L2 | Upstream backup format, or a separate file next to it; needs an ADR and a fixture test (backup compatibility) | Medium |
+| H16 | **Backups, export and import** (`model/backup/`) | Backups say that enrollments are not included (H2), but they keep no record of them | Add an inventory of enrollments to backups (service, tenant, server, date; never a key), so that a restore lists what to re-enroll | L1–L2 | Upstream backup format. **Decided in [ADR-0005](../adr/0005-ezkey-enrollment-inventory-in-backups.md) (#89)**: a fourth key inside the `.bak`, encrypted with the backup password; compatibility pinned by a fixture test. Implementation to follow | Medium |
 | H17 | **Recovery after restore or device change** | Each administrator has to send a new invitation | A device-replacement or re-enrollment flow. EzKey first: it is beyond EzKey's reference app | L2 | EzKey protocol, then a new EzKey page | Low (depends on EzKey) |
 | H18 | **Delete account / unenroll** (`delete_account.dart` for the backend account) | "Remove" is local only: the server enrollment stays active (no device-side unenroll in the Auth API) | Unenroll from the server when the user removes an enrollment or clears data. EzKey first | L1 | EzKey Auth API, then the existing remove action | Medium (depends on EzKey) |
 
@@ -90,7 +90,7 @@ Some equivalents go beyond what EzKey's reference mobile app does, for example a
 
 **Order the categories suggest:**
 1. Equivalents that protect the user: the key-use gate (H4, H5).
-2. The inventory in backups (H16). It changes upstream's backup format or adds a file next to it, so it needs an ADR and a fixture test.
+2. The inventory in backups (H16). Decided in ADR-0005 (#89); implementation to follow.
 3. "EzKey first" items (H17, H18, H8), raised in the EzKey repository; the app follows once EzKey supports them.
 
 ## Tracking

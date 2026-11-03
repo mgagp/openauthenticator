@@ -217,6 +217,21 @@ void main() {
       expect([totps['fixture-totp-2']!.algorithm, totps['fixture-totp-2']!.digits, totps['fixture-totp-2']!.validity], [Algorithm.sha256, 8, const Duration(seconds: 60)]);
     });
 
+    test('ignores a key it does not know, such as the EzKey inventory, and still restores both TOTPs (ADR-0005)', () async {
+      CryptoStore otherDevice = CryptoStore.fromPassword('another-device-password', Salt.generate());
+      BackupStore store = backupStore(store: otherDevice);
+      backups.createSync(recursive: true);
+      Map<String, dynamic> content = jsonDecode(File('test/model/backup/fixtures/1793500000000.bak').readAsStringSync());
+      content['ezkeyEnrollments'] = base64.encode(utf8.encode('opaque to upstream'));
+      File withInventory = File('${documents.path}${Platform.pathSeparator}1793500000000.bak')..writeAsStringSync(jsonEncode(content));
+
+      Result<BackupPath> imported = await store.import(withInventory);
+      Result<Backup> restored = await store.restoreBackup((imported as ResultSuccess<BackupPath>).value, _fixturePassword);
+
+      expect(restored, isA<ResultSuccess<Backup>>());
+      expect([for (Totp totp in replacements.single) totp.uuid], unorderedEquals(['fixture-totp-1', 'fixture-totp-2']));
+    });
+
     test('fails while no backup was ever made, since the backups directory does not exist yet', () async {
       BackupStore store = backupStore();
 
