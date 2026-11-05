@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:open_authenticator/ezkey/backup_inventory.dart';
 import 'package:open_authenticator/ezkey/enrollment_store.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
+import 'package:open_authenticator/ezkey/to_reenroll.dart';
 import 'package:open_authenticator/model/backup/backup.dart';
 import 'package:open_authenticator/model/crypto/salt.dart';
 import 'package:open_authenticator/model/crypto/store.dart';
@@ -295,9 +296,10 @@ void main() {
 
     tearDown(() => app.currentPlatform = platform);
 
-    /// Imports [file] into a fresh container, then restores it with the fixture password.
-    Future<Result<Backup>> importAndRestore(File file) async {
-      BackupStore store = backupStore(store: CryptoStore.fromPassword('another-device-password', Salt.generate()));
+    /// Imports [file] into a fresh container, then restores it with the fixture password. The EzKey
+    /// enrollment store is [into], or an empty one.
+    Future<Result<Backup>> importAndRestore(File file, {SecureEzkeyEnrollmentStore? into}) async {
+      BackupStore store = backupStore(store: CryptoStore.fromPassword('another-device-password', Salt.generate()), ezkeyStore: into);
       backups.createSync(recursive: true);
       Result<BackupPath> imported = await store.import(file);
       return store.restoreBackup((imported as ResultSuccess<BackupPath>).value, _fixturePassword);
@@ -368,6 +370,56 @@ void main() {
         {'enrollmentId': 3, 'authApiHost': 'auth.orbit.example', 'enrolledAt': '2026-10-27T12:00:00.000Z', 'integrationName': 'Orbit Console', 'tenantName': 'Orbit', 'enrollmentName': 'Alice Chen'},
         {'enrollmentId': 7, 'authApiHost': 'localhost:8080', 'enrolledAt': '2026-11-02T09:30:00.000Z', 'integrationName': null, 'tenantName': null, 'enrollmentName': null},
       ]);
+    });
+
+    test('restoring the fixture lists both entries to re-enroll, once even when restored twice', () async {
+      SecureEzkeyEnrollmentStore empty = SecureEzkeyEnrollmentStore(InMemorySecureValues());
+      File fixture = File('test/model/backup/fixtures/1793600000000.bak');
+
+      await importAndRestore(fixture, into: empty);
+      Result<BackupPath> again = await container.read(backupStoreProvider.notifier).import(fixture);
+      await container.read(backupStoreProvider.notifier).restoreBackup((again as ResultSuccess<BackupPath>).value, _fixturePassword);
+
+      expect(EzkeyToReenrollStore(empty.values).read().map((entry) => entry.enrollmentId), [3, 7]);
+    });
+
+    test('restoring on the device that holds the enrollments lists nothing to re-enroll', () async {
+      BackupStore store = backupStore(totps: [totp('alice')], ezkeyStore: ezkeyStore);
+
+      Backup backup = ((await store.doBackup('backup-password')) as ResultSuccess<Backup>).value;
+      await store.restoreBackup(backup.backupPath, 'backup-password');
+
+      expect(EzkeyToReenrollStore(ezkeyStore.values).read(), isEmpty);
+    });
+
+    test('where EzKey is not available, a restore lists nothing to re-enroll', () async {
+      app.currentPlatform = .windows;
+      SecureEzkeyEnrollmentStore empty = SecureEzkeyEnrollmentStore(InMemorySecureValues());
+
+      Result<Backup> restored = await importAndRestore(File('test/model/backup/fixtures/1793600000000.bak'), into: empty);
+
+      expect(restored, isA<ResultSuccess<Backup>>());
+      expect(EzkeyToReenrollStore(empty.values).read(), isEmpty);
+    });
+
+    test('a failing enrollment store does not block the restore of the TOTPs', () async {
+      replacements = [];
+      container = ProviderContainer(
+        overrides: [
+          totpRepositoryProvider.overrideWith(() => _RecordingTotps([], replacements)),
+          cryptoStoreProvider.overrideWith(() => _FixedCryptoStore(deviceStore)),
+          ezkeyEnrollmentStoreProvider.overrideWith((ref) async => throw StateError('secure storage unavailable')),
+        ],
+      );
+      container.listen(backupStoreProvider, (previous, next) {});
+      BackupStore store = container.read(backupStoreProvider.notifier);
+      backups.createSync(recursive: true);
+
+      Result<BackupPath> imported = await store.import(File('test/model/backup/fixtures/1793600000000.bak'));
+      Result<Backup> restored = await store.restoreBackup((imported as ResultSuccess<BackupPath>).value, _fixturePassword);
+
+      expect(restored, isA<ResultSuccess<Backup>>());
+      expect([for (Totp totp in replacements.single) totp.uuid], unorderedEquals(['fixture-totp-1', 'fixture-totp-2']));
     });
 
     test('a corrupted inventory is ignored and both TOTPs still restore', () async {

@@ -7,6 +7,7 @@ import 'package:open_authenticator/ezkey/pages/enrollment_page.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
 import 'package:open_authenticator/ezkey/widgets/approval_security_tile.dart';
 import 'package:open_authenticator/ezkey/widgets/enrollment_tile.dart';
+import 'package:open_authenticator/ezkey/widgets/to_reenroll_group.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/spacing.dart';
 import 'package:open_authenticator/widgets/app_scaffold.dart';
@@ -59,6 +60,7 @@ class EzkeyPage extends ConsumerWidget {
             ],
           ),
         ),
+      const EzkeyToReenrollGroup(),
       if (enrollments.isNotEmpty)
         Padding(
           padding: const EdgeInsets.only(bottom: kBigSpace),

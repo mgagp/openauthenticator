@@ -141,8 +141,19 @@
     "message": "Clearing the data also removes these EzKey enrollments from this device, for good:\n$services\n\nThey stay active on the EzKey servers: ask the administrator of each service to revoke them. To use EzKey with them again, you will have to enroll again.",
     "unreadable": "An enrollment that can no longer be read"
   },
+  "toReenroll": {
+    "title": "To re-enroll",
+    "help": "Listed in a restored backup. Their keys stayed on the previous device: ask each administrator for a new invitation, and to revoke the old enrollment if that device is gone.",
+    "details": "Enrolled on $date · ID $id",
+    "remove": {
+      "action": "Remove $integration from this list",
+      "confirmTitle": "Remove from this list?",
+      "confirmMessage": "$integration will no longer be listed. This changes nothing on the EzKey server, and restoring a backup that lists it adds it back.",
+      "error": "Could not update this list."
+    }
+  },
   "backups": {
-    "backupNote": "EzKey enrollments are not included: their keys never leave this device. After restoring on another device, enroll again with each service.",
-    "restoreNote": "This restores your TOTPs only. The EzKey enrollments on this device stay as they are."
+    "backupNote": "EzKey enrollments are not included: their keys never leave this device. The backup only lists them, so after restoring on another device the EzKey page shows what to re-enroll.",
+    "restoreNote": "This restores your TOTPs only. The EzKey enrollments on this device stay as they are. Any others listed in the backup appear on the EzKey page, to re-enroll."
   }
 }
