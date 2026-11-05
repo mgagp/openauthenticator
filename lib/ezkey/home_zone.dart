@@ -11,6 +11,7 @@ import 'package:open_authenticator/ezkey/home_zone_state.dart';
 import 'package:open_authenticator/ezkey/installations.dart';
 import 'package:open_authenticator/ezkey/pages/enrollment_page.dart';
 import 'package:open_authenticator/ezkey/pages/ezkey_page.dart';
+import 'package:open_authenticator/ezkey/to_reenroll.dart';
 import 'package:open_authenticator/ezkey/widgets/enrollment_tile.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/model/totp/repository.dart';
@@ -75,8 +76,10 @@ class _EzkeyHomeZonesState extends ConsumerState<EzkeyHomeZones> {
   @override
   Widget build(BuildContext context) {
     bool hasEnrollments = ref.watch(ezkeyInstallationsProvider).value?.isNotEmpty ?? false;
+    // After a restore on a new device, the list to re-enroll is all the zone has to show, and it must be seen.
+    bool hasToReenroll = ref.watch(ezkeyToReenrollProvider).value?.isNotEmpty ?? false;
     EzkeyHomeZoneState state = ref.watch(ezkeyHomeZoneStateProvider).value ?? .auto;
-    bool expanded = state.isExpanded(hasEnrollments: hasEnrollments);
+    bool expanded = state.isExpanded(hasEnrollments: hasEnrollments || hasToReenroll);
     bool totpExpanded = state.isTotpExpanded;
     double savedShare = ref.watch(ezkeyHomeZoneSplitProvider).value ?? 0;
     // The same widget types in every state, so the upstream content keeps its state.
@@ -374,41 +377,49 @@ class _CollapsedBar extends ConsumerWidget {
   const _CollapsedBar();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => Semantics(
-    button: true,
-    label: translations.ezkey.home.expand,
-    child: GestureDetector(
-      key: const ValueKey('ezkey-home-expand'),
-      behavior: .opaque,
-      onTap: () => _setExpanded(ref, true),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          border: Border(top: BorderSide(color: context.theme.colors.border, width: 2)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: kBigSpace, vertical: kSpace / 2),
-          child: Row(
-            children: [
-              const SizedScalableImage(
-                asset: 'assets/images/ezkey_logo.si',
-                width: 24,
-                height: 24,
-              ),
-              const SizedBox(width: kSpace),
-              Expanded(
-                child: Text(
-                  translations.ezkey.home.title,
-                  style: context.theme.typography.body.md.copyWith(fontWeight: FontWeight.w600),
+  Widget build(BuildContext context, WidgetRef ref) {
+    int toReenroll = ref.watch(ezkeyToReenrollProvider).value?.length ?? 0;
+    return Semantics(
+      button: true,
+      label: translations.ezkey.home.expand,
+      child: GestureDetector(
+        key: const ValueKey('ezkey-home-expand'),
+        behavior: .opaque,
+        onTap: () => _setExpanded(ref, true),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border(top: BorderSide(color: context.theme.colors.border, width: 2)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: kBigSpace, vertical: kSpace / 2),
+            child: Row(
+              children: [
+                const SizedScalableImage(
+                  asset: 'assets/images/ezkey_logo.si',
+                  width: 24,
+                  height: 24,
                 ),
-              ),
-              const _AboutButton(),
-              const Icon(FLucideIcons.chevronUp),
-            ],
+                const SizedBox(width: kSpace),
+                Expanded(
+                  child: Text(
+                    translations.ezkey.home.title,
+                    style: context.theme.typography.body.md.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                ),
+                if (toReenroll > 0)
+                  Text(
+                    translations.ezkey.home.toReenroll(n: toReenroll),
+                    style: context.theme.typography.body.sm.copyWith(color: context.theme.colors.mutedForeground),
+                  ),
+                const _AboutButton(),
+                const Icon(FLucideIcons.chevronUp),
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 /// The ⓘ button that opens "About EzKey".
@@ -450,6 +461,17 @@ class EzkeyHomeZone extends ConsumerWidget {
     List<EzkeyEnrollment> enrollments = [
       for (EzkeyInstallation installation in installations.value ?? []) ...installation.enrollments,
     ];
+    int toReenroll = ref.watch(ezkeyToReenrollProvider).value?.length ?? 0;
+    // In the scrolling part, so it never overflows at the smallest zone height.
+    ClickableTile? toReenrollTile = toReenroll == 0
+        ? null
+        : ClickableTile(
+            key: const ValueKey('ezkey-home-to-reenroll'),
+            prefix: const Icon(FLucideIcons.rotateCcw),
+            title: Text(translations.ezkey.home.toReenroll(n: toReenroll)),
+            suffix: const Icon(FLucideIcons.chevronRight),
+            onPress: () => EzkeyPage.open(context),
+          );
     return Padding(
       padding: const EdgeInsets.all(kSpace),
       child: Column(
@@ -513,11 +535,24 @@ class EzkeyHomeZone extends ConsumerWidget {
             const Center(child: FCircularProgress()),
             if (fill) const Spacer(),
           ] else if (enrollments.isEmpty) ...[
-            Text(
-              translations.ezkey.home.empty,
-              style: context.theme.typography.body.sm.copyWith(color: context.theme.colors.mutedForeground),
+            Flexible(
+              fit: fill ? .tight : .loose,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: .stretch,
+                  children: [
+                    if (toReenrollTile != null) ...[
+                      FTileGroup(children: [toReenrollTile]),
+                      const SizedBox(height: kSpace),
+                    ],
+                    Text(
+                      translations.ezkey.home.empty,
+                      style: context.theme.typography.body.sm.copyWith(color: context.theme.colors.mutedForeground),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            if (fill) const Spacer(),
           ] else ...[
             Flexible(
               fit: fill ? .tight : .loose,
@@ -526,6 +561,7 @@ class EzkeyHomeZone extends ConsumerWidget {
                 child: SingleChildScrollView(
                   child: FTileGroup(
                     children: [
+                      ?toReenrollTile,
                       // Phase 1 shows the installations flat (ADR-0003); #26 frames each one.
                       for (EzkeyEnrollment enrollment in enrollments)
                         EzkeyEnrollmentTile(

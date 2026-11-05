@@ -7,6 +7,7 @@
     "expand": "Expand EzKey",
     "collapse": "Collapse EzKey",
     "manage": "EzKey settings and all enrollments",
+    "toReenroll": "To re-enroll: $n",
     "totpTitle": "TOTP codes",
     "totpCount": {
       "zero": "No code",
