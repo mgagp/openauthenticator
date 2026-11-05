@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:open_authenticator/app.dart';
 import 'package:open_authenticator/ezkey/backup_inventory.dart';
+import 'package:open_authenticator/ezkey/to_reenroll.dart';
 import 'package:open_authenticator/i18n/localizable_exception.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/model/crypto/salt.dart';

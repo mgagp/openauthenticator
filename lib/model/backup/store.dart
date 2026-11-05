@@ -37,6 +37,7 @@ class BackupStore extends AsyncNotifier<List<BackupPath>> {
       if (restoreResult is! ResultSuccess) {
         return restoreResult.to<Backup>((value) => backup);
       }
+      await rememberEzkeyToReenroll(ref, backup.ezkeyInventory);
       return ResultSuccess(value: backup);
     } catch (ex, stackTrace) {
       return ResultError(

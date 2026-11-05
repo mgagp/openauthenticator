@@ -141,8 +141,19 @@
     "message": "Effacer les données retire aussi définitivement ces enrôlements EzKey de cet appareil :\n$services\n\nIls restent actifs sur les serveurs EzKey : demandez à l'administrateur de chaque service de les révoquer. Pour utiliser EzKey avec eux de nouveau, il faudra vous enrôler de nouveau.",
     "unreadable": "Un enrôlement qui ne peut plus être lu"
   },
+  "toReenroll": {
+    "title": "À réenrôler",
+    "help": "Listés dans une sauvegarde restaurée. Leurs clés sont restées sur l'appareil précédent : demandez une nouvelle invitation à chaque administrateur, et la révocation de l'ancien enrôlement si cet appareil n'est plus là.",
+    "details": "Enrôlé le $date · ID $id",
+    "remove": {
+      "action": "Retirer $integration de cette liste",
+      "confirmTitle": "Retirer de cette liste ?",
+      "confirmMessage": "$integration ne sera plus listé. Cela ne change rien sur le serveur EzKey, et restaurer une sauvegarde qui le liste l'ajoutera de nouveau.",
+      "error": "Impossible de mettre à jour cette liste."
+    }
+  },
   "backups": {
-    "backupNote": "Les enrôlements EzKey ne sont pas inclus : leurs clés ne quittent jamais cet appareil. Après une restauration sur un autre appareil, enrôlez-vous de nouveau auprès de chaque service.",
-    "restoreNote": "Seuls vos TOTP sont restaurés. Les enrôlements EzKey de cet appareil restent tels quels."
+    "backupNote": "Les enrôlements EzKey ne sont pas inclus : leurs clés ne quittent jamais cet appareil. La sauvegarde en garde seulement la liste : après une restauration sur un autre appareil, la page EzKey indique ceux à refaire.",
+    "restoreNote": "Seuls vos TOTP sont restaurés. Les enrôlements EzKey de cet appareil restent tels quels. Les autres enrôlements listés dans la sauvegarde apparaissent sur la page EzKey, à refaire."
   }
 }
