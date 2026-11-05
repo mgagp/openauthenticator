@@ -5,6 +5,9 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:open_authenticator/ezkey/backup_inventory.dart';
+import 'package:open_authenticator/ezkey/enrollment_store.dart';
+import 'package:open_authenticator/ezkey/providers.dart';
 import 'package:open_authenticator/model/backup/backup.dart';
 import 'package:open_authenticator/model/crypto/salt.dart';
 import 'package:open_authenticator/model/crypto/store.dart';
@@ -13,13 +16,18 @@ import 'package:open_authenticator/model/totp/decrypted.dart';
 import 'package:open_authenticator/model/totp/json.dart';
 import 'package:open_authenticator/model/totp/repository.dart';
 import 'package:open_authenticator/model/totp/totp.dart';
+import 'package:open_authenticator/utils/platform.dart' as app;
 import 'package:open_authenticator/utils/result/result.dart';
 
+import '../../ezkey/support.dart';
+
 // Characterization tests (#55): they pin upstream's backups as they are today, before the backup UI
-// explains EzKey (harmonization H2). A backup holds the TOTPs and the salt only, never anything from
-// EzKey: its keys cannot leave the device (ADR-0002), so a record restored without its key would be useless.
+// explains EzKey (harmonization H2). A backup holds the TOTPs and the salt, never an EzKey record: its keys
+// cannot leave the device (ADR-0002), so a record restored without its key would be useless. Since #92 it
+// also holds, when the device has enrollments, an encrypted inventory of them (display data, ADR-0005).
 // `fixtures/1793500000000.bak` was written by this code on 2026-11-01 (password `fixture-password`):
-// it must keep restoring, so that users' existing backups do too.
+// it must keep restoring, so that users' existing backups do too. `fixtures/1793600000000.bak` is the same
+// backup with an EzKey inventory of two entries (#92).
 
 /// The plugin channel `getApplicationDocumentsDirectory` goes through.
 const MethodChannel _pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
@@ -81,13 +89,16 @@ void main() {
     issuer: 'Orbit',
   )!;
 
-  /// Creates the container over [totps], with [store] as the device crypto store.
-  BackupStore backupStore({List<Totp> totps = const [], CryptoStore? store, bool withCryptoStore = true}) {
+  /// Creates the container over [totps], with [store] as the device crypto store and [ezkeyStore] as
+  /// the EzKey enrollment store (an empty one by default: `flutter test` runs as Android, where EzKey is
+  /// available).
+  BackupStore backupStore({List<Totp> totps = const [], CryptoStore? store, bool withCryptoStore = true, SecureEzkeyEnrollmentStore? ezkeyStore}) {
     replacements = [];
     container = ProviderContainer(
       overrides: [
         totpRepositoryProvider.overrideWith(() => _RecordingTotps(totps, replacements)),
         cryptoStoreProvider.overrideWith(() => _FixedCryptoStore(withCryptoStore ? (store ?? deviceStore) : null)),
+        ezkeyEnrollmentStoreProvider.overrideWith((ref) async => ezkeyStore ?? SecureEzkeyEnrollmentStore(InMemorySecureValues())),
       ],
     );
     container.listen(backupStoreProvider, (previous, next) {});
@@ -267,6 +278,108 @@ void main() {
       List<BackupPath> paths = await container.read(backupStoreProvider.future);
 
       expect(paths.map((path) => path.filename), ['1800000000000.bak', '1700000000000.bak']);
+    });
+  });
+
+  group('EzKey enrollment inventory (ADR-0005)', () {
+    late app.Platform platform;
+    late SecureEzkeyEnrollmentStore ezkeyStore;
+
+    setUp(() async {
+      platform = app.currentPlatform;
+      app.currentPlatform = .android;
+      ezkeyStore = SecureEzkeyEnrollmentStore(InMemorySecureValues());
+      await ezkeyStore.save(testEnrollment(3, authApiBaseUrl: 'https://auth.orbit.example'));
+      await ezkeyStore.save(testEnrollment(7, authApiBaseUrl: 'http://localhost:8080', integrationName: 'Lab'));
+    });
+
+    tearDown(() => app.currentPlatform = platform);
+
+    /// Imports [file] into a fresh container, then restores it with the fixture password.
+    Future<Result<Backup>> importAndRestore(File file) async {
+      BackupStore store = backupStore(store: CryptoStore.fromPassword('another-device-password', Salt.generate()));
+      backups.createSync(recursive: true);
+      Result<BackupPath> imported = await store.import(file);
+      return store.restoreBackup((imported as ResultSuccess<BackupPath>).value, _fixturePassword);
+    }
+
+    test('a backup with enrollments has a 4th key, encrypted, that restores with the TOTPs', () async {
+      BackupStore store = backupStore(totps: [totp('alice')], ezkeyStore: ezkeyStore);
+
+      Backup backup = ((await store.doBackup('backup-password')) as ResultSuccess<Backup>).value;
+      String raw = backup.backupPath.file.readAsStringSync();
+      Result<Backup> restored = await store.restoreBackup(backup.backupPath, 'backup-password');
+
+      expect((jsonDecode(raw) as Map<String, dynamic>).keys, unorderedEquals([Backup.kPasswordSignatureKey, Backup.kSaltKey, Backup.kTotpsKey, EzkeyBackupInventory.kJsonKey]));
+      expect(raw, allOf(isNot(contains('Orbit Console')), isNot(contains('Alice Chen')), isNot(contains('proof-token'))));
+      expect([for (Totp totp in replacements.single) totp.uuid], ['uuid-alice']);
+      List<EzkeyInventoryEntry> entries = (restored as ResultSuccess<Backup>).value.ezkeyInventory!.entries;
+      expect(
+        entries.map((entry) => [entry.enrollmentId, entry.authApiHost, entry.integrationName]),
+        unorderedEquals([
+          [3, 'auth.orbit.example', 'Orbit Console'],
+          [7, 'localhost:8080', 'Lab'],
+        ]),
+      );
+    });
+
+    test('a backup without enrollments keeps upstream\'s three keys', () async {
+      BackupStore store = backupStore(totps: [totp('alice')], ezkeyStore: SecureEzkeyEnrollmentStore(InMemorySecureValues()));
+
+      Backup backup = ((await store.doBackup('backup-password')) as ResultSuccess<Backup>).value;
+      Map<String, dynamic> content = jsonDecode(backup.backupPath.file.readAsStringSync());
+
+      expect(content.keys, unorderedEquals([Backup.kPasswordSignatureKey, Backup.kSaltKey, Backup.kTotpsKey]));
+      expect(backup.ezkeyInventory, isNull);
+    });
+
+    test('where EzKey is not available, the backup keeps upstream\'s three keys even with enrollments', () async {
+      app.currentPlatform = .windows;
+      BackupStore store = backupStore(totps: [totp('alice')], ezkeyStore: ezkeyStore);
+
+      Backup backup = ((await store.doBackup('backup-password')) as ResultSuccess<Backup>).value;
+      Map<String, dynamic> content = jsonDecode(backup.backupPath.file.readAsStringSync());
+
+      expect(content.keys, unorderedEquals([Backup.kPasswordSignatureKey, Backup.kSaltKey, Backup.kTotpsKey]));
+    });
+
+    test('a failing enrollment store does not block the backup, which keeps upstream\'s three keys', () async {
+      replacements = [];
+      container = ProviderContainer(
+        overrides: [
+          totpRepositoryProvider.overrideWith(() => _RecordingTotps([totp('alice')], replacements)),
+          cryptoStoreProvider.overrideWith(() => _FixedCryptoStore(deviceStore)),
+          ezkeyEnrollmentStoreProvider.overrideWith((ref) async => throw StateError('secure storage unavailable')),
+        ],
+      );
+      container.listen(backupStoreProvider, (previous, next) {});
+
+      Result<Backup> result = await container.read(backupStoreProvider.notifier).doBackup('backup-password');
+      Map<String, dynamic> content = jsonDecode((result as ResultSuccess<Backup>).value.backupPath.file.readAsStringSync());
+
+      expect(content.keys, unorderedEquals([Backup.kPasswordSignatureKey, Backup.kSaltKey, Backup.kTotpsKey]));
+    });
+
+    test('the committed fixture with an inventory restores both TOTPs and both entries', () async {
+      Result<Backup> restored = await importAndRestore(File('test/model/backup/fixtures/1793600000000.bak'));
+
+      expect([for (Totp totp in replacements.single) totp.uuid], unorderedEquals(['fixture-totp-1', 'fixture-totp-2']));
+      expect((restored as ResultSuccess<Backup>).value.ezkeyInventory!.entries.map((entry) => entry.toJson()), [
+        {'enrollmentId': 3, 'authApiHost': 'auth.orbit.example', 'enrolledAt': '2026-10-27T12:00:00.000Z', 'integrationName': 'Orbit Console', 'tenantName': 'Orbit', 'enrollmentName': 'Alice Chen'},
+        {'enrollmentId': 7, 'authApiHost': 'localhost:8080', 'enrolledAt': '2026-11-02T09:30:00.000Z', 'integrationName': null, 'tenantName': null, 'enrollmentName': null},
+      ]);
+    });
+
+    test('a corrupted inventory is ignored and both TOTPs still restore', () async {
+      Map<String, dynamic> content = jsonDecode(File('test/model/backup/fixtures/1793600000000.bak').readAsStringSync());
+      String encrypted = content[EzkeyBackupInventory.kJsonKey];
+      content[EzkeyBackupInventory.kJsonKey] = '${encrypted.substring(0, 20)}${encrypted.substring(20, 24) == 'AAAA' ? 'BBBB' : 'AAAA'}${encrypted.substring(24)}';
+      File corrupted = File('${documents.path}${Platform.pathSeparator}1793600000000.bak')..writeAsStringSync(jsonEncode(content));
+
+      Result<Backup> restored = await importAndRestore(corrupted);
+
+      expect((restored as ResultSuccess<Backup>).value.ezkeyInventory, isNull);
+      expect([for (Totp totp in replacements.single) totp.uuid], unorderedEquals(['fixture-totp-1', 'fixture-totp-2']));
     });
   });
 }

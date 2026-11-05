@@ -6,8 +6,9 @@ import 'package:open_authenticator/ezkey/providers.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 
 // Hooks for upstream's backup dialogs (lib/pages/settings/entries/backup_now.dart and
-// manage_backups.dart). Backups hold the TOTPs and the salt only (test/model/backup/backup_test.dart):
-// EzKey enrollments are not in them, since their keys never leave the device (ADR-0002). The dialogs say
+// manage_backups.dart). Backups hold the TOTPs and the salt (test/model/backup/backup_test.dart): EzKey
+// enrollments are not in them, since their keys never leave the device (ADR-0002), only an inventory of
+// them (backup_inventory.dart, ADR-0005). The dialogs say
 // so when this device holds enrollments (docs/ezkey/harmonization.md, H2).
 
 /// Returns upstream's "Backup now" password dialog [message], with a note that EzKey enrollments are not
