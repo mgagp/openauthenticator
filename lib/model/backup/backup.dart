@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:open_authenticator/app.dart';
+import 'package:open_authenticator/ezkey/backup_inventory.dart';
 import 'package:open_authenticator/i18n/localizable_exception.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/model/crypto/salt.dart';
@@ -44,12 +45,16 @@ class Backup implements Comparable<Backup> {
   /// The backup TOTPs.
   final List<Totp> totps;
 
+  /// The EzKey enrollment inventory (ADR-0005), or `null` for none.
+  final EzkeyBackupInventory? ezkeyInventory;
+
   /// Creates a new backup instance.
   const Backup._({
     required this.backupPath,
     required this.passwordSignature,
     required this.salt,
     this.totps = const [],
+    this.ezkeyInventory,
   });
 
   /// Returns the backup date.
@@ -68,7 +73,7 @@ class Backup implements Comparable<Backup> {
     }
   }
 
-  static Future<Backup> _create(String password, CryptoStore currentCryptoStore, List<Totp> totps) async {
+  static Future<Backup> _create(String password, CryptoStore currentCryptoStore, List<Totp> totps, {List<EzkeyInventoryEntry> ezkeyEntries = const []}) async {
     CryptoStore newStore = CryptoStore.fromPassword(password, Salt.generate());
     List<Totp> toBackup = [];
     for (Totp totp in totps) {
@@ -80,6 +85,7 @@ class Backup implements Comparable<Backup> {
       passwordSignature: newStore.hmacSecretKey.string(password, utf8).base64(),
       salt: newStore.salt,
       totps: toBackup,
+      ezkeyInventory: EzkeyBackupInventory.encrypt(ezkeyEntries, newStore),
     );
   }
 
@@ -125,6 +131,7 @@ class Backup implements Comparable<Backup> {
       passwordSignature: backupData[kPasswordSignatureKey],
       salt: Salt.base64Decode(string: backupData[kSaltKey]),
       totps: totps,
+      ezkeyInventory: EzkeyBackupInventory.tryRead(backupData, cryptoStore),
     );
   }
 
@@ -141,6 +148,7 @@ class Backup implements Comparable<Backup> {
         kTotpsKey: [
           for (Totp totp in totps) totp.toJson(),
         ],
+        ...?ezkeyInventory?.toBackupJson(),
       }),
     );
   }

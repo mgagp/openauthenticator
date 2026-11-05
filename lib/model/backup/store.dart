@@ -60,7 +60,7 @@ class BackupStore extends AsyncNotifier<List<BackupPath>> {
         return const ResultCancelled();
       }
       List<Totp> totps = await ref.read(totpRepositoryProvider.future);
-      Backup backup = await Backup._create(password, currentCryptoStore, totps);
+      Backup backup = await Backup._create(password, currentCryptoStore, totps, ezkeyEntries: await ezkeyInventoryEntries(ref));
       await backup.save();
       if (!ref.mounted) {
         return const ResultCancelled();
