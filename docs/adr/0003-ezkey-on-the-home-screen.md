@@ -21,7 +21,7 @@ Upstream is mature. Since 2026-04-30 the home folder has received 4 commits, all
 
 1. **Two framed zones on the home screen.**
    - **Zone 1 (TOTP):** the upstream content (empty state or card list) and its green +.
-   - **Zone 2 (EzKey):** built on the same pattern, with the EzKey logo and the enrollments. "Check for requests" is visible as soon as one enrollment exists, and a blue + (the logo's color) leads to scanning or entering an invitation.
+   - **Zone 2 (EzKey):** built on the same pattern, with the EzKey logo and the enrollments. Each enrollment row has its own "Check" button (ADR-0006, which replaced a single button that scanned them all), and a blue + (the logo's color) leads to scanning or entering an invitation.
 
    Tapping an enrollment opens the existing EzKey page. The Settings entry is removed, so the total number of upstream hooks stays small.
 2. **Phases.**

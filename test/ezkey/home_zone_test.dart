@@ -10,6 +10,7 @@ import 'package:open_authenticator/ezkey/enrollment_store.dart';
 import 'package:open_authenticator/ezkey/home_zone.dart';
 import 'package:open_authenticator/ezkey/home_zone_state.dart';
 import 'package:open_authenticator/ezkey/local_confirmation.dart';
+import 'package:open_authenticator/ezkey/pages/enrollment_page.dart';
 import 'package:open_authenticator/ezkey/pages/ezkey_page.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
 import 'package:open_authenticator/ezkey/to_reenroll.dart';
@@ -78,6 +79,27 @@ class _FixedTotps extends TotpRepository {
   FutureOr<List<Totp>> build() => totps;
 }
 
+/// Records the pending checks and answers that nothing is waiting, or with [error].
+class _RecordingAuthApi implements EzkeyAuthApi {
+  /// The enrollment ids checked, in order.
+  final List<int> checked = [];
+
+  /// What to fail with, if anything.
+  EzkeyException? error;
+
+  @override
+  Future<PendingAuthResponse?> pending(PendingAuthRequest request) async {
+    checked.add(request.enrollmentId);
+    if (error != null) {
+      throw error!;
+    }
+    return null;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError('${invocation.memberName}');
+}
+
 /// Keeps the approval protection in memory instead of the shared preferences.
 class _StandardSecurity extends EzkeyApprovalSecurityEntry {
   @override
@@ -115,8 +137,9 @@ void main() {
     return values;
   }
 
-  /// Shows the EzKey zone with [enrollments] and [toReenroll] enrollments to re-enroll.
-  Future<void> pumpZone(WidgetTester tester, List<EzkeyEnrollment> enrollments, {int toReenroll = 0}) async {
+  /// Shows the EzKey zone with [enrollments] and [toReenroll] enrollments to re-enroll, checking through
+  /// [authenticator] when given.
+  Future<void> pumpZone(WidgetTester tester, List<EzkeyEnrollment> enrollments, {int toReenroll = 0, EzkeyAuthenticator? authenticator}) async {
     InMemorySecureValues values = await valuesToReenroll(toReenroll);
     await tester.pumpWidget(
       ProviderScope(
@@ -124,12 +147,13 @@ void main() {
           ezkeyEnrollmentsProvider.overrideWith(() => _FixedEnrollments(enrollments)),
           ezkeyEnrollmentStoreProvider.overrideWith((ref) async => SecureEzkeyEnrollmentStore(values)),
           ezkeyApprovalSecurityProvider.overrideWith(_StandardSecurity.new),
+          if (authenticator != null) ezkeyAuthenticatorProvider.overrideWith((ref) async => authenticator),
         ],
         child: TranslationProvider(
           child: MaterialApp(
             builder: (context, child) => FTheme(
               data: greenTheme.light.touch,
-              child: child!,
+              child: FToaster(child: child!),
             ),
             home: const Scaffold(body: EzkeyHomeZone()),
           ),
@@ -145,7 +169,7 @@ void main() {
 
       expect(find.text(translations.ezkey.home.empty), findsOneWidget);
       expect(find.byKey(const ValueKey('ezkey-home-add')), findsOneWidget);
-      expect(find.byKey(const ValueKey('ezkey-home-check')), findsNothing);
+      expect(find.text(translations.ezkey.home.check), findsNothing);
     });
 
     testWidgets('mentions nothing to re-enroll while the list is empty', (tester) async {
@@ -165,7 +189,7 @@ void main() {
       expect(find.text('Service 1'), findsOneWidget);
     });
 
-    testWidgets('lists the enrollments and offers to check for requests', (tester) async {
+    testWidgets('lists the enrollments, each with its own check', (tester) async {
       await pumpZone(tester, [
         testEnrollment(1, integrationName: 'Internal Tools'),
         testEnrollment(2, integrationName: 'Administration', authApiBaseUrl: 'https://other.example'),
@@ -173,8 +197,77 @@ void main() {
 
       expect(find.text('Internal Tools'), findsOneWidget);
       expect(find.text('Administration'), findsOneWidget);
-      expect(find.byKey(const ValueKey('ezkey-home-check')), findsOneWidget);
+      expect(find.text(translations.ezkey.home.check), findsNWidgets(2));
       expect(find.text(translations.ezkey.home.empty), findsNothing);
+    });
+
+    group('checking for requests', () {
+      late _RecordingAuthApi api;
+      late List<EzkeyEnrollment> enrollments;
+      late EzkeyAuthenticator authenticator;
+
+      setUp(() async {
+        api = _RecordingAuthApi();
+        SoftwareDeviceKeyStore keyStore = SoftwareDeviceKeyStore();
+        await keyStore.generateKeyPair('key-1');
+        await keyStore.generateKeyPair('key-2');
+        enrollments = [
+          testEnrollment(1, deviceKeyAlias: 'key-1', integrationName: 'Internal Tools'),
+          testEnrollment(2, deviceKeyAlias: 'key-2', integrationName: 'Payroll'),
+        ];
+        InMemoryEnrollmentStore store = InMemoryEnrollmentStore();
+        for (EzkeyEnrollment enrollment in enrollments) {
+          await store.save(enrollment);
+        }
+        authenticator = EzkeyAuthenticator(keyStore: keyStore, enrollmentStore: store, apiFactory: (uri) => api);
+      });
+
+      /// Finds the check button of [enrollment].
+      Finder check(EzkeyEnrollment enrollment) => find.byKey(ValueKey('ezkey-home-check-${enrollment.localId}'));
+
+      testWidgets('a row\'s button checks that enrollment only', (tester) async {
+        await pumpZone(tester, enrollments, authenticator: authenticator);
+
+        await tester.tap(check(enrollments[1]));
+        await tester.pumpAndSettle();
+
+        expect(api.checked, [2]);
+        expect(find.text(translations.ezkey.attempt.check.none), findsOneWidget);
+        await tester.pump(const Duration(seconds: 10));
+      });
+
+      testWidgets('a failing server reports an error and leaves the other enrollments alone', (tester) async {
+        api.error = const EzkeyNetworkException('unreachable');
+        await pumpZone(tester, enrollments, authenticator: authenticator);
+
+        await tester.tap(check(enrollments[0]));
+        await tester.pumpAndSettle();
+
+        expect(api.checked, [1]);
+        expect(find.text(translations.ezkey.error.network), findsOneWidget);
+        expect(find.text(translations.ezkey.attempt.check.none), findsNothing);
+        await tester.pump(const Duration(seconds: 10));
+      });
+
+      testWidgets('the rest of the row opens the enrollment page and checks nothing', (tester) async {
+        await pumpZone(tester, enrollments, authenticator: authenticator);
+
+        await tester.tap(find.text('Internal Tools'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(EzkeyEnrollmentPage), findsOneWidget);
+        expect(api.checked, isEmpty);
+      });
+
+      testWidgets('a screen reader tells the buttons apart and can press them', (tester) async {
+        await pumpZone(tester, enrollments, authenticator: authenticator);
+
+        tester.semantics.tap(find.semantics.byLabel(translations.ezkey.home.checkAction(integration: 'Payroll')));
+        await tester.pumpAndSettle();
+
+        expect(api.checked, [2]);
+        await tester.pump(const Duration(seconds: 10));
+      });
     });
 
     testWidgets('the add button offers to scan or type an invitation', (tester) async {
@@ -466,7 +559,7 @@ void main() {
       await pumpZones(tester, [for (int i = 1; i <= 12; i++) testEnrollment(i)], share: EzkeyHomeZoneSplitEntry.minShare);
 
       expect(tester.takeException(), isNull);
-      expect(find.text(translations.ezkey.home.check), findsOneWidget);
+      expect(find.text(translations.ezkey.home.check), findsWidgets);
     });
 
     testWidgets('a double tap on the divider restores the automatic height', (tester) async {

@@ -94,11 +94,15 @@ void main() {
       // ignore: avoid_print
       print('EZKEY_LAB enrolled id=${enrollment.enrollmentId} integration=${enrollment.integrationName} tier=${enrollment.devicePrivateKeyStorageTier.name}');
 
+      // A check targets one enrollment (ADR-0006): from its own page here, since this test runs on the EzKey page.
+      await tester.tap(find.text('Open Authenticator Lab'));
+      await _settle(tester, until: find.byKey(const ValueKey('ezkey-enrollment-check')));
+
       // The lab script creates the auth attempt once the enrollment is VERIFIED: check until it shows up.
       Finder approve = find.byKey(const ValueKey('ezkey-attempt-approve'));
       DateTime deadline = DateTime.now().add(const Duration(seconds: 90));
       while (approve.evaluate().isEmpty && DateTime.now().isBefore(deadline)) {
-        await tester.tap(find.byKey(const ValueKey('ezkey-check-pending')));
+        await tester.tap(find.byKey(const ValueKey('ezkey-enrollment-check')));
         await _settle(tester, until: approve, timeout: const Duration(seconds: 5));
       }
       expect(approve, findsOneWidget, reason: 'no auth attempt arrived');
@@ -109,8 +113,7 @@ void main() {
       expect(find.text(translations.ezkey.attempt.result.approved), findsOneWidget);
       await _screen(tester, '8-approved');
 
-      // Removal lives on the enrollment's own page (#33).
-      await tester.tap(find.text('Open Authenticator Lab'));
+      // Removal lives on the enrollment's own page (#33), where the approval leads back.
       await _settle(tester, until: find.byKey(const ValueKey('ezkey-enrollment-forget')));
       await tester.tap(find.byKey(const ValueKey('ezkey-enrollment-forget')));
       await _settle(tester);

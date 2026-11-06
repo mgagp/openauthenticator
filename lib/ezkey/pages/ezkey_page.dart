@@ -61,21 +61,6 @@ class EzkeyPage extends ConsumerWidget {
           ),
         ),
       const EzkeyToReenrollGroup(),
-      if (enrollments.isNotEmpty)
-        Padding(
-          padding: const EdgeInsets.only(bottom: kBigSpace),
-          child: FTileGroup(
-            children: [
-              ClickableTile(
-                key: const ValueKey('ezkey-check-pending'),
-                prefix: const Icon(FLucideIcons.bellRing),
-                title: Text(translations.ezkey.attempt.check.title),
-                subtitle: Text(translations.ezkey.attempt.check.subtitle),
-                onPress: () => EzkeyActions.checkPending(context, ref, enrollments),
-              ),
-            ],
-          ),
-        ),
       Padding(
         padding: const EdgeInsets.only(bottom: kBigSpace),
         child: FTileGroup(
