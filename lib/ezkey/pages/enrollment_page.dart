@@ -71,7 +71,7 @@ class EzkeyEnrollmentPage extends ConsumerWidget {
             prefix: const Icon(FLucideIcons.bellRing),
             title: Text(translations.ezkey.attempt.check.title),
             subtitle: Text(translations.ezkey.enrollment.checkSubtitle),
-            onPress: () => EzkeyActions.checkPending(context, ref, [enrollment]),
+            onPress: () => EzkeyActions.checkPending(context, ref, enrollment),
           ),
         ],
       ),

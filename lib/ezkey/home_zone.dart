@@ -58,7 +58,7 @@ class _EzkeyHomeZonesState extends ConsumerState<EzkeyHomeZones> {
   /// How much a screen reader's adjust action changes the EzKey zone's share.
   static const double _shareStep = 0.1;
 
-  /// The smallest EzKey zone height the divider allows: its header, check and add buttons stay usable.
+  /// The smallest EzKey zone height the divider allows: its header, a row and the add button stay usable.
   static const double _minEzkeyHeight = 240;
 
   /// The smallest TOTP zone height the divider allows.
@@ -440,10 +440,58 @@ class _AboutButton extends StatelessWidget {
   );
 }
 
-/// The EzKey home zone: the enrollments, "check for requests" and the add button.
+/// Checks for requests on one enrollment (ADR-0006), the everyday action of the zone.
+class _CheckButton extends ConsumerWidget {
+  /// The enrollment to check.
+  final EzkeyEnrollment enrollment;
+
+  /// Creates a new check button instance.
+  const _CheckButton({
+    required this.enrollment,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    void onPress() => EzkeyActions.checkPending(context, ref, enrollment);
+    // Inside a tile that merges its texts: without its own node, a screen reader would read the button with
+    // the tile, and every row would offer the same "check".
+    return Semantics(
+      container: true,
+      button: true,
+      label: translations.ezkey.home.checkAction(integration: enrollment.integrationName ?? enrollment.authApiBaseUri.authority),
+      onTap: onPress,
+      excludeSemantics: true,
+      child: FButton(
+        key: ValueKey('ezkey-home-check-${enrollment.localId}'),
+        size: .sm,
+        mainAxisSize: .min,
+        // The whole zone uses the EzKey blue.
+        style: .delta(
+          decoration: .delta(
+            [
+              .base(const .boxDelta(color: kEzkeyBlue)),
+            ],
+          ),
+          contentStyle: .delta(
+            textStyle: .delta(
+              [
+                .all(const .delta(color: Colors.white)),
+              ],
+            ),
+          ),
+        ),
+        onPress: onPress,
+        child: ButtonText(translations.ezkey.home.check),
+      ).clickable(),
+    );
+  }
+}
+
+/// The EzKey home zone: the enrollments, each with its own check for requests, and the add button.
 class EzkeyHomeZone extends ConsumerWidget {
-  /// The most enrollment rows shown before the list scrolls, unless the zone [fill]s the screen.
-  static const double _maxListHeight = 200;
+  /// The tallest the enrollment list gets before it scrolls, unless the zone [fill]s the screen: three rows and
+  /// part of a fourth, which tells there is more.
+  static const double _maxListHeight = 260;
 
   /// Whether the zone takes the full height (TOTP zone collapsed, #44): the list then scrolls in all the
   /// space there is.
@@ -567,38 +615,12 @@ class EzkeyHomeZone extends ConsumerWidget {
                         EzkeyEnrollmentTile(
                           enrollment: enrollment,
                           onPress: () => EzkeyEnrollmentPage.open(context, enrollment),
+                          suffix: _CheckButton(enrollment: enrollment),
                         ),
                     ],
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: kSpace),
-            ClickableButton(
-              key: const ValueKey('ezkey-home-check'),
-              // The whole zone uses the EzKey blue.
-              style: .delta(
-                decoration: .delta(
-                  [
-                    .base(const .boxDelta(color: kEzkeyBlue)),
-                  ],
-                ),
-                contentStyle: .delta(
-                  textStyle: .delta(
-                    [
-                      .all(const .delta(color: Colors.white)),
-                    ],
-                  ),
-                  iconStyle: .delta(
-                    [
-                      .all(const .delta(color: Colors.white)),
-                    ],
-                  ),
-                ),
-              ),
-              prefix: const Icon(FLucideIcons.bellRing),
-              onPress: () => EzkeyActions.checkPending(context, ref, enrollments),
-              child: ButtonText(translations.ezkey.home.check),
             ),
           ],
           const SizedBox(height: kSpace),

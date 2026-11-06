@@ -3,7 +3,8 @@
     "title": "EzKey",
     "empty": "Aucun enrôlement EzKey pour le moment. Touchez + pour en ajouter un avec l'invitation de votre administrateur.",
     "loadError": "Impossible de charger les enrôlements EzKey.",
-    "check": "Vérifier les demandes",
+    "check": "Vérifier",
+    "checkAction": "Vérifier les demandes pour $integration",
     "expand": "Déplier EzKey",
     "collapse": "Replier EzKey",
     "manage": "Réglages EzKey et tous les enrôlements",
@@ -111,7 +112,6 @@
   "attempt": {
     "check": {
       "title": "Vérifier les demandes de connexion",
-      "subtitle": "Cherche une demande en attente de votre approbation.",
       "checking": "Recherche des demandes de connexion...",
       "none": "Aucune demande de connexion en attente."
     },

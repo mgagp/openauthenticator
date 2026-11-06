@@ -90,45 +90,39 @@ class EzkeyActions {
     return true;
   }
 
-  /// Claims the first pending auth attempt of [enrollments] and opens [EzkeyApprovalPage] for it.
+  /// Claims the pending auth attempt of [enrollment], if any, and opens [EzkeyApprovalPage] for it.
   ///
-  /// Runs on user action only: EzKey has no push and rejects automatic polling (EzKey ADR-0002).
-  static Future<void> checkPending(BuildContext context, WidgetRef ref, List<EzkeyEnrollment> enrollments) async {
+  /// One enrollment at a time (ADR-0006): a claim is one-shot, so a check only touches the enrollment
+  /// the user chose. Runs on user action only: EzKey has no push and rejects automatic polling (EzKey
+  /// ADR-0002).
+  static Future<void> checkPending(BuildContext context, WidgetRef ref, EzkeyEnrollment enrollment) async {
     EzkeyAuthenticator authenticator = await ref.read(ezkeyAuthenticatorProvider.future);
     if (!context.mounted) {
       return;
     }
-    EzkeyException? firstError;
-    (EzkeyEnrollment, PendingAuthAttempt)? found = await showWaitingOverlay(
-      context,
-      message: translations.ezkey.attempt.check.checking,
-      future: () async {
-        for (EzkeyEnrollment enrollment in enrollments) {
-          try {
-            PendingAuthAttempt? attempt = await authenticator.checkPending(enrollment);
-            if (attempt != null) {
-              debugPrint('EzKey claimed $attempt');
-              return (enrollment, attempt);
-            }
-          } on EzkeyException catch (ex) {
-            // One failing enrollment (revoked, unreachable server) must not hide the others.
-            debugPrint('EzKey pending check failed for enrollment ${enrollment.enrollmentId}: $ex');
-            firstError ??= ex;
-          }
-        }
-        return null;
-      }(),
-    );
+    PendingAuthAttempt? attempt;
+    try {
+      attempt = await showWaitingOverlay(
+        context,
+        message: translations.ezkey.attempt.check.checking,
+        future: authenticator.checkPending(enrollment),
+      );
+    } on EzkeyException catch (ex) {
+      debugPrint('EzKey pending check failed for enrollment ${enrollment.enrollmentId}: $ex');
+      if (context.mounted) {
+        showEzkeyErrorToast(context, text: ezkeyAttemptErrorMessage(ex));
+      }
+      return;
+    }
     if (!context.mounted) {
       return;
     }
-    if (found != null) {
-      await EzkeyApprovalPage.open(context, found.$1, found.$2);
-    } else if (firstError != null) {
-      showEzkeyErrorToast(context, text: ezkeyAttemptErrorMessage(firstError!));
-    } else {
+    if (attempt == null) {
       showEzkeySuccessToast(context, text: translations.ezkey.attempt.check.none);
+      return;
     }
+    debugPrint('EzKey claimed $attempt');
+    await EzkeyApprovalPage.open(context, enrollment, attempt);
   }
 
   /// Asks for the Auth API address when the invitation does not carry one.

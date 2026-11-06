@@ -3,7 +3,8 @@
     "title": "EzKey",
     "empty": "No EzKey enrollment yet. Tap + to add one with the invitation from your administrator.",
     "loadError": "Could not load the EzKey enrollments.",
-    "check": "Check for requests",
+    "check": "Check",
+    "checkAction": "Check for requests for $integration",
     "expand": "Expand EzKey",
     "collapse": "Collapse EzKey",
     "manage": "EzKey settings and all enrollments",
@@ -111,7 +112,6 @@
   "attempt": {
     "check": {
       "title": "Check for sign-in requests",
-      "subtitle": "Looks for a request waiting for your approval.",
       "checking": "Looking for sign-in requests...",
       "none": "No sign-in request is waiting."
     },
