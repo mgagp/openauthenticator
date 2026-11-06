@@ -5,8 +5,8 @@ import 'package:open_authenticator/model/settings/entry.dart';
 /// Which home zones are expanded (#36, #44). One state for both zones, so they are never both
 /// collapsed: collapsing one expands the other.
 enum EzkeyHomeZoneState {
-  /// The user has not chosen yet: the TOTP zone is expanded, and the EzKey zone is collapsed until the
-  /// first enrollment, then expanded.
+  /// The user has not chosen yet: the TOTP zone is expanded, and the EzKey zone is collapsed until there is
+  /// something to show (an enrollment, or one to re-enroll after a restore), then expanded.
   auto,
 
   /// The user expanded both zones.
@@ -18,7 +18,7 @@ enum EzkeyHomeZoneState {
   /// The user collapsed the TOTP zone: the EzKey zone takes the full height.
   totpCollapsed;
 
-  /// Whether the EzKey zone shows expanded, knowing whether there is at least one enrollment.
+  /// Whether the EzKey zone shows expanded, knowing whether it has something to show ([hasEnrollments]).
   bool isExpanded({required bool hasEnrollments}) => switch (this) {
     .auto => hasEnrollments,
     .expanded || .totpCollapsed => true,

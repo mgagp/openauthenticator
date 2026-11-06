@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forui/forui.dart';
+import 'package:open_authenticator/ezkey/enrollment_store.dart';
 import 'package:open_authenticator/ezkey/home_zone.dart';
 import 'package:open_authenticator/ezkey/home_zone_state.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
@@ -27,6 +28,8 @@ import 'package:open_authenticator/pages/scan.dart';
 import 'package:open_authenticator/pages/totp.dart';
 import 'package:open_authenticator/themes.dart';
 import 'package:open_authenticator/utils/platform.dart';
+
+import '../../ezkey/support.dart';
 
 // Characterization tests (#55): they pin upstream's home page as it is today, before the EzKey work
 // changes its structure (#44, #32). A red test after an upstream sync or an EzKey change means the
@@ -137,6 +140,7 @@ void main() {
           pushOperationsErrorsProvider.overrideWith((ref) => Stream.value(const [])),
           totpResolvedImageProvider.overrideWith((ref, args) async => null),
           ezkeyEnrollmentsProvider.overrideWith(_NoEnrollments.new),
+          ezkeyEnrollmentStoreProvider.overrideWith((ref) async => SecureEzkeyEnrollmentStore(InMemorySecureValues())),
           ezkeyHomeZoneStateProvider.overrideWith(_ZoneState.new),
         ],
         child: TranslationProvider(

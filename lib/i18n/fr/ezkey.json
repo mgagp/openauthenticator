@@ -7,6 +7,7 @@
     "expand": "Déplier EzKey",
     "collapse": "Replier EzKey",
     "manage": "Réglages EzKey et tous les enrôlements",
+    "toReenroll": "À réenrôler : $n",
     "totpTitle": "Codes TOTP",
     "totpCount": {
       "zero": "Aucun code",
