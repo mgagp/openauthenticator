@@ -86,9 +86,9 @@ This is the daily path, and the core of the integration.
 - **Use one vocabulary on every screen:** Installation, Purpose, Account, Role, Device. The same string must not appear at two levels (`MOBILE_POSITIONING.md`).
 - **The row must identify the service without ambiguity,** since the user chooses by it. Check this with long names: a line cut in the wrong place can remove the account.
 - **An installation is identified by its normalized server address.** Its signed name is display only, and never a trust anchor.
-- **Add structure only when it removes an ambiguity.** Frames, headers and collapsible groups cost height and taps on a list of few entries.
-
-Open here: the identity work (#26).
+- **Add structure only when it removes an ambiguity.** Frames, headers and collapsible groups cost height and taps on a list of few entries. This app stays flat and names the server when the device has several installations (ADR-0007). The reference app frames each one. Both are defensible; choose from the data you expect.
+- **Build the identity in one place,** and use it on the row, the details, the invitation and the approval. An administrator reads "Administration" with the role, and no organization.
+- **Order a one-line summary by what must survive a cut:** the role, the account, then the organization.
 
 ## 8. Placing it in the host's home screen
 
@@ -185,5 +185,8 @@ To be completed by going through the whole git history.
 | What does a backup keep of enrollments? | An encrypted list, display data only | Kept | ADR-0005 | §9 |
 | How does the user check for requests? | One enrollment at a time, from its row | Kept | ADR-0006 | §6 |
 | Does one button scan every enrollment? | It did, then was removed | **Reversed** | #35, ADR-0006 | §6 |
+| What does each screen call an enrollment? | One helper: Purpose, Account, Role, with no repeated label | Kept | ADR-0007 | §7 |
+| What does an administrator enrollment show? | "Administration" and the role, no organization | Kept | ADR-0007 | §7 |
+| How are installations told apart? | A flat list that names the server when there are several, no frames | Kept | ADR-0007 | §7 |
 | Is EzKey Android-only in shape? | No: portable code, offered where a hardware key store exists | Kept | ADR-0004 | §2, §4 |
 | How are screen readers tested? | Semantics-enabled widget tests | Kept | `docs/test-plan.md` | §10 |

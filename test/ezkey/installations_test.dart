@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:ezkey_dart/ezkey_dart.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:open_authenticator/ezkey/installations.dart';
 
@@ -20,6 +23,33 @@ void main() {
 
     test('group() returns nothing for no enrollment', () {
       expect(EzkeyInstallation.group([]), isEmpty);
+    });
+  });
+
+  group('ezkeySeveralInstallationsProvider', () {
+    /// Returns the provider's value for [installations], or while they load when `null`.
+    Future<bool> several(List<EzkeyInstallation>? installations) async {
+      ProviderContainer container = ProviderContainer(
+        overrides: [
+          ezkeyInstallationsProvider.overrideWith((ref) => installations == null ? Completer<List<EzkeyInstallation>>().future : Future.value(installations)),
+        ],
+      );
+      addTearDown(container.dispose);
+      container.listen(ezkeyInstallationsProvider, (previous, next) {});
+      await Future<void>.delayed(Duration.zero);
+      return container.read(ezkeySeveralInstallationsProvider);
+    }
+
+    test('is false with one installation', () async {
+      expect(await several(EzkeyInstallation.group([testEnrollment(1), testEnrollment(2)])), isFalse);
+    });
+
+    test('is true with two installations', () async {
+      expect(await several(EzkeyInstallation.group([testEnrollment(1, authApiBaseUrl: 'https://a.example'), testEnrollment(2, authApiBaseUrl: 'https://b.example')])), isTrue);
+    });
+
+    test('is true while the number is unknown, which is the side that leaves no ambiguity', () async {
+      expect(await several(null), isTrue);
     });
   });
 }

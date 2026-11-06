@@ -3,15 +3,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:open_authenticator/ezkey/identity.dart';
 import 'package:open_authenticator/ezkey/messages.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
+import 'package:open_authenticator/ezkey/toast.dart';
 import 'package:open_authenticator/ezkey/widgets/information_tile.dart';
+import 'package:open_authenticator/ezkey/widgets/purpose_tile.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/spacing.dart';
 import 'package:open_authenticator/widgets/app_scaffold.dart';
 import 'package:open_authenticator/widgets/button_text.dart';
 import 'package:open_authenticator/widgets/clickable.dart';
-import 'package:open_authenticator/ezkey/toast.dart';
 import 'package:open_authenticator/widgets/waiting_overlay.dart';
 
 /// Second enrollment step: shows who is asking (from the signed bind answer) and takes the
@@ -61,6 +63,7 @@ class _EzkeyEnrollPageState extends ConsumerState<EzkeyEnrollPage> {
   @override
   Widget build(BuildContext context) {
     EzkeyBoundEnrollment bound = widget.bound;
+    EzkeyIdentity identity = EzkeyIdentity.ofBound(bound);
     return AppScaffold.scrollable(
       header: FHeader.nested(
         prefixes: [
@@ -75,9 +78,9 @@ class _EzkeyEnrollPageState extends ConsumerState<EzkeyEnrollPage> {
         const SizedBox(height: kSpace),
         FTileGroup(
           children: [
-            EzkeyInformationTile(icon: FLucideIcons.appWindow, label: translations.ezkey.enroll.integration, value: bound.integrationName, details: bound.integrationDescription),
-            EzkeyInformationTile(icon: FLucideIcons.building, label: translations.ezkey.enroll.organization, value: bound.tenantName),
-            EzkeyInformationTile(icon: FLucideIcons.user, label: translations.ezkey.enroll.account, value: bound.enrollmentName),
+            EzkeyPurposeTile(identity: identity, details: bound.integrationDescription),
+            if (identity.organization != null) EzkeyInformationTile(icon: FLucideIcons.building, label: translations.ezkey.enroll.organization, value: identity.organization),
+            if (identity.account != null) EzkeyInformationTile(icon: FLucideIcons.user, label: translations.ezkey.enroll.account, value: identity.account),
             EzkeyInformationTile(icon: FLucideIcons.server, label: translations.ezkey.enroll.server, value: Uri.parse(bound.authApiBaseUrl).authority),
           ],
         ),
@@ -130,7 +133,7 @@ class _EzkeyEnrollPageState extends ConsumerState<EzkeyEnrollPage> {
         future: ref.read(ezkeyEnrollmentsProvider.notifier).complete(widget.bound, parseChallengeCode(codeController.text)),
       );
       if (mounted) {
-        showEzkeySuccessToast(context, text: translations.ezkey.enroll.success(integration: enrollment.integrationName ?? ''));
+        showEzkeySuccessToast(context, text: translations.ezkey.enroll.success(integration: EzkeyIdentity.of(enrollment).purpose));
         Navigator.pop(context, enrollment);
       }
     } on EzkeyException catch (ex) {

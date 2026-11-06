@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forui/forui.dart';
+import 'package:open_authenticator/ezkey/installations.dart';
 import 'package:open_authenticator/ezkey/local_confirmation.dart';
 import 'package:open_authenticator/ezkey/pages/approval_page.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
@@ -71,11 +72,12 @@ void main() {
 
   /// Opens the approval page above a home page, with the user's [security] choice and the local
   /// confirmation answering [confirmed].
-  Future<void> openPage(WidgetTester tester, {EzkeyApprovalSecurity security = .confirmBeforeApprovals, bool confirmed = true}) async {
+  Future<void> openPage(WidgetTester tester, {EzkeyApprovalSecurity security = .confirmBeforeApprovals, bool confirmed = true, List<EzkeyEnrollment>? onDevice}) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           ezkeyAuthenticatorProvider.overrideWith((ref) async => authenticator),
+          ezkeyInstallationsProvider.overrideWith((ref) async => EzkeyInstallation.group(onDevice ?? [enrollment])),
           ezkeyApprovalSecurityProvider.overrideWith(() => _MemorySecurity(security)),
           ezkeyApprovalConfirmationProvider.overrideWithValue((_) async {
             confirmations++;
@@ -112,6 +114,42 @@ void main() {
   Future<void> drainToasts(WidgetTester tester) => tester.pump(const Duration(seconds: 30));
 
   group('EzkeyApprovalPage', () {
+    group('the identity', () {
+      testWidgets('a regular request shows the application, the account and the organization, and no server', (tester) async {
+        await openPage(tester);
+
+        expect(find.text('Orbit Console'), findsOneWidget);
+        expect(find.text('Alice Chen'), findsOneWidget);
+        expect(find.text('${translations.ezkey.enroll.account} · Ezkey System'), findsOneWidget);
+        expect(find.text('localhost:8080'), findsNothing);
+      });
+
+      testWidgets('with several installations, it names the server', (tester) async {
+        await openPage(
+          tester,
+          onDevice: [
+            enrollment,
+            testEnrollment(9, authApiBaseUrl: 'https://other.example'),
+          ],
+        );
+
+        expect(find.text('localhost:8080'), findsOneWidget);
+        expect(find.text('other.example'), findsNothing);
+      });
+
+      testWidgets('an administrator request shows Administration and the role, and no organization', (tester) async {
+        enrollment = testAdminEnrollment(5, adminType: 'GLOBAL_ADMIN');
+
+        await openPage(tester);
+
+        expect(find.text(translations.ezkey.identity.administration), findsOneWidget);
+        expect(find.text(translations.ezkey.identity.globalAdmin), findsOneWidget);
+        expect(find.text('Alice Chen'), findsOneWidget);
+        expect(find.textContaining('Ezkey System'), findsNothing);
+        expect(find.text('Ezkey Administration'), findsNothing);
+      });
+    });
+
     testWidgets('leaving an undecided attempt denies it once', (tester) async {
       await openPage(tester);
 

@@ -1,4 +1,9 @@
 {
+  "identity": {
+    "administration": "Administration",
+    "globalAdmin": "Global Admin",
+    "tenantAdmin": "Tenant Admin"
+  },
   "home": {
     "title": "EzKey",
     "empty": "No EzKey enrollment yet. Tap + to add one with the invitation from your administrator.",

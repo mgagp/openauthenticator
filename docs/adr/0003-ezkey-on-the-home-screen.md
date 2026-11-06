@@ -51,7 +51,7 @@ Upstream is mature. Since 2026-04-30 the home folder has received 4 commits, all
 
 - The fork diverges in the home screen's structure, not just in an entry point. The ledger records the exact change and how to re-apply it. If upstream ever redesigns this screen, the zones are re-applied on the new layout.
 - The TOTP zone keeps upstream's strings, including "No TOTP for the moment", which stays accurate inside its own zone.
-- Phase 1 does not show which EzKey installation an enrollment belongs to. With enrollments from several self-hosted installations, the server host on each line is the only clue until the trust-zone phase.
+- Phase 1 did not show which EzKey installation an enrollment belongs to. Since ADR-0007, each row names the server when the device has several installations.
 
 ## References
 

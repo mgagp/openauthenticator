@@ -68,10 +68,22 @@ void main() {
     testWidgets('shows who the enrollment is for and where its key lives', (tester) async {
       await pumpPage(tester);
 
-      expect(find.text('Internal Tools'), findsWidgets);
+      expect(find.text('Internal Tools'), findsOneWidget);
       expect(find.text('Alice Chen'), findsOneWidget);
       expect(find.text(ezkeyStorageTierLabel(.strong)), findsOneWidget);
       expect(find.text('ezkey.example'), findsOneWidget);
+    });
+
+    testWidgets('an administrator reads Administration with the role, and no organization', (tester) async {
+      enrollment = testAdminEnrollment(5, adminType: 'TENANT_ADMIN', authApiBaseUrl: 'https://ezkey.example');
+
+      await pumpPage(tester);
+
+      expect(find.text(translations.ezkey.identity.administration), findsOneWidget);
+      expect(find.text(translations.ezkey.identity.tenantAdmin), findsOneWidget);
+      expect(find.text('Alice Chen'), findsOneWidget);
+      expect(find.text(translations.ezkey.enroll.organization), findsNothing);
+      expect(find.text('Ezkey System'), findsNothing);
     });
 
     testWidgets('checks for requests on this enrollment only', (tester) async {

@@ -1,11 +1,11 @@
 import 'dart:async';
-
 import 'package:ezkey_dart/ezkey_dart.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:open_authenticator/ezkey/device_key_store.dart';
 import 'package:open_authenticator/ezkey/enrollment_store.dart';
+import 'package:open_authenticator/ezkey/identity.dart';
 import 'package:open_authenticator/ezkey/orphan_keys.dart';
 import 'package:open_authenticator/model/secure_storage.dart';
 
@@ -47,7 +47,7 @@ class EzkeyEnrollmentsNotifier extends AsyncNotifier<List<EzkeyEnrollment>> {
   FutureOr<List<EzkeyEnrollment>> build() async {
     EzkeyAuthenticator authenticator = await ref.watch(ezkeyAuthenticatorProvider.future);
     List<EzkeyEnrollment> enrollments = await authenticator.listEnrollments();
-    return enrollments..sort((a, b) => (a.integrationName ?? '').toLowerCase().compareTo((b.integrationName ?? '').toLowerCase()));
+    return enrollments..sort((a, b) => EzkeyIdentity.of(a).purpose.toLowerCase().compareTo(EzkeyIdentity.of(b).purpose.toLowerCase()));
   }
 
   /// Finishes [bound] with the [enrollmentChallenge] typed by the user, then refreshes the list.

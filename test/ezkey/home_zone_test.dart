@@ -201,6 +201,57 @@ void main() {
       expect(find.text(translations.ezkey.home.empty), findsNothing);
     });
 
+    group('the identity on a row', () {
+      testWidgets('a regular row shows the account first, then the organization, and no server', (tester) async {
+        await pumpZone(tester, [testEnrollment(1, integrationName: 'Payroll')]);
+
+        expect(find.text('Payroll'), findsOneWidget);
+        expect(find.text('Alice Chen · Ezkey System'), findsOneWidget);
+        expect(find.text('localhost:8080'), findsNothing);
+      });
+
+      testWidgets('an administrator row shows Administration and the role, not the server name or the system tenant', (tester) async {
+        await pumpZone(tester, [testAdminEnrollment(1, adminType: 'TENANT_ADMIN')]);
+
+        expect(find.text(translations.ezkey.identity.administration), findsOneWidget);
+        expect(find.text('${translations.ezkey.identity.tenantAdmin} · Alice Chen'), findsOneWidget);
+        expect(find.text('Ezkey Administration'), findsNothing);
+        expect(find.textContaining('Ezkey System'), findsNothing);
+      });
+
+      testWidgets('with several installations, each row and its button name the server', (tester) async {
+        await pumpZone(tester, [
+          testEnrollment(1, integrationName: 'Payroll', authApiBaseUrl: 'https://a.example'),
+          testEnrollment(2, integrationName: 'Payroll', authApiBaseUrl: 'https://b.example'),
+        ]);
+
+        expect(find.text('a.example'), findsOneWidget);
+        expect(find.text('b.example'), findsOneWidget);
+        expect(find.semantics.byLabel(translations.ezkey.home.checkAction(integration: 'Payroll, Alice Chen, a.example')), findsOne);
+        expect(find.semantics.byLabel(translations.ezkey.home.checkAction(integration: 'Payroll, Alice Chen, b.example')), findsOne);
+      });
+
+      testWidgets('with several enrollments on one installation, no row names the server', (tester) async {
+        await pumpZone(tester, [
+          testEnrollment(1, integrationName: 'Payroll'),
+          testEnrollment(2, integrationName: 'Internal Tools'),
+        ]);
+
+        expect(find.text('localhost:8080'), findsNothing);
+      });
+
+      testWidgets('a screen reader tells two administrators apart', (tester) async {
+        await pumpZone(tester, [
+          testAdminEnrollment(1, adminType: 'GLOBAL_ADMIN'),
+          testAdminEnrollment(2, adminType: 'TENANT_ADMIN'),
+        ]);
+
+        String administration = translations.ezkey.identity.administration;
+        expect(find.semantics.byLabel(translations.ezkey.home.checkAction(integration: '$administration, ${translations.ezkey.identity.globalAdmin}, Alice Chen')), findsOne);
+        expect(find.semantics.byLabel(translations.ezkey.home.checkAction(integration: '$administration, ${translations.ezkey.identity.tenantAdmin}, Alice Chen')), findsOne);
+      });
+    });
+
     group('checking for requests', () {
       late _RecordingAuthApi api;
       late List<EzkeyEnrollment> enrollments;
@@ -262,7 +313,7 @@ void main() {
       testWidgets('a screen reader tells the buttons apart and can press them', (tester) async {
         await pumpZone(tester, enrollments, authenticator: authenticator);
 
-        tester.semantics.tap(find.semantics.byLabel(translations.ezkey.home.checkAction(integration: 'Payroll')));
+        tester.semantics.tap(find.semantics.byLabel(translations.ezkey.home.checkAction(integration: 'Payroll, Alice Chen')));
         await tester.pumpAndSettle();
 
         expect(api.checked, [2]);

@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_authenticator/ezkey/availability.dart';
 import 'package:open_authenticator/ezkey/enrollment_store.dart';
+import 'package:open_authenticator/ezkey/identity.dart';
 import 'package:open_authenticator/ezkey/orphan_keys.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
@@ -18,7 +19,7 @@ List<String> ezkeyClearDataServices({
   required List<EzkeyEnrollment> enrollments,
   required int unreadableCount,
 }) => [
-  ...({for (EzkeyEnrollment enrollment in enrollments) enrollment.integrationName ?? ''}.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()))),
+  ...({for (EzkeyEnrollment enrollment in enrollments) EzkeyIdentity.of(enrollment).purpose}.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()))),
   for (int i = 0; i < unreadableCount; i++) translations.ezkey.clearData.unreadable,
 ];
 

@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
 import 'package:open_authenticator/ezkey/actions.dart';
+import 'package:open_authenticator/ezkey/identity.dart';
 import 'package:open_authenticator/ezkey/messages.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
 import 'package:open_authenticator/ezkey/toast.dart';
 import 'package:open_authenticator/ezkey/widgets/information_tile.dart';
+import 'package:open_authenticator/ezkey/widgets/purpose_tile.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/spacing.dart';
 import 'package:open_authenticator/widgets/app_scaffold.dart';
@@ -31,6 +33,9 @@ class EzkeyEnrollmentPage extends ConsumerWidget {
     MaterialPageRoute(builder: (context) => EzkeyEnrollmentPage(enrollment: enrollment)),
   );
 
+  /// The enrollment's identity.
+  EzkeyIdentity get identity => EzkeyIdentity.of(enrollment);
+
   @override
   Widget build(BuildContext context, WidgetRef ref) => AppScaffold.scrollable(
     header: FHeader.nested(
@@ -39,14 +44,15 @@ class EzkeyEnrollmentPage extends ConsumerWidget {
           onPress: () => Navigator.pop(context),
         ),
       ],
-      title: Text(enrollment.integrationName ?? translations.ezkey.page.title),
+      // Not the purpose: the first tile shows it, and the same string must not appear at two levels.
+      title: Text(translations.ezkey.page.title),
     ),
     children: [
       FTileGroup(
         children: [
-          EzkeyInformationTile(icon: FLucideIcons.appWindow, label: translations.ezkey.enroll.integration, value: enrollment.integrationName, details: enrollment.integrationDescription),
-          EzkeyInformationTile(icon: FLucideIcons.building, label: translations.ezkey.enroll.organization, value: enrollment.tenantName),
-          EzkeyInformationTile(icon: FLucideIcons.user, label: translations.ezkey.enroll.account, value: enrollment.enrollmentName),
+          EzkeyPurposeTile(identity: identity, details: enrollment.integrationDescription),
+          if (identity.organization != null) EzkeyInformationTile(icon: FLucideIcons.building, label: translations.ezkey.enroll.organization, value: identity.organization),
+          if (identity.account != null) EzkeyInformationTile(icon: FLucideIcons.user, label: translations.ezkey.enroll.account, value: identity.account),
           EzkeyInformationTile(icon: FLucideIcons.keyRound, label: translations.ezkey.enrollment.keyStorage, value: ezkeyStorageTierLabel(enrollment.devicePrivateKeyStorageTier)),
           EzkeyInformationTile(icon: FLucideIcons.server, label: translations.ezkey.enroll.server, value: enrollment.authApiBaseUri.authority),
           EzkeyInformationTile(
@@ -94,7 +100,7 @@ class EzkeyEnrollmentPage extends ConsumerWidget {
     bool confirmed = await ConfirmationDialog.ask(
       context,
       title: translations.ezkey.page.forget.confirmTitle,
-      message: translations.ezkey.page.forget.confirmMessage(integration: enrollment.integrationName ?? ''),
+      message: translations.ezkey.page.forget.confirmMessage(integration: identity.purpose),
       okButtonVariant: .destructive,
     );
     if (!confirmed || !context.mounted) {

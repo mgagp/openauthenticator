@@ -3,16 +3,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:open_authenticator/ezkey/identity.dart';
+import 'package:open_authenticator/ezkey/installations.dart';
 import 'package:open_authenticator/ezkey/local_confirmation.dart';
 import 'package:open_authenticator/ezkey/messages.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
+import 'package:open_authenticator/ezkey/toast.dart';
+import 'package:open_authenticator/ezkey/widgets/information_tile.dart';
+import 'package:open_authenticator/ezkey/widgets/purpose_tile.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/spacing.dart';
 import 'package:open_authenticator/utils/app_unlock_interaction.dart';
 import 'package:open_authenticator/widgets/app_scaffold.dart';
 import 'package:open_authenticator/widgets/button_text.dart';
 import 'package:open_authenticator/widgets/clickable.dart';
-import 'package:open_authenticator/ezkey/toast.dart';
 import 'package:open_authenticator/widgets/waiting_overlay.dart';
 
 /// Shows a claimed auth attempt and sends the user's decision.
@@ -65,6 +69,7 @@ class _EzkeyApprovalPageState extends ConsumerState<EzkeyApprovalPage> {
     EzkeyEnrollment enrollment = widget.enrollment;
     PendingAuthAttempt attempt = widget.attempt;
     bool canDecide = attempt.canDecide && !sending;
+    EzkeyIdentity identity = EzkeyIdentity.of(enrollment);
     return PopScope(
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) {
@@ -91,16 +96,16 @@ class _EzkeyApprovalPageState extends ConsumerState<EzkeyApprovalPage> {
                   title: Text(attempt.contextTitle ?? translations.ezkey.attempt.request),
                   subtitle: attempt.contextMessage == null ? null : Text(attempt.contextMessage!),
                 ),
-              FTile(
-                prefix: const Icon(FLucideIcons.appWindow),
-                title: Text(enrollment.integrationName ?? '—'),
-                subtitle: Text(translations.ezkey.enroll.integration),
-              ),
-              FTile(
-                prefix: const Icon(FLucideIcons.user),
-                title: Text(enrollment.enrollmentName ?? '—'),
-                subtitle: Text([translations.ezkey.enroll.account, enrollment.tenantName].whereType<String>().where((part) => part.isNotEmpty).join(' · ')),
-              ),
+              EzkeyPurposeTile(identity: identity),
+              if (identity.account != null)
+                FTile(
+                  prefix: const Icon(FLucideIcons.user),
+                  title: Text(identity.account!),
+                  subtitle: Text([translations.ezkey.enroll.account, ?identity.organization].join(' · ')),
+                )
+              else if (identity.organization != null)
+                EzkeyInformationTile(icon: FLucideIcons.building, label: translations.ezkey.enroll.organization, value: identity.organization),
+              if (ref.watch(ezkeySeveralInstallationsProvider)) EzkeyInformationTile(icon: FLucideIcons.server, label: translations.ezkey.enroll.server, value: enrollment.authApiBaseUri.authority),
             ],
           ),
           if (attempt.challengeRequired) ...[
