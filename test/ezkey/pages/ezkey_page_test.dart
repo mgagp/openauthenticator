@@ -117,7 +117,7 @@ void main() {
         expect(find.text(translations.ezkey.toReenroll.title), findsOneWidget);
         expect(find.text(translations.ezkey.toReenroll.help), findsOneWidget);
         expect(find.text('Orbit Console'), findsOneWidget);
-        expect(find.text('Orbit · Alice Chen'), findsOneWidget);
+        expect(find.text('Alice Chen · Orbit'), findsOneWidget);
         expect(find.text('auth.orbit.example'), findsOneWidget);
         expect(find.textContaining(RegExp(r'2026.* ID 3$')), findsOneWidget);
         expect(find.text('localhost:8080'), findsOneWidget);

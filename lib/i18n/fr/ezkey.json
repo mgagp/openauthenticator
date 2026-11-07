@@ -1,4 +1,9 @@
 {
+  "identity": {
+    "administration": "Administration",
+    "globalAdmin": "Admin global",
+    "tenantAdmin": "Admin tenant"
+  },
   "home": {
     "title": "EzKey",
     "empty": "Aucun enrôlement EzKey pour le moment. Touchez + pour en ajouter un avec l'invitation de votre administrateur.",

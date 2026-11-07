@@ -40,3 +40,10 @@ EzkeyEnrollment testEnrollment(int enrollmentId, {String? deviceKeyAlias, String
   'isSystemIntegration': false,
   'adminType': null,
 });
+
+/// Returns a valid record of an EzKey administrator's enrollment, of type [adminType].
+EzkeyEnrollment testAdminEnrollment(int enrollmentId, {required String adminType, String authApiBaseUrl = 'http://localhost:8080'}) => EzkeyEnrollment.fromJson({
+  ...testEnrollment(enrollmentId, authApiBaseUrl: authApiBaseUrl, integrationName: 'Ezkey Administration').toJson(),
+  'isSystemIntegration': true,
+  'adminType': adminType,
+});

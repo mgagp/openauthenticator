@@ -83,7 +83,8 @@ class _EzkeyToReenrollTile extends StatelessWidget with FTileMixin {
 
   @override
   Widget build(BuildContext context) {
-    String account = [entry.tenantName, entry.enrollmentName].whereType<String>().where((part) => part.isNotEmpty).join(' · ');
+    // The account first: one line can be cut, and it matters more than the organization.
+    String account = [entry.enrollmentName, entry.tenantName].whereType<String>().where((part) => part.isNotEmpty).join(' · ');
     String date = MaterialLocalizations.of(context).formatShortDate(entry.enrolledAt.toLocal());
     String action = translations.ezkey.toReenroll.remove.action(integration: _name(entry));
     return FTile(

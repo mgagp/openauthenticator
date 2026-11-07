@@ -20,11 +20,14 @@ import 'support.dart';
 
 /// An Auth API that answers every bind with a validly signed answer for the invitation.
 class _BindingAuthApi implements EzkeyAuthApi {
+  /// The administrator type the bind answers with, for an administrator's invitation.
+  final String? adminType;
+
   /// The integration key that signs the answers.
   final Ed25519TestKeyPair integrationKey;
 
   /// Creates a new binding Auth API instance.
-  _BindingAuthApi(this.integrationKey);
+  _BindingAuthApi(this.integrationKey, {this.adminType});
 
   @override
   Future<EnrollmentBindResponse> bind(EnrollmentBindRequest request) async {
@@ -39,15 +42,16 @@ class _BindingAuthApi implements EzkeyAuthApi {
       tenantId: 1,
       tenantName: 'Ezkey System',
       tenantDescription: null,
-      isSystemIntegration: false,
-      adminType: null,
+      isSystemIntegration: adminType != null,
+      adminType: adminType,
     );
     return EnrollmentBindResponse(
       enrollmentId: request.enrollmentId,
       enrollmentProofToken: request.enrollmentProofToken,
       integrationPublicKey: integrationKey.publicKeyBase64Url,
       integrationKeyAlgorithm: 'ed25519',
-      isSystemIntegration: false,
+      isSystemIntegration: adminType != null,
+      adminType: adminType,
       enrollmentBindPayloadSignedByIntegration: await signEd25519WithPkcs8(payload, integrationKey.pkcs8Base64Std),
       integrationName: 'Orbit Console',
       enrollmentName: 'Alice Chen',
@@ -183,6 +187,23 @@ void main() {
       expect(find.byType(EzkeyEnrollPage), findsOneWidget);
       expect(find.byType(ScanPage, skipOffstage: false), findsNothing);
       expect(find.text('Orbit Console'), findsWidgets);
+    });
+
+    testWidgets('an invitation for an administrator reads Administration with the role, and no organization', (tester) async {
+      authenticator = EzkeyAuthenticator(
+        keyStore: SoftwareDeviceKeyStore(),
+        enrollmentStore: enrollmentStore,
+        apiFactory: (uri) => _BindingAuthApi(integrationKey, adminType: 'GLOBAL_ADMIN'),
+      );
+      await pumpScanner(tester, ezkey: false);
+
+      await scan(tester, _invitation);
+
+      expect(find.text(translations.ezkey.identity.administration), findsOneWidget);
+      expect(find.text(translations.ezkey.identity.globalAdmin), findsOneWidget);
+      expect(find.text('Alice Chen'), findsOneWidget);
+      expect(find.text('Ezkey System'), findsNothing);
+      expect(find.text('Orbit Console'), findsNothing);
     });
 
     testWidgets('leaving the enrollment page goes back home, not to the scanner', (tester) async {

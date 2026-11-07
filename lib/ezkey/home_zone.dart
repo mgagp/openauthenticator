@@ -8,6 +8,7 @@ import 'package:open_authenticator/ezkey/about.dart';
 import 'package:open_authenticator/ezkey/actions.dart';
 import 'package:open_authenticator/ezkey/availability.dart';
 import 'package:open_authenticator/ezkey/home_zone_state.dart';
+import 'package:open_authenticator/ezkey/identity.dart';
 import 'package:open_authenticator/ezkey/installations.dart';
 import 'package:open_authenticator/ezkey/pages/enrollment_page.dart';
 import 'package:open_authenticator/ezkey/pages/ezkey_page.dart';
@@ -453,12 +454,16 @@ class _CheckButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     void onPress() => EzkeyActions.checkPending(context, ref, enrollment);
+    String name = EzkeyIdentity.of(enrollment).spokenName;
+    if (ref.watch(ezkeySeveralInstallationsProvider)) {
+      name = '$name, ${enrollment.authApiBaseUri.authority}';
+    }
     // Inside a tile that merges its texts: without its own node, a screen reader would read the button with
     // the tile, and every row would offer the same "check".
     return Semantics(
       container: true,
       button: true,
-      label: translations.ezkey.home.checkAction(integration: enrollment.integrationName ?? enrollment.authApiBaseUri.authority),
+      label: translations.ezkey.home.checkAction(integration: name),
       onTap: onPress,
       excludeSemantics: true,
       child: FButton(
@@ -610,10 +615,11 @@ class EzkeyHomeZone extends ConsumerWidget {
                   child: FTileGroup(
                     children: [
                       ?toReenrollTile,
-                      // Phase 1 shows the installations flat (ADR-0003); #26 frames each one.
+                      // Flat, with the server when there are several installations (ADR-0007).
                       for (EzkeyEnrollment enrollment in enrollments)
                         EzkeyEnrollmentTile(
                           enrollment: enrollment,
+                          showServer: ref.watch(ezkeySeveralInstallationsProvider),
                           onPress: () => EzkeyEnrollmentPage.open(context, enrollment),
                           suffix: _CheckButton(enrollment: enrollment),
                         ),
