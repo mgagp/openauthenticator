@@ -34,7 +34,10 @@ State your assumptions about usage as assumptions, and have the product owner va
 - **Judge an upstream change by how easily it can be re-integrated,** not only by its size. A structural change to a stable screen can be cheaper than many scattered hooks (ADR-0003).
 - **Before changing a host feature, pin its behaviour with tests,** in their own PR. Otherwise you cannot tell what you broke (#56, #57, #58, #59, #65).
 - **Pin the SDK to a commit,** and read its changes when you move the pin (ADR-0001).
-- **Take no initiative on the host's dependencies, formatting or refactors.** Note what you find and leave it.
+- **Put native code in a local plugin,** so the host's platform files stay untouched (ADR-0001).
+- **Take no initiative on the host's dependencies, formatting or refactors.** Note what you find and leave it. If the host has no lock file, pin yours and the toolchain's version, so builds and tests are reproducible (#7, #9).
+- **Weigh three costs separately:** re-applying after a sync (check how often upstream changes each file), the app looking different from the original even with your own code, and what upstream would have to accept if the work were offered to it (#70).
+- **Agree on what needs the owner's word first:** host files you have not touched yet, the host's strings, dependencies, crypto and stored data, real devices (#72).
 - **Make the integration disappear where it is not available.** Where EzKey is off, the app must look like the original (ADR-0004).
 
 If you own the host app, the ledger is optional. The other rules still pay off.
@@ -58,6 +61,7 @@ The reference app shows one valid answer, not the only one. When you differ from
 - **Report the storage tier honestly.** It is per key, because StrongBox can be unavailable for one generation. It is self-reported: do not describe it as attested.
 - **Do not bind the key to user authentication.** Every check signs with it, so the user would be prompted on every check. A local confirmation belongs at the app level, on Approve only (contract §4).
 - **Store enrollment records in the app's existing secure storage,** after checking that it is excluded from cloud backup and device transfer.
+- **Keep them apart from the host's own secrets model.** Encrypting records with the host's vault password would tie approvals to it and mix two security models (ADR-0002).
 - **Scope everything by server address and enrollment id.** An enrollment id is only unique per server.
 - **Show an unreadable record as unusable,** with a way to remove it. Do not let it disappear silently.
 
@@ -79,7 +83,9 @@ This is the daily path, and the core of the integration.
 - **Show nothing from a pending response until its signature verifies.** On failure, send nothing (the SDK raises the error).
 - **Decide your error copy from the exception type and problem kind,** never from the server's text (contract §7).
 - **Treat an unknown outcome as uncertain, not as a failure.** Offer no retry (contract §2).
-- **A confirmation before Approve is the user's choice to make.** Reuse the app's unlock method rather than adding a second one (#84).
+- **Follow the SDK's decision lock** for the buttons, and close the page once a decision is sent (#23).
+- **A confirmation before Approve is the user's choice to make.** Reuse the app's unlock method rather than adding a second one (#40, #84). A cancelled confirmation sends nothing and keeps the attempt open. Deny and leaving never ask (#25).
+- **Protect the switch too.** Turning the confirmation off needs the same confirmation, so someone holding an unlocked phone cannot remove it just before approving (#40).
 
 ## 7. The identity you show
 
@@ -93,7 +99,9 @@ This is the daily path, and the core of the integration.
 ## 8. Placing it in the host's home screen
 
 - **Put the daily action on the home screen, not under Settings.** There is no push, so opening the app and checking is the normal path (ADR-0003).
-- **Share the screen without taking it over.** Where no enrollment exists, keep the integration's presence small, and keep the host's own content intact when the user collapses a zone.
+- **Share the screen without taking it over.** Where no enrollment exists, keep the integration's presence small, and keep the host's own content intact when the user collapses a zone (#37).
+- **Let the user divide the screen.** Each zone can collapse, never both at once, and a divider sets their heights (#62, #67).
+- **Give each enrollment a page** for its details and its removal, so the row stays short (#43).
 - **Do not reuse the host's look for what is not the host's.** A distinct color and logo tell the user which part they are in.
 - **Leave the host's own strings alone.** Keep yours in your own namespace, so community translations stay untouched.
 
@@ -103,7 +111,7 @@ Go through every host feature and ask what it means for an enrollment. [`harmoni
 
 | Host feature | Question | What we did |
 | --- | --- | --- |
-| Backup and restore | Keys cannot leave the device: what does the user lose, and how do they find out? | Say so in the dialogs. Keep an encrypted list of what to re-enroll in the backup file, display data only (ADR-0005) |
+| Backup and restore | Keys cannot leave the device: what does the user lose, and how do they find out? | Say so in the dialogs (#61). Keep an encrypted list of what to re-enroll in the backup file, display data only (ADR-0005). After a restore, show the list and lead to it from the home screen. An entry leaves once it is enrolled again (#95, #97) |
 | Clear data | Does it leave keys behind, or remove enrollments silently? | Warn, and delete the keys at once (#54) |
 | App unlock | Does the app's lock also protect approvals? | Reuse it for the confirmation (#84) |
 | Scanner | Which scanner does the user open? | Both recognize both codes (#66) |
@@ -132,6 +140,8 @@ Go through every host feature and ask what it means for an enrollment. [`harmoni
 | Icon button inside a list tile (forui) | The tile merges its semantics, leaving a button with no name | Give the button its own semantics node, and test it |
 | Widget tests run as Android | Availability is true, so tests reach the real secure storage plugin | Override the enrollment store in any test that shows the zone |
 | Automated device tests | The screen locks during a long step, and later taps land on the lock screen | Check the lock state before each tap sequence |
+| A tap on a toast's body (forui) | It stops the auto-dismissal with no visible change, so the toast looks stuck and can cover the back arrow. A second tap restarts it | Know it before chasing a bug (#103). Changing it means changing the toaster at the host's root |
+| Focus in a text field of forui 0.25, with semantics enabled | A framework assertion fails in debug, and later taps can reach stale controls. It is a forui bug, fixed in 0.26 (#47) | Keep semantics off in tests that type, and test screen readers on the other controls, until the host moves to a fixed version |
 
 ## 12. Do and do not
 
@@ -168,25 +178,103 @@ You are also testing the SDK. Keep two lists, as in [`integration.md`](integrati
 
 **Reversals count.** The target is the final state of a decision, not the commit that first made it. A guide that reproduced every commit would also reproduce our mistakes. So each reversal stays in the ledger as a lesson.
 
-### Decision ledger (seed)
+### Decision ledger
 
-To be completed by going through the whole git history.
+Complete up to commit `79f4358`, the 54 commits of `upstream/main..main`. **Reversed** means an earlier choice was replaced: the decision shown is the final one, and it is the target.
+
+**The host app**
 
 | Question | Decision | Status | Source | Guide |
 | --- | --- | --- | --- | --- |
-| How does a fork stay able to take upstream updates? | New files, small hooks, a ledger | Kept | ADR-0001 | §2 |
+| How does a fork stay able to take upstream updates? | New files, small hooks, a ledger | Kept | ADR-0001, #19 | §2 |
+| How is the SDK referenced? | A git dependency pinned to a commit, not a path or a vendored copy | Kept | ADR-0001, #91 | §2, §13 |
+| Where does the native key store code go? | A local plugin, not the host's platform files | Kept | ADR-0001, #19 | §2 |
+| Is a structural change to a host screen acceptable? | Yes, if the screen is stable and the re-apply step is clear | Kept | ADR-0003, #31 | §2 |
+| Who decides about the host's dependencies and formatting? | No initiative, with a lock and a pinned toolchain for reproducibility | Kept | #7, #9 | §2 |
+| What do you do before changing a host feature? | Pin its behaviour with tests, in their own PR | Kept | #56, #57, #58, #59, #65, #78 to #82 | §2 |
+| How is the cost of a change judged? | Three costs: sync, product divergence, offer, using upstream's activity per file | Kept | #52, #70 | §2 |
+| What needs the owner's agreement first? | An explicit list, including real devices | Kept | #72 | §2 |
+| Is the integration Android-only in shape? | It was. Now portable code, offered only where a hardware key store exists | **Reversed** | #19, ADR-0004, #50 | §2, §4 |
+| What does the app look like where EzKey is off? | Exactly like the original | Kept | ADR-0004, #50 | §2 |
+
+**Keys and storage**
+
+| Question | Decision | Status | Source | Guide |
+| --- | --- | --- | --- | --- |
 | Where does the device key live? | Hardware key store, never software | Kept | ADR-0002, ADR-0004 | §4 |
 | Should the key require biometrics? | No: an app-level confirmation on Approve only | Kept | ADR-0002 | §4 |
-| Where does the daily action live? | On the home screen | Kept | ADR-0003 | §8 |
-| Can an invitation be pasted in release builds? | No, debug only | Kept | #39 | §5 |
-| Is a confirmation before Approve on by default? | No: the user's choice | Kept | #40 | §6 |
-| Which prompt does that confirmation use? | The app's unlock method | Kept | #84 | §6 |
+| Where do enrollment records go? | The host's secure storage, after checking it stays out of cloud backup | Kept | ADR-0002, #19 | §4 |
+| Are records encrypted with the host's vault password? | No | Kept | ADR-0002 | §4 |
+| Is the key tier described as attested? | No: self-reported, per key | Kept | ADR-0002 | §4 |
+| Who normalizes high-S signatures? | The SDK, not the plugin | Kept | ADR-0002, #19 | §11 |
+| Which keys may orphan cleanup delete? | It deleted any orphan, and cost a real enrollment. Now only its own build's namespace | **Reversed** | #21, #42 | §11 |
+
+**Enrollment**
+
+| Question | Decision | Status | Source | Guide |
+| --- | --- | --- | --- | --- |
+| What if the invitation has no server address? | Ask for it, validated by the SDK's URL policy | Kept | #21 | §5 |
+| Can an invitation be pasted in release builds? | It could. Now debug only | **Reversed** | #21, #39 | §5 |
+| What is shown before the challenge? | Service, organization, account, server, administrator notice | Kept | #21 | §5 |
+| What if the user scans in the host's scanner? | Both scanners recognize both kinds of code | Kept | #66 | §5 |
+
+**Checking and approving**
+
+| Question | Decision | Status | Source | Guide |
+| --- | --- | --- | --- | --- |
+| How does the user check for requests? | One enrollment at a time, from its row | Kept | ADR-0006, #100 | §6 |
+| Does one button scan every enrollment? | It did, then was removed | **Reversed** | #23, #35, ADR-0006 | §6 |
+| Can a check run by itself? | No: no push, no polling, no check on resume | Kept | #23, ADR-0003 | §6 |
+| What happens on leaving the approval page? | One deny is sent, navigation is never held back, and the page says so | Kept | #25 | §6 |
+| How are repeated decisions prevented? | The buttons follow the SDK's decision lock | Kept | #23 | §6 |
+| Where does error copy come from? | The exception type and problem kind, never the server's text | Kept | #21, #23 | §6 |
+| Is a confirmation before Approve on by default? | It was always on. Now off by default, the user's choice | **Reversed** | #25, #40 | §6 |
+| Which prompt does that confirmation use? | It was the device's. Now the app's unlock method | **Reversed** | #25, #84 | §6 |
+| Can the confirmation be turned off freely? | No: turning it off needs the same confirmation | Kept | #40 | §6 |
+
+**The identity shown**
+
+| Question | Decision | Status | Source | Guide |
+| --- | --- | --- | --- | --- |
+| What does each screen call an enrollment? | One helper: Purpose, Account, Role, with no repeated label | Kept | ADR-0007, #105 | §7 |
+| What does an administrator enrollment show? | "Administration" and the role, no organization | Kept | ADR-0007, #105 | §7 |
+| How are installations told apart? | The server was on the EzKey page's rows only. Now a flat list that names it on the home rows and the approval page when there are several, no frames | **Reversed** | #35, ADR-0007, #105 | §7 |
+| What gets cut on a long row? | The organization first, never the role | Kept | #105 | §7 |
+
+**The home screen**
+
+| Question | Decision | Status | Source | Guide |
+| --- | --- | --- | --- | --- |
+| Where does the daily action live? | It was under Settings. Now on the home screen | **Reversed** | #23, ADR-0003, #35 | §8 |
+| What does a user with no enrollment see? | Close to the original, with EzKey as a thin bar | Kept | #37 | §8 |
+| How do the two zones share the screen? | Each can collapse, never both, and a divider sets the heights | Kept | #62, #67 | §8 |
+| Where do an enrollment's details and removal live? | On its own page, not the list | **Reversed** | #21, #43 | §8 |
+| Whose strings change? | Only the integration's own namespace | Kept | #52, #72 | §8 |
+
+**The host's features**
+
+| Question | Decision | Status | Source | Guide |
+| --- | --- | --- | --- | --- |
+| How are host features reviewed? | Each one is sorted by what it means for an enrollment | Kept | #52, #74 | §9 |
 | What happens to enrollments on Clear data? | Warn, and delete the keys at once | Kept | #54 | §9 |
-| What does a backup keep of enrollments? | An encrypted list, display data only | Kept | ADR-0005 | §9 |
-| How does the user check for requests? | One enrollment at a time, from its row | Kept | ADR-0006 | §6 |
-| Does one button scan every enrollment? | It did, then was removed | **Reversed** | #35, ADR-0006 | §6 |
-| What does each screen call an enrollment? | One helper: Purpose, Account, Role, with no repeated label | Kept | ADR-0007 | §7 |
-| What does an administrator enrollment show? | "Administration" and the role, no organization | Kept | ADR-0007 | §7 |
-| How are installations told apart? | A flat list that names the server when there are several, no frames | Kept | ADR-0007 | §7 |
-| Is EzKey Android-only in shape? | No: portable code, offered where a hardware key store exists | Kept | ADR-0004 | §2, §4 |
-| How are screen readers tested? | Semantics-enabled widget tests | Kept | `docs/test-plan.md` | §10 |
+| What does a backup keep of enrollments? | It was nothing, with a note. Now also an encrypted list, display data only | **Reversed** | #61, ADR-0005, #90, #93 | §9 |
+| Does a restore bring enrollments back? | No: it lists them to re-enroll, and the home screen leads there | Kept | ADR-0005, #95, #97 | §9 |
+| Does sync carry enrollments? | No: an enrollment belongs to one device | Kept | #52, #74 | §9 |
+
+**Testing**
+
+| Question | Decision | Status | Source | Guide |
+| --- | --- | --- | --- | --- |
+| What runs without a device? | The logic, with a mocked channel and in-memory stores, deterministic | Kept | #13, #15, #19 | §10 |
+| How is a test trusted? | Break the code, see it fail, restore | Kept | #13 | §10 |
+| How is the whole path tested? | A scripted live stack on an emulator: enroll, check, approve, forget | Kept | #21, #46 | §10 |
+| When is a real device used? | Final checks, with its owner's agreement | Kept | #42, #72 | §10 |
+| How are screen readers tested? | Semantics-enabled widget tests, no manual passes | Kept | #47, #72 | §10 |
+| What must CI build? | Every platform the host supports | Kept | #77 | §10 |
+
+### Commits with no question for an integrator
+
+These commits were walked through and left out, because they concern this fork's own setup or only record a decision listed above:
+
+- **Fork tooling and setup:** #2, #5, #11, #87, #88.
+- **Records of decisions above, or of this guide:** #18 (the ADRs), #63 (a doc fix), #102 (this guide).
