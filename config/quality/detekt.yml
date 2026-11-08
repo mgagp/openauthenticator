@@ -1,0 +1,4 @@
+# Detekt for the EzKey key store plugin (#114). Built upon Detekt's default configuration
+# (`--build-upon-default-config`): only the differences go here, each with its reason.
+config:
+  validation: true

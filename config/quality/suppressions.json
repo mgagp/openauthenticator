@@ -1,0 +1,32 @@
+{
+  "suppressions": [
+    {
+      "tool": "dart_code_linter",
+      "rule": "source-lines-of-code",
+      "path": "test/",
+      "symbol": "main",
+      "reason": "A test file's main declares all its groups and tests, so its length is the file's length. Each test body is still measured on its own."
+    },
+    {
+      "tool": "dart_code_linter",
+      "rule": "maximum-nesting-level",
+      "path": "test/",
+      "symbol": "main",
+      "reason": "main, group, testWidgets and the test closure nest by design in Flutter tests."
+    },
+    {
+      "tool": "dart_code_linter",
+      "rule": "source-lines-of-code",
+      "path": "integration_test/",
+      "symbol": "main",
+      "reason": "Same as test/: main declares the whole device test."
+    },
+    {
+      "tool": "dart_code_linter",
+      "rule": "maximum-nesting-level",
+      "path": "integration_test/",
+      "symbol": "main",
+      "reason": "Same as test/: group and test closures nest by design."
+    }
+  ]
+}

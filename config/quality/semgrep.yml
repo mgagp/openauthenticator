@@ -1,0 +1,30 @@
+# The project's own Semgrep rules (#114), for footguns the other analyzers do not see.
+rules:
+  - id: ezkey-secret-in-log
+    languages: [dart]
+    severity: WARNING
+    message: A value whose name suggests a secret (token, proof, invitation, scanned content) goes to the log. Logs can reach crash reports and other apps.
+    patterns:
+      - pattern-either:
+          - pattern: debugPrint($MSG)
+          - pattern: print($MSG)
+      - metavariable-regex:
+          metavariable: $MSG
+          regex: (?i).*\b\w*(token|proof|secret|invitation|barcode|scanned|privatekey)\w*\b.*
+  - id: ezkey-plain-http-url
+    languages: [dart]
+    severity: WARNING
+    message: A plain HTTP URL in app code. EzKey servers must be reached over HTTPS in release builds (#109).
+    pattern-regex: >-
+      ['"]http://(?!localhost|127\.0\.0\.1|10\.0\.2\.2)
+  - id: ezkey-key-material-in-log
+    languages: [kotlin]
+    severity: WARNING
+    message: Key material, a signature or a payload may go to the Android log.
+    patterns:
+      - pattern-either:
+          - pattern: Log.$LEVEL(..., $X, ...)
+          - pattern: println($X)
+      - metavariable-regex:
+          metavariable: $X
+          regex: (?i).*(key|signature|payload|alias).*

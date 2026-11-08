@@ -84,6 +84,10 @@ adb install build/app/outputs/flutter-apk/app-debug.apk          # or: scripts/w
 - Style rules enforced: single quotes, `prefer_const_constructors`, `unnecessary_lambdas`. Code uses explicit local variable types (`AppDatabase database = ...`) rather than `var`, and every public member has a `///` doc comment.
 - The SDK constraint is `>=3.12.0`; the code uses dot shorthands (`mode: .insertOrReplace`, `currentPlatform == .linux`).
 
+### Code quality pass (doctor-curated)
+
+Keyword `doctor-curated` (#114): `scripts/with-env.sh dart scripts/quality_doctor.dart` runs pinned analyzers (dart_code_linter, jscpd, Detekt, Semgrep in Docker) on the fork's own code only, never upstream's, and writes one curated report to `build/quality/doctor.curated.md` (P1, P2, P3). It is a punctual report, not a CI gate. Go through the findings one at a time with the user: fix, suppress with a written reason in `config/quality/suppressions.json`, or leave; then record the decisions in a pass note under `docs/quality/`. Details: [`docs/code-quality.md`](docs/code-quality.md).
+
 ## Tests
 
 Fork-only addition (issue #12): `flutter_test` (`sdk: flutter`) is in `dev_dependencies`, and tests live under `test/`.
@@ -96,7 +100,7 @@ scripts/with-env.sh flutter test --name 'to\(\) converts'               # by tes
 
 Conventions:
 - `packages/ezkey_keystore/` is a local Android plugin (EzKey key store, ADR-0001). `flutter analyze` covers its Dart code and `test/ezkey/` tests it through a mocked channel; its Kotlin is only compiled by `flutter build apk` and only runs on a device or emulator.
-- `test/` mirrors `lib/`: the tests for `lib/<path>/<name>.dart` go in `test/<path>/<name>_test.dart` (the `_test.dart` suffix is how `flutter test` finds them). Import code under test with `package:open_authenticator/...`.
+- `test/` mirrors `lib/`: the tests for `lib/<path>/<name>.dart` go in `test/<path>/<name>_test.dart` (the `_test.dart` suffix is how `flutter test` finds them). Import code under test with `package:open_authenticator/...`. Tests of the fork's Dart scripts go in `test/scripts/<path>/` and import the script by relative path.
 - Use `package:flutter_test/flutter_test.dart`, even for pure-Dart logic (it re-exports `package:test` and adds widget testing). One `group` per class or unit, and test names that state the behavior (`'to() keeps the same exception and stack trace'`).
 - Arrange / act / assert, separated by blank lines. Same style as `lib/`: explicit local types, single quotes, `const` where possible.
 - Test the documented contract, not implementation details. When adding tests for an important behavior, check that they can fail: temporarily break the code, see red, restore (`git restore`).
