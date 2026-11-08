@@ -52,7 +52,7 @@ class EzkeyToReenrollGroup extends ConsumerWidget {
     }
     try {
       await ref.read(ezkeyToReenrollProvider.notifier).remove(entry);
-    } catch (ex) {
+    } on Object catch (ex) {
       debugPrint('EzKey list to re-enroll not updated: $ex');
       if (context.mounted) {
         showEzkeyErrorToast(context, text: translations.ezkey.toReenroll.remove.error);

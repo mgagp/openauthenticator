@@ -1,0 +1,40 @@
+{
+  "name": "Open Authenticator fork",
+  "outputDirectory": "build/quality",
+  "suppressions": "config/quality/suppressions.json",
+  "baseline": "config/quality/baseline.json",
+  "dart": {
+    "paths": ["lib/ezkey", "packages/ezkey_keystore/lib", "test", "integration_test", "scripts"],
+    "exclude": "{/**.g.dart,/**.freezed.dart}",
+    "thresholds": {
+      "cyclomatic-complexity": 10,
+      "maximum-nesting-level": 3,
+      "number-of-parameters": 4,
+      "source-lines-of-code": 50
+    }
+  },
+  "duplication": {
+    "paths": [
+      "lib/ezkey",
+      "packages/ezkey_keystore",
+      "test",
+      "integration_test",
+      "scripts/ezkey_lab.dart",
+      "scripts/generate_google_services.dart",
+      "scripts/quality_doctor.dart",
+      "scripts/quality",
+      "scripts/with-env.sh",
+      "scripts/with-env.ps1"
+    ],
+    "minTokens": 50,
+    "longBlockLines": 15
+  },
+  "kotlin": {
+    "paths": ["packages/ezkey_keystore/android/src"],
+    "config": "config/quality/detekt.yml"
+  },
+  "semgrep": {
+    "paths": ["lib/ezkey", "packages/ezkey_keystore", "scripts/ezkey_lab.dart", "scripts/quality_doctor.dart"],
+    "rules": "config/quality/semgrep.yml"
+  }
+}

@@ -178,7 +178,7 @@ Future<List<EzkeyInventoryEntry>> ezkeyInventoryEntries(Ref ref) async {
   try {
     SecureEzkeyEnrollmentStore store = await ref.read(ezkeyEnrollmentStoreProvider.future);
     return [for (EzkeyEnrollment enrollment in await store.list()) EzkeyInventoryEntry.fromEnrollment(enrollment)];
-  } catch (ex) {
+  } on Object catch (ex) {
     debugPrint('EzKey backup inventory skipped: $ex');
     return [];
   }

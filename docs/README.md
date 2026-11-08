@@ -23,6 +23,7 @@ This direction evolves with the project. When it changes, update this section in
 | [`ezkey/integration.md`](ezkey/integration.md) | EzKey integration design: layers, contract conformance, upstream files touched, lab setup |
 | [`ezkey/harmonization.md`](ezkey/harmonization.md) | EzKey × Open Authenticator features: the two tracks, integration levels, inventory of upstream features, tracking |
 | [`ezkey/integrator-guide.md`](ezkey/integrator-guide.md) | Draft guide for adding EzKey to another mobile app, tested by whether a cold agent reaches this fork's decisions |
+| [`code-quality.md`](code-quality.md) | The doctor-curated pass over the fork's own code: analyzers, ranking, suppressions, and the pass notes in `quality/` |
 | [`decision-guide.md`](decision-guide.md) | When to ask the maintainer, what to weigh before proposing a change, where to record the outcome |
 | [`adr/`](adr/) | Decisions with real trade-offs (below) |
 
