@@ -33,6 +33,17 @@ Who merges what is set in `CLAUDE.md` § Development workflow, step 5. When unsu
 - **Portability:** nothing Android-only ([ADR-0004](adr/0004-ezkey-multi-platform-posture.md)). Where EzKey is unavailable, the app must look like upstream.
 - **Alternatives:** state them. If someone could reasonably reopen the choice, it needs an ADR ([`README.md`](README.md) § Writing an ADR).
 
+## When EzKey lacks what a decision needs
+
+This fork is also how EzKey's gaps are found: integrating EzKey into a real app shows what the platform does not cover yet. When a decision here would need a workaround because EzKey has no answer, for example a user flow, a policy or an API, it is **conditional on EzKey**:
+
+- **Describe the gap** as a finding in [`ezkey/integration.md`](ezkey/integration.md) § Findings fed back to EzKey, with the options seen so far.
+- **Open an issue here** labelled `blocked: ezkey`. It says what is needed from EzKey, and what this app will decide once EzKey provides it.
+- **Build no workaround** that diverges from the canon. The fork keeps its current behaviour, and the guide says the case is not covered yet.
+- **Revisit** when EzKey ships the feature. Moving EzKey forward is the prerequisite for validating the integration decision.
+
+The maintainer can still decide otherwise for a given case. That decision then goes in the issue.
+
 ## Recording the outcome
 
 - The decision goes in the PR that applies it: a line in the owning document, or an ADR ([`README.md`](README.md) § Rules).
