@@ -41,6 +41,12 @@ jobs:
       - name: Test
         run: flutter test
 
+      # Code quality (#114): fails only on a P1 finding of the fork's own code that the baseline does
+      # not list, or when an analyzer cannot run. The full report stays a punctual pass
+      # (docs/code-quality.md).
+      - name: No new P1 quality finding in the fork's code
+        run: dart scripts/quality_doctor.dart --skip jscpd,detekt --fail-on-new
+
   build:
     name: Build ${{ matrix.target }}
     runs-on: ${{ matrix.os }}

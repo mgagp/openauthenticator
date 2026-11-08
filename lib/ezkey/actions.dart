@@ -7,9 +7,9 @@ import 'package:open_authenticator/ezkey/pages/approval_page.dart';
 import 'package:open_authenticator/ezkey/pages/enroll_page.dart';
 import 'package:open_authenticator/ezkey/pages/scan_page.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
+import 'package:open_authenticator/ezkey/toast.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/widgets/dialog/text_input_dialog.dart';
-import 'package:open_authenticator/ezkey/toast.dart';
 import 'package:open_authenticator/widgets/waiting_overlay.dart';
 
 /// Whether the user may type or paste an invitation instead of scanning it.

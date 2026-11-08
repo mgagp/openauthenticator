@@ -172,7 +172,7 @@ void main() {
         try {
           await deleteEzkeyKeysAfterClearData(ref);
           done = true;
-        } catch (ex) {
+        } on Object catch (ex) {
           error = ex;
         }
       });

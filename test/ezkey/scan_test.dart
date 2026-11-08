@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:ezkey_dart/ezkey_dart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -150,7 +152,7 @@ void main() {
   Future<bool> scan(WidgetTester tester, String content) async {
     QrCodeScanner scanner = tester.widget<QrCodeScanner>(find.byType(QrCodeScanner));
     bool? resume;
-    scanner.onScan!(content).then((value) => resume = value);
+    unawaited(scanner.onScan!(content).then((value) => resume = value));
     await settle(tester);
     return resume ?? false;
   }

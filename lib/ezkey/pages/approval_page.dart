@@ -216,7 +216,7 @@ class _EzkeyApprovalPageState extends ConsumerState<EzkeyApprovalPage> {
     if (!mounted) {
       return false;
     }
-    return await ref.read(ezkeyApprovalConfirmationProvider)(context.appUnlockInteraction);
+    return ref.read(ezkeyApprovalConfirmationProvider)(context.appUnlockInteraction);
   }
 
   /// Denies the attempt once when the user leaves it undecided (contract §3): no prompt, no retry,

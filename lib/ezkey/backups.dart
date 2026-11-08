@@ -31,7 +31,7 @@ Future<String> _withNote(WidgetRef ref, String message, String note) async {
     SecureEzkeyEnrollmentStore store = await ref.read(ezkeyEnrollmentStoreProvider.future);
     bool hasEnrollments = (await store.list()).isNotEmpty || store.unreadableLocalIds().isNotEmpty;
     return hasEnrollments ? '$message\n\n$note' : message;
-  } catch (ex) {
+  } on Object catch (ex) {
     debugPrint('EzKey backup note skipped: $ex');
     return message;
   }

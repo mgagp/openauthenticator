@@ -1,0 +1,21 @@
+include: ../analysis_options.yaml
+
+linter:
+  rules:
+    - avoid_dynamic_calls
+    - unawaited_futures
+    - always_declare_return_types
+    - avoid_catches_without_on_clauses
+    - cancel_subscriptions
+    - close_sinks
+    - directives_ordering
+    - prefer_final_fields
+    - avoid_slow_async_io
+    - only_throw_errors
+    - use_named_constants
+    - no_literal_bool_comparisons
+    - prefer_null_aware_method_calls
+    - unnecessary_await_in_return
+    - literal_only_boolean_expressions
+    - no_adjacent_strings_in_list
+    - avoid_void_async

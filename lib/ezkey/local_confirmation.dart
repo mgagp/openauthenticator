@@ -106,7 +106,7 @@ final ezkeyDeviceConfirmationProvider = Provider<Future<bool> Function({required
 Future<bool> confirmWithAppUnlockMethod(Ref ref, AppUnlockInteraction interaction, {required String title, required String reason}) async {
   String unlockMethodId = await ref.read(appUnlockMethodSettingsEntryProvider.future);
   if (unlockMethodId == NoneAppUnlockMethod.kMethodId) {
-    return await ref.read(ezkeyDeviceConfirmationProvider)(title: title, reason: reason);
+    return ref.read(ezkeyDeviceConfirmationProvider)(title: title, reason: reason);
   }
   Result result = await ref.read(appUnlockMethodSettingsEntryProvider.notifier).unlockWithCurrentMethod(interaction, UnlockReason.sensibleAction);
   return result is ResultSuccess;

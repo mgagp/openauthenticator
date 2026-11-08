@@ -4,6 +4,8 @@
 //
 // Usage (from the repository root):
 //   scripts/with-env.sh dart scripts/quality_doctor.dart [--config config/quality/doctor.json] [--skip semgrep,jscpd]
+//     [--fail-on-new]       exit 1 when a P1 finding is not in the baseline (the CI check)
+//     [--write-baseline]    record the current P1 findings as the baseline
 //
 // Needs: Dart (always), Node for jscpd, a JDK for Detekt, Docker for Semgrep. A missing one is
 // reported as skipped. Details: docs/code-quality.md.
@@ -33,7 +35,9 @@ const Map<String, String> detektJars = {
 Future<void> main(List<String> arguments) async {
   ArgParser parser = ArgParser()
     ..addOption('config', defaultsTo: 'config/quality/doctor.json')
-    ..addMultiOption('skip', allowed: ['dart_code_linter', 'jscpd', 'detekt', 'semgrep']);
+    ..addMultiOption('skip', allowed: ['dart_code_linter', 'jscpd', 'detekt', 'semgrep'])
+    ..addFlag('fail-on-new', help: 'Exit 1 when a P1 finding is not in the baseline.')
+    ..addFlag('write-baseline', help: 'Record the current P1 findings as the baseline.');
   ArgResults args = parser.parse(arguments);
   String root = Directory.current.path;
   Map<String, dynamic> config = jsonDecode(File(args['config'] as String).readAsStringSync()) as Map<String, dynamic>;
@@ -60,13 +64,51 @@ Future<void> main(List<String> arguments) async {
   _writeReports(report, output: output, title: 'Doctor-curated report: ${config['name']}', statuses: statuses);
   String counts = Priority.values.map((priority) => '${report.at(priority).length} ${priority.label}').join(', ');
   stdout.writeln('${report.findings.length} findings kept ($counts): ${output.path}/doctor.curated.md');
+  File baseline = File(config['baseline'] as String);
+  if (args['write-baseline'] as bool) {
+    _writeBaseline(report, baseline);
+  } else if (args['fail-on-new'] as bool) {
+    _failOnNew(report, baseline, statuses);
+  }
+}
+
+/// Records the P1 findings of [report] as the [baseline].
+void _writeBaseline(CuratedReport report, File baseline) {
+  List<String> keys = {for (Finding finding in report.at(Priority.p1)) baselineKey(finding)}.toList()..sort();
+  baseline.writeAsStringSync('${const JsonEncoder.withIndent('  ').convert({'p1': keys})}\n');
+  stdout.writeln('Baseline written: ${keys.length} P1 findings in ${baseline.path}');
+}
+
+/// Exits with 1 if an analyzer could not run, as told by [statuses], or if a P1 finding of [report]
+/// is not in [baseline].
+void _failOnNew(CuratedReport report, File baseline, Map<String, String> statuses) {
+  // An analyzer that could not run cannot vouch for the code: the check fails rather than pass blind.
+  List<String> blind = [
+    for (MapEntry<String, String> status in statuses.entries)
+      if (status.value.startsWith('skipped:')) '${status.key} (${status.value})',
+  ];
+  if (blind.isNotEmpty) {
+    stderr.writeln('Cannot check: ${blind.join('; ')}');
+    exit(1);
+  }
+  Set<String> known = baseline.existsSync() ? ((jsonDecode(baseline.readAsStringSync()) as Map<String, dynamic>)['p1'] as List<dynamic>).cast<String>().toSet() : {};
+  List<Finding> added = newSince(report.findings, known);
+  if (added.isEmpty) {
+    stdout.writeln('No new P1 finding.');
+    return;
+  }
+  stderr.writeln('New P1 findings, not in ${baseline.path}:');
+  for (Finding finding in added) {
+    stderr.writeln('  ${finding.location}: ${finding.message} (${finding.tool})');
+  }
+  exit(1);
 }
 
 /// Reads the suppressions file. Exits with code 2 when an entry has no reason.
 List<Suppression> _readSuppressions(String path) {
   try {
     return [
-      for (Object? entry in jsonDecode(File(path).readAsStringSync())['suppressions'] as List<dynamic>) Suppression.fromJson(entry as Map<String, dynamic>),
+      for (Object? entry in (jsonDecode(File(path).readAsStringSync()) as Map<String, dynamic>)['suppressions'] as List<dynamic>) Suppression.fromJson(entry as Map<String, dynamic>),
     ];
   } on FormatException catch (ex) {
     stderr.writeln(ex.message);
@@ -244,20 +286,17 @@ Future<List<Finding>> _semgrep(Map<String, dynamic> config, Directory raw, Strin
   if (info.exitCode != 0) {
     throw const _Unavailable('Docker is not running');
   }
-  String rules = File(config['rules'] as String).absolute.path;
   String report = '${raw.path}/semgrep.json';
   ProcessResult result = await _run('docker', [
     'run',
     '--rm',
     '-v',
     '$root:/src',
-    '-v',
-    '${File(rules).parent.path}:/rules',
     semgrepImage,
     'semgrep',
     'scan',
     '--config',
-    '/rules/${rules.split(Platform.pathSeparator).last}',
+    '/src/${config['rules']}',
     '--metrics=off',
     '--quiet',
     '--json',
@@ -265,5 +304,12 @@ Future<List<Finding>> _semgrep(Map<String, dynamic> config, Directory raw, Strin
     '/src/${report.replaceAll('\\', '/')}',
     for (Object? path in config['paths'] as List<dynamic>) '/src/$path',
   ]);
+  Map<String, dynamic> json = _readReport(report, result);
+  // Semgrep reports a bad rule file or an unreadable target in its JSON, with no finding: that is a
+  // failure to run, not a clean result.
+  List<dynamic> errors = json['errors'] as List<dynamic>? ?? [];
+  if (errors.isNotEmpty) {
+    throw _Unavailable('Semgrep error: ${(errors.first as Map<String, dynamic>)['message'].toString().split('\n').first}');
+  }
   return readSemgrep(_readReport(report, result));
 }

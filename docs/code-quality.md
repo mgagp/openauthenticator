@@ -51,11 +51,32 @@ Test code is ranked one level lower. The metrics of one function are merged into
 
 **Suppressions** (`config/quality/suppressions.json`) drop a rule by analyzer, and optionally by path or by function. Each one needs a written reason, or the pass refuses to run. The report lists every suppression with its count.
 
+## Criteria for new code
+
+Phase 2 of #114. They apply to the fork's code, whoever writes it, a person or an agent.
+
+| Criterion | Checked by |
+| --- | --- |
+| A function stays within the thresholds above: complexity 10, nesting 3, 4 parameters, 50 lines. Past them, split it, or say in the PR why not | The pass. CI fails on a new P1, which is about twice a threshold |
+| The extra lint rules of our folders pass (below) | `flutter analyze` in CI |
+| No secret, token or key material in a log, no plain HTTP URL in app code | Semgrep rules, in CI |
+| A catch names what it catches. A catch-all is only for an intended fail-open, written `on Object catch`, with the reason next to it | `avoid_catches_without_on_clauses` |
+| Every public member has a doc comment | `public_member_api_docs` (app and plugin code) |
+| Names say what the thing is or does, without abbreviations other than common ones (`id`, `url`). A boolean reads as a question (`isAdministration`, `hasEnrollments`) | Review: no deterministic tool judges this |
+| Format | `dart format`, in CI |
+| A test proves it can fail: break the code, see red, restore | Review, and the PR's checks section |
+
+**Extra lint rules.** Each of our folders has its own `analysis_options.yaml`, which includes the root one and adds rules: `lib/ezkey/`, `packages/ezkey_keystore/`, `scripts/`, `test/`, `integration_test/`. The root file is upstream's and stays untouched, so upstream's code is not checked by them. Including the root file, which declares the `riverpod_lint` plugin, raises no diagnostic (checked on 2026-11-08).
+
+The rules: `public_member_api_docs`, `avoid_dynamic_calls`, `unawaited_futures`, `avoid_print`, `always_declare_return_types`, `avoid_catches_without_on_clauses`, `cancel_subscriptions`, `close_sinks`, `directives_ordering`, `prefer_final_fields`, `avoid_slow_async_io`, `only_throw_errors`, `avoid_positional_boolean_parameters`, `use_named_constants`, `no_literal_bool_comparisons`, `prefer_null_aware_method_calls`, `avoid_redundant_argument_values`, `unnecessary_await_in_return`, `literal_only_boolean_expressions`, `no_adjacent_strings_in_list`, `avoid_void_async`. Tests drop the first, `avoid_positional_boolean_parameters` and `avoid_redundant_argument_values`. Scripts and device tests drop `avoid_print`, since printing is their output. `discarded_futures` was left out: in Flutter callbacks it asks for `unawaited` on every fire-and-forget call, for little gain.
+
+**The CI check.** `dart scripts/quality_doctor.dart --skip jscpd,detekt --fail-on-new` runs dart_code_linter and Semgrep, and fails on a P1 finding that `config/quality/baseline.json` does not list. It also fails when one of them cannot run, rather than pass blind. The baseline lists today's two P1 findings, keyed by file and function so moved lines do not matter. When one is fixed, remove it from the baseline with `--write-baseline`, never to make room for a new one.
+
 ## Reuse in the EzKey SDK
 
 Nothing in the curator (`scripts/quality/curator.dart`) is specific to this app: it reads the analyzers' standard outputs. To reuse it for `ezkey_dart`, copy `scripts/quality_doctor.dart`, `scripts/quality/` and `config/quality/`, set the paths in `doctor.json`, and drop the Kotlin part.
 
 ## Next phases (#114)
 
-- **Phase 2:** written criteria for new code, and the ones a tool can check run in CI on our code. A nested `analysis_options.yaml` in `lib/ezkey/` applies extra lint rules to that folder only (checked on 2026-11-08). Still to check: whether including the root file there, which declares the `riverpod_lint` plugin, raises the plugins-in-inner-options diagnostic.
+- **Phase 2:** done, see [Criteria for new code](#criteria-for-new-code).
 - **Phase 3:** the plugin's Kotlin gets the same treatment, with a narrowed Detekt configuration.

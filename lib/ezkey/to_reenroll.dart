@@ -125,7 +125,7 @@ Future<void> rememberEzkeyToReenroll(Ref ref, EzkeyBackupInventory? inventory) a
     EzkeyToReenrollStore store = EzkeyToReenrollStore(enrollmentStore.values);
     await store.write(mergeEzkeyToReenroll(store.read(), inventory.entries, await enrollmentStore.list()));
     ref.invalidate(ezkeyToReenrollProvider);
-  } catch (ex) {
+  } on Object catch (ex) {
     debugPrint('EzKey list to re-enroll not updated: $ex');
   }
 }

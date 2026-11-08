@@ -86,7 +86,7 @@ adb install build/app/outputs/flutter-apk/app-debug.apk          # or: scripts/w
 
 ### Code quality pass (doctor-curated)
 
-Keyword `doctor-curated` (#114): `scripts/with-env.sh dart scripts/quality_doctor.dart` runs pinned analyzers (dart_code_linter, jscpd, Detekt, Semgrep in Docker) on the fork's own code only, never upstream's, and writes one curated report to `build/quality/doctor.curated.md` (P1, P2, P3). It is a punctual report, not a CI gate. Go through the findings one at a time with the user: fix, suppress with a written reason in `config/quality/suppressions.json`, or leave; then record the decisions in a pass note under `docs/quality/`. Details: [`docs/code-quality.md`](docs/code-quality.md).
+Keyword `doctor-curated` (#114): `scripts/with-env.sh dart scripts/quality_doctor.dart` runs pinned analyzers (dart_code_linter, jscpd, Detekt, Semgrep in Docker) on the fork's own code only, never upstream's, and writes one curated report to `build/quality/doctor.curated.md` (P1, P2, P3). It is a punctual report, not a CI gate. Go through the findings one at a time with the user: fix, suppress with a written reason in `config/quality/suppressions.json`, or leave; then record the decisions in a pass note under `docs/quality/`. Details: [`docs/code-quality.md`](docs/code-quality.md). New code follows its § Criteria for new code: our folders have stricter lint rules (their own `analysis_options.yaml`), and CI fails on a new P1 finding.
 
 ## Tests
 

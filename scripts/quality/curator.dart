@@ -155,6 +155,12 @@ String relativePath(String path, String root) {
   return normalized.toLowerCase().startsWith(base.toLowerCase()) ? normalized.substring(base.length) : normalized;
 }
 
+/// Returns the JSON object under [key] of [json], or an empty one.
+Map<String, dynamic> _object(Object? json, String key) {
+  Object? value = json is Map<String, dynamic> ? json[key] : null;
+  return value is Map<String, dynamic> ? value : const {};
+}
+
 /// Ranks a metric level of dart_code_linter.
 Priority? _metricPriority(String? level) => switch (level) {
   'alarm' => Priority.p1,
@@ -173,7 +179,7 @@ List<Finding> readDartMetrics(Map<String, dynamic> json, {required String root})
 
 /// The metrics of one function or class past their threshold.
 List<Finding> _symbolFindings(String path, String symbol, Map<String, dynamic> body) {
-  int line = (body['codeSpan']?['start']?['line'] as int?) ?? 1;
+  int line = _object(_object(body, 'codeSpan'), 'start')['line'] as int? ?? 1;
   List<Finding> findings = [];
   for (Map<String, dynamic> metric in (body['metrics'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>()) {
     Priority? priority = _metricPriority(metric['level'] as String?);
@@ -227,9 +233,9 @@ Finding _sarifFinding(Map<String, dynamic> result, {required String root, requir
   return Finding(
     tool: tool,
     rule: rule,
-    path: relativePath(location['artifactLocation']?['uri'] as String? ?? '', root),
-    line: (location['region']?['startLine'] as int?) ?? 1,
-    message: result['message']?['text'] as String? ?? '',
+    path: relativePath(_object(location, 'artifactLocation')['uri'] as String? ?? '', root),
+    line: _object(location, 'region')['startLine'] as int? ?? 1,
+    message: _object(result, 'message')['text'] as String? ?? '',
     priority: rule.contains('.formatting.') ? Priority.p3 : _sarifPriority(result['level'] as String?),
   );
 }
@@ -248,9 +254,9 @@ List<Finding> readSemgrep(Map<String, dynamic> json, {String mountPoint = '/src/
       tool: 'semgrep',
       rule: (result['check_id'] as String).split('.').last,
       path: (result['path'] as String).replaceFirst(mountPoint, ''),
-      line: result['start']?['line'] as int? ?? 1,
-      message: result['extra']?['message'] as String? ?? '',
-      priority: switch (result['extra']?['severity']) {
+      line: _object(result, 'start')['line'] as int? ?? 1,
+      message: _object(result, 'extra')['message'] as String? ?? '',
+      priority: switch (_object(result, 'extra')['severity']) {
         'ERROR' || 'WARNING' => Priority.p1,
         _ => Priority.p2,
       },
@@ -292,6 +298,17 @@ Finding _merge(Finding a, Finding b) => Finding(
   message: '${a.message}; ${b.message}',
   priority: a.priority.index <= b.priority.index ? a.priority : b.priority,
 );
+
+/// The key of [finding] in a baseline: stable when lines move. The metrics of one function share
+/// one key, since the curator merges them.
+String baselineKey(Finding finding) =>
+    finding.tool == 'dart_code_linter' && finding.symbol != null ? '${finding.tool}|${finding.path}|${finding.symbol}' : '${finding.tool}|${finding.rule}|${finding.path}|${finding.symbol ?? ''}';
+
+/// The findings at [atLeast] or more urgent that [baseline] does not know: what the code gained.
+List<Finding> newSince(List<Finding> findings, Set<String> baseline, {Priority atLeast = Priority.p1}) => [
+  for (Finding finding in findings)
+    if (finding.priority.index <= atLeast.index && !baseline.contains(baselineKey(finding))) finding,
+];
 
 /// Renders [report] as Markdown. [tools] maps each analyzer to its status line.
 String renderMarkdown(CuratedReport report, {required String title, required DateTime date, required Map<String, String> tools}) {

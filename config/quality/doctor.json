@@ -2,6 +2,7 @@
   "name": "Open Authenticator fork",
   "outputDirectory": "build/quality",
   "suppressions": "config/quality/suppressions.json",
+  "baseline": "config/quality/baseline.json",
   "dart": {
     "paths": ["lib/ezkey", "packages/ezkey_keystore/lib", "test", "integration_test", "scripts"],
     "exclude": "{/**.g.dart,/**.freezed.dart}",

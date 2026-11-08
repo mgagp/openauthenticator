@@ -194,6 +194,23 @@ void main() {
     });
   });
 
+  group('baseline', () {
+    test('keys the metrics of a function by place, so they survive moved lines and merged rules', () {
+      Finding before = _finding(tool: 'dart_code_linter', rule: 'cyclomatic-complexity', symbol: 'build', line: 78);
+      Finding after = _finding(tool: 'dart_code_linter', rule: 'cyclomatic-complexity, source-lines-of-code', symbol: 'build', line: 90);
+
+      expect(baselineKey(after), baselineKey(before));
+    });
+
+    test('newSince returns only the urgent findings the baseline does not know', () {
+      Finding known = _finding(tool: 'dart_code_linter', rule: 'cyclomatic-complexity', symbol: 'build', priority: Priority.p1);
+      Finding added = _finding(tool: 'semgrep', rule: 'ezkey-secret-in-log', priority: Priority.p1);
+      Finding minor = _finding(tool: 'jscpd', rule: 'duplicate-dart', priority: Priority.p2);
+
+      expect(newSince([known, added, minor], {baselineKey(known)}), [added]);
+    });
+  });
+
   group('renderMarkdown', () {
     test('states the counts, each rank and each suppression with its reason', () {
       Suppression suppression = const Suppression(tool: 'jscpd', rule: 'duplicate-dart', reason: 'Fixture data.');
