@@ -1,6 +1,6 @@
 # ADR-0002: EzKey device key and enrollment secrets on Android
 
-- **Status:** Accepted (2026-10-27)
+- **Status:** Accepted (2026-10-27). D1 and D5 amended (2026-11-08, #108): the tier is read back from the key.
 - **Issue:** #17; applies to #16 slice 1
 
 ## Context
@@ -21,11 +21,11 @@ The Flutter ↔ Kotlin bridge (platform channel) carries only public material fo
 
 ## Decision
 
-1. **Device key: Android Keystore, StrongBox when available.** P-256, `PURPOSE_SIGN`, `DIGEST_SHA256`, non-exportable. Generation first requests StrongBox (`setIsStrongBoxBacked(true)`) and falls back to the TEE on `StrongBoxUnavailableException`. The tier is reported honestly through `EzkeyDeviceKeyStore.storageTier` (`strong` / `standard`). Keystore calls run on a background thread (StrongBox signatures take tens to hundreds of milliseconds). The SDK chooses the alias and deletes the key on failed enrollment and on `forget`.
+1. **Device key: Android Keystore, StrongBox when available.** P-256, `PURPOSE_SIGN`, `DIGEST_SHA256`, non-exportable. Generation first requests StrongBox (`setIsStrongBoxBacked(true)`) and falls back to the TEE on `StrongBoxUnavailableException`. The tier reported through `EzkeyDeviceKeyStore.storageTier` (`strong` / `standard` / `none`) is read back from the generated key, never assumed from the request (#108): `KeyInfo.getSecurityLevel()` on API 31+ (`strong` only for StrongBox; the TEE and an unnamed secure level are `standard`), `KeyInfo.isInsideSecureHardware` before. A key outside secure hardware, or one whose level Android cannot tell, is reported `none` and kept: the app makes its best effort, verifies it and reports the truth, and enforcing a minimum tier is the server's call (the maintainer's middle-path line, 2026-11-08). This is what EzKey's reference app already did (`getEnrollmentPrivateKeyStorageTier` in `EzkeyCryptoModule.kt`: `NONE` on an emulator, no refusal); this fork had reported the tier from the request until #108. Before API 31 the public API cannot tell StrongBox from the TEE without key attestation, so a StrongBox key reads `standard` there: the app underclaims rather than state what it cannot prove. The reference app also asks `KeyInfo.isStrongBoxBacked` by reflection; this fork sticks to documented public APIs. Keystore calls run on a background thread (StrongBox signatures take tens to hundreds of milliseconds). The SDK chooses the alias and deletes the key on failed enrollment and on `forget`.
 2. **No user-authentication binding on the key.** `pending` signs with the same key on every poll, so a key that requires biometrics would prompt on every check. Local confirmation, when enabled, is an app-level prompt on **Approve only**, as the EzKey contract §4 (Q11) prescribes. It is enabled by the user's "Confirm before approvals" setting, off by default like the EzKey reference app (#34). This is honest-client protection, not a server-verifiable proof (same wording boundary as EzKey's `MOBILE_CRYPTO_REFERENCE.md`).
 3. **Signatures returned as the Keystore produces them.** Android Keystore emits high-S ECDSA signatures about half of the time and the Auth API rejects them (SEC-012); `ezkey_dart` 0.3.0 normalizes every key-store signature to low-S (EzKey finding G8, found while preparing this ADR). The plugin does not re-implement that.
 4. **Enrollment records: the app's existing secure storage** (`secureStorageProvider`, AES-256-GCM, master key in the TEE). Upstream already excludes this storage from cloud backup and device transfer.
-5. **No attestation.** The protocol does not carry Android Key Attestation, so the tier stays self-reported, as in EzKey's reference app. Do not describe the result as attested, StrongBox-guaranteed or FIDO2-equivalent.
+5. **No attestation.** The protocol does not carry Android Key Attestation, so the tier stays self-reported, as in EzKey's reference app. Reading it back (D1) proves it to this app, not to the server. Do not describe the result as attested, StrongBox-guaranteed or FIDO2-equivalent.
 
 ## Alternatives considered
 

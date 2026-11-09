@@ -14,8 +14,8 @@ void main() {
     String alias = ezkeyDeviceKeyAlias(1);
     try {
       String spki = await store.generateKeyPair(alias);
-      expect(store.storageTier, isNot(DevicePrivateKeyStorageTier.none));
-      // The reported tier is the one the platform reads back from the key now (#108).
+      // The reported tier is the one the platform reads back from the key now (#108): `none` on an
+      // emulator, which has no secure hardware.
       expect(await store.keyTier(alias), store.storageTier);
       expect(await store.publicKey(alias), spki);
       expect(await store.deviceKeyAliases(), contains(alias));

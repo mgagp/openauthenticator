@@ -38,28 +38,14 @@ void main() {
       ]);
     });
 
-    test('refuses a key the platform reports outside secure hardware, and deletes it', () async {
+    test('reports a key outside secure hardware as it is, and keeps it', () async {
       NativeEzkeyDeviceKeyStore store = NativeEzkeyDeviceKeyStore();
-      answer = (call) => call.method == 'generateKeyPair' ? {'publicKey': 'SPKI-soft', 'tier': 'none'} : null;
+      answer = (call) => {'publicKey': 'SPKI-soft', 'tier': 'none'};
 
-      await expectLater(
-        store.generateKeyPair('ezkey-device-1-a'),
-        throwsA(isA<EzkeyLocalStateException>().having((e) => e.message, 'message', ezkeyKeyNotInSecureHardware)),
-      );
+      expect(await store.generateKeyPair('ezkey-device-1-a'), 'SPKI-soft');
 
-      expect(calls.map((call) => call.method), ['generateKeyPair', 'deleteKeyPair']);
-      expect(calls.last.arguments, {'alias': 'ezkey-device-1-a'});
-      expect(store.storageTier, isNot(DevicePrivateKeyStorageTier.none));
-    });
-
-    test('the platform refusal becomes the not-in-secure-hardware error', () async {
-      NativeEzkeyDeviceKeyStore store = NativeEzkeyDeviceKeyStore();
-      answer = (call) => throw PlatformException(code: 'not_secure_hardware', message: 'The generated key is not in secure hardware; it was deleted');
-
-      await expectLater(
-        store.generateKeyPair('ezkey-device-1-a'),
-        throwsA(isA<EzkeyLocalStateException>().having((e) => e.message, 'message', ezkeyKeyNotInSecureHardware)),
-      );
+      expect(store.storageTier, DevicePrivateKeyStorageTier.none);
+      expect(calls.map((call) => call.method), ['generateKeyPair']);
     });
 
     test('reads the tier of an existing key from the platform', () async {

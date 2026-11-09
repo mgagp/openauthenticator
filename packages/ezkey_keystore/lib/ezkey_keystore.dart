@@ -7,8 +7,7 @@
 /// TEE).
 ///
 /// The tier a platform reports is what its key store says about the key, read back after
-/// generation, never what was requested (#108). A key outside secure hardware is deleted and
-/// refused with `not_secure_hardware`.
+/// generation, never what was requested (#108).
 ///
 /// Keys are non-exportable and sign-only. Only aliases, strings to sign, signatures and public keys
 /// cross the channel.
@@ -16,8 +15,6 @@
 /// Failures are [PlatformException]s with one of these codes:
 /// * `key_not_found`: no key for the alias;
 /// * `invalid_arguments`: a required argument is missing;
-/// * `not_secure_hardware`: the generated key is not in secure hardware, or the platform cannot tell;
-///   the key was deleted;
 /// * `keystore_error`: any other key store failure (message is the error type only, never key
 ///   material or payloads).
 library;
@@ -34,8 +31,8 @@ enum EzkeyKeyTier {
   /// hardware the platform does not name.
   standard,
 
-  /// Not in secure hardware, or the platform cannot tell. Never the tier of a generated key:
-  /// generation refuses such a key. Only [EzkeyKeystore.keyTier] can report it.
+  /// Not in secure hardware, or the platform cannot tell (an emulator, for instance). Reported as
+  /// it is: enforcing a minimum tier is the server's call.
   none,
 }
 

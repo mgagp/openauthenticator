@@ -1,6 +1,5 @@
 import 'package:ezkey_dart/ezkey_dart.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:open_authenticator/ezkey/device_key_store.dart';
 import 'package:open_authenticator/ezkey/messages.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 
@@ -32,7 +31,6 @@ void main() {
       expect(ezkeyEnrollmentErrorMessage(const EzkeyNetworkException('timeout')), translations.ezkey.error.network);
       expect(ezkeyEnrollmentErrorMessage(const EzkeyIntegrityException(EzkeyIntegrityCheck.verifySignature, 'bad signature')), translations.ezkey.error.integrity);
       expect(ezkeyEnrollmentErrorMessage(const EzkeyLocalStateException('keystore')), translations.ezkey.error.keyStore);
-      expect(ezkeyEnrollmentErrorMessage(const EzkeyLocalStateException(ezkeyKeyNotInSecureHardware)), translations.ezkey.error.notSecureHardware);
       expect(ezkeyEnrollmentErrorMessage(const EzkeyValidationException('bad code')), translations.ezkey.error.invalidInvitation);
     });
   });

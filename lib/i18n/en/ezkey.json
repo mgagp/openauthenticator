@@ -112,7 +112,6 @@
     "network": "The EzKey server could not be reached. Check your connection and try again.",
     "rateLimited": "Too many attempts. Wait a moment and try again.",
     "keyStore": "This device could not create or use its security key.",
-    "notSecureHardware": "This device cannot keep its security key in secure hardware, so it cannot be enrolled.",
     "server": "The EzKey server could not process the request. Try again later."
   },
   "attempt": {

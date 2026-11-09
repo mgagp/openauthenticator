@@ -112,7 +112,6 @@
     "network": "Le serveur EzKey est injoignable. Vérifiez votre connexion et réessayez.",
     "rateLimited": "Trop de tentatives. Patientez un instant et réessayez.",
     "keyStore": "Cet appareil n'a pas pu créer ou utiliser sa clé de sécurité.",
-    "notSecureHardware": "Cet appareil ne peut pas garder sa clé de sécurité dans du matériel sécurisé : il ne peut donc pas être enrôlé.",
     "server": "Le serveur EzKey n'a pas pu traiter la demande. Réessayez plus tard."
   },
   "attempt": {

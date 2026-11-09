@@ -1,6 +1,6 @@
 # ADR-0004: EzKey multi-platform posture
 
-- **Status:** Proposed (2026-10-30)
+- **Status:** Proposed (2026-10-30). D2 and D3 amended (2026-11-08, #108): the tier is read back from the key.
 - **Issue:** #48. Extends ADR-0001 D2 (native key store) and ADR-0002 (key storage, written for Android) to every platform upstream ships.
 
 ## Context
@@ -14,11 +14,11 @@ The SDK is pure Dart (`dart:io`, `cryptography`, `pointycastle`); the enrollment
 ## Decision
 
 1. **One availability rule.** `ezkeySupportedPlatforms` (`lib/ezkey/availability.dart`) lists where EzKey is offered; every entry point checks `ezkeyAvailable`. Today: Android. A platform joins only when it has (a) a hardware key store behind the channel (D2), (b) a way to enroll in release builds (D5), and (c) a checked build that passes the key store contract test (D6). Elsewhere the app stays exactly upstream's.
-2. **One plugin, one channel contract.** `packages/ezkey_keystore/` stays a single plugin package. Each platform implements the same `org.ezkey.keystore` channel: methods `generateKeyPair`, `sign`, `publicKey`, `deleteKeyPair`, `aliases`; SPKI DER and ASN.1 DER signatures in standard Base64 (high-S allowed, the SDK normalizes); `tier` as `strong` / `standard`; error codes `key_not_found`, `invalid_arguments`, `keystore_error`, never carrying key material or payloads. The Dart client (`EzkeyKeystore`) and the adapter (`NativeEzkeyDeviceKeyStore`) are therefore the same on every platform. Native code per platform:
+2. **One plugin, one channel contract.** `packages/ezkey_keystore/` stays a single plugin package. Each platform implements the same `org.ezkey.keystore` channel: methods `generateKeyPair`, `sign`, `publicKey`, `keyTier`, `deleteKeyPair`, `aliases`; SPKI DER and ASN.1 DER signatures in standard Base64 (high-S allowed, the SDK normalizes); `tier` as `strong` / `standard` / `none`, as the platform reports it; error codes `key_not_found`, `invalid_arguments`, `keystore_error`, never carrying key material or payloads. The Dart client (`EzkeyKeystore`) and the adapter (`NativeEzkeyDeviceKeyStore`) are therefore the same on every platform. Native code per platform:
    - Android: Kotlin, Android Keystore (done).
    - iOS and macOS: one Swift implementation (`sharedDarwinSource`) with a `Package.swift`, since upstream's Darwin projects use SPM.
    - Windows: CNG with the Platform Crypto Provider (TPM).
-3. **Tier mapping.** `strong`: a discrete secure element (Android StrongBox). `standard`: the platform's main hardware key store (Android TEE, Apple Secure Enclave, a TPM), as the SDK's `DevicePrivateKeyStorageTier` defines it. Software keys (`none`) are never offered: a platform without a hardware key store is not enabled. That means Linux for now.
+3. **Tier mapping.** `strong`: a discrete secure element (Android StrongBox). `standard`: the platform's main hardware key store (Android TEE, Apple Secure Enclave, a TPM), as the SDK's `DevicePrivateKeyStorageTier` defines it. A platform without a hardware key store is not enabled. That means Linux for now. On an enabled platform, every implementation reads the tier back from the key it generated, as the platform reports it (#108): `strong` only when the platform confirms the discrete secure element, otherwise the lower tier it can prove, down to `none` when the key is outside secure hardware or the platform cannot tell (an emulator). Such a key is not refused: best effort, verified, reported honestly; a minimum tier is the server's to enforce.
 4. **Shared Dart stays platform-neutral.** Platform code lives only in the plugin. Shared code passes every platform's values where an API asks for them: local confirmation passes iOS, macOS, Android and Windows prompt messages, like upstream's `LocalAuthenticationDefault`. The desktop window-focus handling upstream adds around that prompt comes with the first desktop port. The alias format and the debug / main namespace (#41) apply unchanged on every platform.
 5. **Enrollment in release builds needs an input per platform.** Android, iOS and macOS have the camera scanner (`mobile_scanner`). Windows and Linux have none. The choice is open and must be made, with the user, before a desktop platform joins D1:
    - accept the pasted invitation in release builds, since the code is one-time, short-lived and needs the 6-digit challenge;

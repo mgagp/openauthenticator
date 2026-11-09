@@ -10,6 +10,7 @@ import android.security.keystore.KeyInfo
 import android.security.keystore.KeyProperties
 import android.security.keystore.StrongBoxUnavailableException
 import android.util.Base64
+import android.util.Log
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -26,9 +27,9 @@ import java.util.concurrent.Executors
  * Non-exportable EC P-256 signing keys in the Android Keystore (EzKey device keys).
  *
  * Generation requests StrongBox first and falls back to the TEE. The tier it reports is then read
- * back from the generated key ([keyTier]), never assumed from the request, and a key outside secure
- * hardware is deleted and refused (#108). The private key never leaves the Keystore: the channel
- * only carries aliases, the string to sign, signatures, public keys and tiers.
+ * back from the generated key ([keyTier]), never assumed from the request (#108): best effort,
+ * verified, reported as it is, `none` included. The private key never leaves the Keystore: the
+ * channel only carries aliases, the string to sign, signatures, public keys and tiers.
  * Keystore calls run on a background thread (StrongBox operations can take hundreds of ms).
  * Error messages never contain the signed payload.
  */
@@ -91,12 +92,7 @@ class EzkeyKeystorePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         generator.initialize(spec.build())
         val pair = generator.generateKeyPair()
         // What was requested proves nothing: the tier is what Android says about the key it made.
-        val tier = keyTier(alias)
-        if (tier != TIER_STRONG && tier != TIER_STANDARD) {
-            keyStore().deleteEntry(alias)
-            throw NotInSecureHardwareException()
-        }
-        return mapOf("publicKey" to encode(pair.public.encoded), "tier" to tier)
+        return mapOf("publicKey" to encode(pair.public.encoded), "tier" to (keyTier(alias) ?: TIER_NONE))
     }
 
     /**
@@ -110,15 +106,24 @@ class EzkeyKeystorePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private fun keyTier(alias: String): String? {
         val key = keyStore().getKey(alias, null) as? PrivateKey ?: return null
         val info = KeyFactory.getInstance(key.algorithm, ANDROID_KEYSTORE).getKeySpec(key, KeyInfo::class.java)
+        val tier: String
+        val evidence: String
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            return when (info.securityLevel) {
+            tier = when (info.securityLevel) {
                 KeyProperties.SECURITY_LEVEL_STRONGBOX -> TIER_STRONG
                 KeyProperties.SECURITY_LEVEL_TRUSTED_ENVIRONMENT, KeyProperties.SECURITY_LEVEL_UNKNOWN_SECURE -> TIER_STANDARD
                 else -> TIER_NONE
             }
+            evidence = "securityLevel=${info.securityLevel}"
+        } else {
+            @Suppress("DEPRECATION")
+            val inside = info.isInsideSecureHardware
+            tier = if (inside) TIER_STANDARD else TIER_NONE
+            evidence = "isInsideSecureHardware=$inside"
         }
-        @Suppress("DEPRECATION")
-        return if (info.isInsideSecureHardware) TIER_STANDARD else TIER_NONE
+        // Observable on any device with logcat: what Android said, and the tier the app drew from it.
+        Log.i(TAG, "Storage tier read back: $evidence (API ${Build.VERSION.SDK_INT}) -> $tier")
+        return tier
     }
 
     /** Signs the UTF-8 bytes of [payload]; returns ASN.1 DER, standard Base64 (may be high-S). */
@@ -145,8 +150,6 @@ class EzkeyKeystorePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 mainHandler.post { result.success(value) }
             } catch (e: KeyNotFoundException) {
                 mainHandler.post { result.error("key_not_found", e.message, null) }
-            } catch (e: NotInSecureHardwareException) {
-                mainHandler.post { result.error("not_secure_hardware", e.message, null) }
             } catch (e: IllegalArgumentException) {
                 mainHandler.post { result.error("invalid_arguments", e.message, null) }
             } catch (e: Exception) {
@@ -160,11 +163,10 @@ class EzkeyKeystorePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
     private class KeyNotFoundException(alias: String) : Exception("No key for alias $alias")
 
-    private class NotInSecureHardwareException : Exception("The generated key is not in secure hardware; it was deleted")
-
     private companion object {
         const val CHANNEL = "org.ezkey.keystore"
         const val ANDROID_KEYSTORE = "AndroidKeyStore"
+        const val TAG = "EzkeyKeystore"
         const val TIER_STRONG = "strong"
         const val TIER_STANDARD = "standard"
         const val TIER_NONE = "none"
