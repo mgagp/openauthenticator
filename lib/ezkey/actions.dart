@@ -59,7 +59,19 @@ class EzkeyActions {
       return false;
     }
     String? serverUrl;
-    if (code.authUrl == null) {
+    String? authUrl = code.authUrl;
+    if (authUrl != null && !await _acceptsServer(ref, authUrl)) {
+      // Said before binding: the SDK refuses such an address with the same exception as an invitation
+      // already enrolled here, and the user should learn the real reason.
+      if (context.mounted) {
+        showEzkeyErrorToast(context, text: translations.ezkey.error.insecureServer);
+      }
+      return false;
+    }
+    if (!context.mounted) {
+      return false;
+    }
+    if (authUrl == null) {
       serverUrl = await askServerUrl(context, ref);
       if (serverUrl == null || !context.mounted) {
         return false;
@@ -123,6 +135,12 @@ class EzkeyActions {
     }
     debugPrint('EzKey claimed $attempt');
     await EzkeyApprovalPage.open(context, enrollment, attempt);
+  }
+
+  /// Whether this build's URL policy accepts [url] as the Auth API address (#109).
+  static Future<bool> _acceptsServer(WidgetRef ref, String url) async {
+    EzkeyAuthenticator authenticator = await ref.read(ezkeyAuthenticatorProvider.future);
+    return authenticator.urlPolicy.normalize(url) != null;
   }
 
   /// Asks for the Auth API address when the invitation does not carry one.

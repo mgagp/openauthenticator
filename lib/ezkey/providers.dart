@@ -9,6 +9,14 @@ import 'package:open_authenticator/ezkey/identity.dart';
 import 'package:open_authenticator/ezkey/orphan_keys.dart';
 import 'package:open_authenticator/model/secure_storage.dart';
 
+/// The EzKey server addresses accepted in a build: HTTPS only, except in debug builds, which also
+/// accept plain HTTP to the development hosts (`localhost`, `127.0.0.1`, `10.0.2.2`) that the local
+/// stack and the emulator need (#109). Profile builds are treated as release builds.
+EzkeyUrlPolicy ezkeyUrlPolicyFor({required bool debug}) => debug ? const EzkeyUrlPolicy() : EzkeyUrlPolicy.httpsOnly;
+
+/// The EzKey server addresses this build accepts (see [ezkeyUrlPolicyFor]).
+final ezkeyUrlPolicyProvider = Provider<EzkeyUrlPolicy>((ref) => ezkeyUrlPolicyFor(debug: kDebugMode));
+
 /// The EzKey device key store, on the platform's hardware key store.
 final ezkeyDeviceKeyStoreProvider = Provider<NativeEzkeyDeviceKeyStore>((ref) => NativeEzkeyDeviceKeyStore());
 
@@ -34,6 +42,7 @@ final ezkeyAuthenticatorProvider = FutureProvider<EzkeyAuthenticator>((ref) asyn
     keyStore: keyStore,
     enrollmentStore: enrollmentStore,
     httpClient: client,
+    urlPolicy: ref.watch(ezkeyUrlPolicyProvider),
     keyAliasFactory: (enrollmentId) => ezkeyDeviceKeyAlias(enrollmentId, namespace: keyStore.namespace),
   );
 });

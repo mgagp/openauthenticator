@@ -81,6 +81,9 @@ class _FixedCryptoStore extends CryptoStoreNotifier {
 /// An invitation for enrollment 12 that carries its Auth API address.
 const String _invitation = '{"enrollmentId":12,"enrollmentProofToken":"proof-token-12","authUrl":"https://auth.example.com"}';
 
+/// An invitation for enrollment 13 to the local stack, as the emulator reaches it over plain HTTP.
+const String _localInvitation = '{"enrollmentId":13,"enrollmentProofToken":"proof-token-13","authUrl":"http://10.0.2.2:8080"}';
+
 /// A TOTP QR code.
 const String _totpUri = 'otpauth://totp/Orbit:alice@example.com?secret=JBSWY3DPEHPK3PXP&issuer=Orbit';
 
@@ -229,6 +232,37 @@ void main() {
       expect(find.text(translations.ezkey.error.alreadyEnrolled), findsOneWidget);
       expect(find.byType(ScanPage), findsOneWidget);
       expect(find.byType(EzkeyEnrollPage), findsNothing);
+    });
+
+    testWidgets('an invitation to a plain HTTP server is refused for that reason in a release build', (tester) async {
+      authenticator = EzkeyAuthenticator(
+        keyStore: SoftwareDeviceKeyStore(),
+        enrollmentStore: enrollmentStore,
+        apiFactory: (uri) => _BindingAuthApi(integrationKey),
+        urlPolicy: ezkeyUrlPolicyFor(debug: false),
+      );
+      await pumpScanner(tester, ezkey: false);
+
+      bool resume = await scan(tester, _localInvitation);
+
+      expect(resume, isTrue);
+      expect(find.text(translations.ezkey.error.insecureServer), findsOneWidget);
+      expect(find.text(translations.ezkey.error.alreadyEnrolled), findsNothing);
+      expect(find.byType(EzkeyEnrollPage), findsNothing);
+    });
+
+    testWidgets('an invitation to the local stack over plain HTTP is accepted in a debug build', (tester) async {
+      authenticator = EzkeyAuthenticator(
+        keyStore: SoftwareDeviceKeyStore(),
+        enrollmentStore: enrollmentStore,
+        apiFactory: (uri) => _BindingAuthApi(integrationKey),
+        urlPolicy: ezkeyUrlPolicyFor(debug: true),
+      );
+      await pumpScanner(tester, ezkey: false);
+
+      await scan(tester, _localInvitation);
+
+      expect(find.byType(EzkeyEnrollPage), findsOneWidget);
     });
 
     testWidgets('a TOTP code still goes through upstream\'s flow', (tester) async {
