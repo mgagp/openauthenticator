@@ -46,7 +46,8 @@ class NativeEzkeyDeviceKeyStore implements EzkeyDeviceKeyStore {
   /// The tier of the most recently generated key.
   DevicePrivateKeyStorageTier _lastGeneratedTier = DevicePrivateKeyStorageTier.standard;
 
-  /// The tier of the most recently generated key: `strong` (discrete secure element) or `standard`.
+  /// The tier of the most recently generated key, as the platform reported it for that key:
+  /// `strong` (discrete secure element), `standard` (secure hardware) or `none`.
   ///
   /// The SDK reads it right after [generateKeyPair] during enrollment, so it describes the key
   /// being enrolled. It is per store rather than per key because that is the SDK's interface.
@@ -56,12 +57,23 @@ class NativeEzkeyDeviceKeyStore implements EzkeyDeviceKeyStore {
   @override
   Future<String> generateKeyPair(String alias) => _guard(() async {
     EzkeyGeneratedKey key = await keystore.generateKeyPair(alias);
-    _lastGeneratedTier = switch (key.tier) {
-      EzkeyKeyTier.strong => DevicePrivateKeyStorageTier.strong,
-      EzkeyKeyTier.standard => DevicePrivateKeyStorageTier.standard,
-    };
+    _lastGeneratedTier = _tier(key.tier);
     return key.publicKey;
   });
+
+  /// Returns where the key of [alias] lives, as the platform reports it now, or `null` when it does
+  /// not exist.
+  Future<DevicePrivateKeyStorageTier?> keyTier(String alias) => _guard(() async {
+    EzkeyKeyTier? tier = await keystore.keyTier(alias);
+    return tier == null ? null : _tier(tier);
+  });
+
+  /// The SDK's name for [tier].
+  static DevicePrivateKeyStorageTier _tier(EzkeyKeyTier tier) => switch (tier) {
+    EzkeyKeyTier.strong => DevicePrivateKeyStorageTier.strong,
+    EzkeyKeyTier.standard => DevicePrivateKeyStorageTier.standard,
+    EzkeyKeyTier.none => DevicePrivateKeyStorageTier.none,
+  };
 
   @override
   Future<String> sign(String alias, String payload) => _guard(() => keystore.sign(alias, payload));

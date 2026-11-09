@@ -6,12 +6,15 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyInfo
 import android.security.keystore.KeyProperties
 import android.security.keystore.StrongBoxUnavailableException
 import android.util.Base64
+import android.util.Log
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import java.security.KeyFactory
 import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.PrivateKey
@@ -23,8 +26,10 @@ import java.util.concurrent.Executors
 /**
  * Non-exportable EC P-256 signing keys in the Android Keystore (EzKey device keys).
  *
- * Generation requests StrongBox first and falls back to the TEE. The private key never leaves the
- * Keystore: the channel only carries aliases, the string to sign, signatures and public keys.
+ * Generation requests StrongBox first and falls back to the TEE. The tier it reports is then read
+ * back from the generated key ([keyTier]), never assumed from the request (#108): best effort,
+ * verified, reported as it is, `none` included. The private key never leaves the Keystore: the
+ * channel only carries aliases, the string to sign, signatures, public keys and tiers.
  * Keystore calls run on a background thread (StrongBox operations can take hundreds of ms).
  * Error messages never contain the signed payload.
  */
@@ -50,6 +55,7 @@ class EzkeyKeystorePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             "generateKeyPair" -> runInBackground(result) { generateKeyPair(call.requireString("alias")) }
             "sign" -> runInBackground(result) { sign(call.requireString("alias"), call.requireString("payload")) }
             "publicKey" -> runInBackground(result) { publicKey(call.requireString("alias")) }
+            "keyTier" -> runInBackground(result) { keyTier(call.requireString("alias")) }
             "deleteKeyPair" -> runInBackground(result) {
                 keyStore().deleteEntry(call.requireString("alias"))
                 null
@@ -85,7 +91,39 @@ class EzkeyKeystorePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         val generator = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC, ANDROID_KEYSTORE)
         generator.initialize(spec.build())
         val pair = generator.generateKeyPair()
-        return mapOf("publicKey" to encode(pair.public.encoded), "tier" to if (strongBox) "strong" else "standard")
+        // What was requested proves nothing: the tier is what Android says about the key it made.
+        return mapOf("publicKey" to encode(pair.public.encoded), "tier" to (keyTier(alias) ?: TIER_NONE))
+    }
+
+    /**
+     * The tier Android reports for the key of [alias], or null when the alias has no key:
+     * - `strong`: StrongBox, confirmed by `KeyInfo.getSecurityLevel()` (API 31+);
+     * - `standard`: secure hardware, the TEE or a secure level Android does not name. Before API 31,
+     *   `isInsideSecureHardware` cannot tell StrongBox from the TEE, so a StrongBox key is reported
+     *   `standard` there: the app underclaims rather than claim what it cannot prove;
+     * - `none`: software, or a level Android cannot tell.
+     */
+    private fun keyTier(alias: String): String? {
+        val key = keyStore().getKey(alias, null) as? PrivateKey ?: return null
+        val info = KeyFactory.getInstance(key.algorithm, ANDROID_KEYSTORE).getKeySpec(key, KeyInfo::class.java)
+        val tier: String
+        val evidence: String
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            tier = when (info.securityLevel) {
+                KeyProperties.SECURITY_LEVEL_STRONGBOX -> TIER_STRONG
+                KeyProperties.SECURITY_LEVEL_TRUSTED_ENVIRONMENT, KeyProperties.SECURITY_LEVEL_UNKNOWN_SECURE -> TIER_STANDARD
+                else -> TIER_NONE
+            }
+            evidence = "securityLevel=${info.securityLevel}"
+        } else {
+            @Suppress("DEPRECATION")
+            val inside = info.isInsideSecureHardware
+            tier = if (inside) TIER_STANDARD else TIER_NONE
+            evidence = "isInsideSecureHardware=$inside"
+        }
+        // Observable on any device with logcat: what Android said, and the tier the app drew from it.
+        Log.i(TAG, "Storage tier read back: $evidence (API ${Build.VERSION.SDK_INT}) -> $tier")
+        return tier
     }
 
     /** Signs the UTF-8 bytes of [payload]; returns ASN.1 DER, standard Base64 (may be high-S). */
@@ -128,5 +166,9 @@ class EzkeyKeystorePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private companion object {
         const val CHANNEL = "org.ezkey.keystore"
         const val ANDROID_KEYSTORE = "AndroidKeyStore"
+        const val TAG = "EzkeyKeystore"
+        const val TIER_STRONG = "strong"
+        const val TIER_STANDARD = "standard"
+        const val TIER_NONE = "none"
     }
 }

@@ -6,6 +6,9 @@
 /// client serves them all. Implemented today on Android (Android Keystore: StrongBox first, then the
 /// TEE).
 ///
+/// The tier a platform reports is what its key store says about the key, read back after
+/// generation, never what was requested (#108).
+///
 /// Keys are non-exportable and sign-only. Only aliases, strings to sign, signatures and public keys
 /// cross the channel.
 ///
@@ -18,13 +21,19 @@ library;
 
 import 'package:flutter/services.dart';
 
-/// Where a generated key lives, in platform-neutral terms. On the channel: `strong` or `standard`.
+/// Where a key lives, in platform-neutral terms, as the platform reports it. On the channel:
+/// `strong`, `standard` or `none`.
 enum EzkeyKeyTier {
-  /// A discrete secure element (Android StrongBox).
+  /// A discrete secure element (Android StrongBox), confirmed by the platform.
   strong,
 
-  /// The platform's main hardware key store (Android TEE; Apple Secure Enclave; a TPM).
+  /// The platform's main hardware key store (Android TEE; Apple Secure Enclave; a TPM), or secure
+  /// hardware the platform does not name.
   standard,
+
+  /// Not in secure hardware, or the platform cannot tell (an emulator, for instance). Reported as
+  /// it is: enforcing a minimum tier is the server's call.
+  none,
 }
 
 /// Result of [EzkeyKeystore.generateKeyPair].
@@ -66,6 +75,13 @@ class EzkeyKeystore {
 
   /// Returns the SPKI DER public key of [alias] (standard Base64), or `null` when it does not exist.
   Future<String?> publicKey(String alias) => channel.invokeMethod<String>('publicKey', {'alias': alias});
+
+  /// Returns where the key of [alias] lives, as the platform reports it now, or `null` when it does
+  /// not exist.
+  Future<EzkeyKeyTier?> keyTier(String alias) async {
+    String? tier = await channel.invokeMethod<String>('keyTier', {'alias': alias});
+    return tier == null ? null : EzkeyKeyTier.values.byName(tier);
+  }
 
   /// Deletes the key pair of [alias] (no-op when it does not exist).
   Future<void> deleteKeyPair(String alias) => channel.invokeMethod<void>('deleteKeyPair', {'alias': alias});

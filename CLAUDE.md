@@ -111,7 +111,7 @@ Conventions:
 
 Fork-only addition (#16): `integration_test` (`sdk: flutter`) is in `dev_dependencies`; device tests live under `integration_test/` (same mirroring as `test/`). They run the real app process on an Android emulator or device, so they reach native code (the Keystore plugin) and, later, the UI.
 
-- **Emulator (default, autonomous):** AVD `oa_api35` (API 35, `google_apis_playstore` x86_64, WHPX acceleration; no StrongBox, so Keystore keys fall back to the TEE). It is separate from the user's phone, so it can be wiped and reinstalled freely.
+- **Emulator (default, autonomous):** AVD `oa_api35` (API 35, `google_apis_playstore` x86_64, WHPX acceleration; no secure hardware: Android reports its Keystore keys as software, so their tier is `none`, #108). It is separate from the user's phone, so it can be wiped and reinstalled freely.
   ```sh
   "$LOCALAPPDATA/Android/Sdk/emulator/emulator.exe" -avd oa_api35 -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot-save   # run in background
   adb reconnect offline   # the emulator can stay "offline" in adb after booting; this fixes it without dropping the Pixel

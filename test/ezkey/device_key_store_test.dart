@@ -38,6 +38,28 @@ void main() {
       ]);
     });
 
+    test('reports a key outside secure hardware as it is, and keeps it', () async {
+      NativeEzkeyDeviceKeyStore store = NativeEzkeyDeviceKeyStore();
+      answer = (call) => {'publicKey': 'SPKI-soft', 'tier': 'none'};
+
+      expect(await store.generateKeyPair('ezkey-device-1-a'), 'SPKI-soft');
+
+      expect(store.storageTier, DevicePrivateKeyStorageTier.none);
+      expect(calls.map((call) => call.method), ['generateKeyPair']);
+    });
+
+    test('reads the tier of an existing key from the platform', () async {
+      NativeEzkeyDeviceKeyStore store = NativeEzkeyDeviceKeyStore();
+      Map<String, String?> tiers = {'strong-key': 'strong', 'tee-key': 'standard', 'soft-key': 'none', 'missing': null};
+      answer = (call) => tiers[(call.arguments as Map<Object?, Object?>)['alias']];
+
+      expect(await store.keyTier('strong-key'), DevicePrivateKeyStorageTier.strong);
+      expect(await store.keyTier('tee-key'), DevicePrivateKeyStorageTier.standard);
+      expect(await store.keyTier('soft-key'), DevicePrivateKeyStorageTier.none);
+      expect(await store.keyTier('missing'), isNull);
+      expect(calls.map((call) => call.method).toSet(), {'keyTier'});
+    });
+
     test('passes alias and payload through to the platform', () async {
       NativeEzkeyDeviceKeyStore store = NativeEzkeyDeviceKeyStore();
       answer = (call) => switch (call.method) {

@@ -58,7 +58,7 @@ The reference app shows one valid answer, not the only one. When you differ from
 ## 4. Keys and storage
 
 - **Implement the key store on the platform's hardware,** and never offer software keys. On Android: Keystore, StrongBox when available, falling back to the TEE (ADR-0002, ADR-0004).
-- **Report the storage tier honestly.** It is per key, because StrongBox can be unavailable for one generation. It is self-reported: do not describe it as attested.
+- **Report the storage tier honestly.** Read it back from the generated key, never from what was requested, and report what it is, even `none`, rather than refuse the key: a minimum tier is the server's to enforce (#108). It is per key, because StrongBox can be unavailable for one generation. It is self-reported: do not describe it as attested.
 - **Do not bind the key to user authentication.** Every check signs with it, so the user would be prompted on every check. A local confirmation belongs at the app level, on Approve only (contract §4).
 - **Store enrollment records in the app's existing secure storage,** after checking that it is excluded from cloud backup and device transfer.
 - **Keep them apart from the host's own secrets model.** Encrypting records with the host's vault password would tie approvals to it and mix two security models (ADR-0002).
