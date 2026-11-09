@@ -68,6 +68,7 @@ The reference app shows one valid answer, not the only one. When you differ from
 ## 5. Enrollment
 
 - **The invitation may carry no server address,** so be ready to ask for it, and validate it with the SDK's URL policy.
+- **Require HTTPS in release builds.** The SDK's default policy also accepts plain HTTP to `localhost`, `127.0.0.1` and `10.0.2.2`, as the reference app does. Keep that for debug builds, where a local stack and an emulator need it, and pass `EzkeyUrlPolicy.httpsOnly` elsewhere (#109). The SDK refuses an address with the same exception as an invitation already enrolled, so check the address first to tell the user the real reason.
 - **Scanning is the release path.** The QR content carries a bearer token, so typing or pasting it belongs in debug builds unless you decide otherwise for a platform with no camera (ADR-0004 D5).
 - **Show who the enrollment is for before the challenge:** service, organization, account, server, and whether it is an administrator enrollment.
 - **Warn before the code is submitted,** since a wrong code invalidates the invitation.

@@ -103,6 +103,7 @@
   "error": {
     "invalidInvitation": "Cette invitation n'est pas valide.",
     "alreadyEnrolled": "Cet appareil est déjà enrôlé avec cette invitation.",
+    "insecureServer": "Cette invitation mène à un serveur EzKey sans HTTPS. Demandez à votre administrateur une invitation vers une adresse sécurisée (https://).",
     "invitationAlreadyUsed": "Cette invitation a déjà été utilisée. Demandez-en une nouvelle à votre administrateur.",
     "invitationExpired": "Cette invitation a expiré. Demandez-en une nouvelle à votre administrateur.",
     "invitationRejected": "Le serveur EzKey a refusé cette invitation. Demandez-en une nouvelle à votre administrateur.",
