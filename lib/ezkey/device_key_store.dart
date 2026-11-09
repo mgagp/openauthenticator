@@ -14,6 +14,10 @@ const String ezkeyDeviceKeyAliasPrefix = 'ezkey-device-';
 /// its namespace so that orphan cleanup never takes the other build's keys for orphans.
 final String ezkeyDeviceKeyNamespace = kDebugMode ? 'debug' : 'main';
 
+/// The message of the [EzkeyLocalStateException] thrown when a generated key is not in secure
+/// hardware (#108), so the enrollment error can say so.
+const String ezkeyKeyNotInSecureHardware = 'Device key not in secure hardware';
+
 /// Builds a fresh, unguessable device key alias for [enrollmentId], marked with [namespace]:
 /// `ezkey-device-<namespace>-<enrollmentId>-<random>`.
 ///
@@ -29,7 +33,8 @@ String ezkeyDeviceKeyAlias(int enrollmentId, {String? namespace}) =>
 /// only implementation today.
 ///
 /// Platform failures become [EzkeyLocalStateException]s, so the SDK treats them as local problems:
-/// nothing is sent, and a missing key leads to "remove and re-enroll".
+/// nothing is sent, and a missing key leads to "remove and re-enroll". A key outside secure hardware
+/// is refused with [ezkeyKeyNotInSecureHardware].
 class NativeEzkeyDeviceKeyStore implements EzkeyDeviceKeyStore {
   /// Creates a new native device key store.
   NativeEzkeyDeviceKeyStore({
@@ -46,7 +51,8 @@ class NativeEzkeyDeviceKeyStore implements EzkeyDeviceKeyStore {
   /// The tier of the most recently generated key.
   DevicePrivateKeyStorageTier _lastGeneratedTier = DevicePrivateKeyStorageTier.standard;
 
-  /// The tier of the most recently generated key: `strong` (discrete secure element) or `standard`.
+  /// The tier of the most recently generated key: `strong` (discrete secure element) or `standard`,
+  /// as the platform reported it for that key.
   ///
   /// The SDK reads it right after [generateKeyPair] during enrollment, so it describes the key
   /// being enrolled. It is per store rather than per key because that is the SDK's interface.
@@ -56,12 +62,29 @@ class NativeEzkeyDeviceKeyStore implements EzkeyDeviceKeyStore {
   @override
   Future<String> generateKeyPair(String alias) => _guard(() async {
     EzkeyGeneratedKey key = await keystore.generateKeyPair(alias);
-    _lastGeneratedTier = switch (key.tier) {
-      EzkeyKeyTier.strong => DevicePrivateKeyStorageTier.strong,
-      EzkeyKeyTier.standard => DevicePrivateKeyStorageTier.standard,
-    };
+    DevicePrivateKeyStorageTier tier = _tier(key.tier);
+    if (tier == DevicePrivateKeyStorageTier.none) {
+      // The platform refuses such a key itself; this guards a platform implementation that would not.
+      await keystore.deleteKeyPair(alias);
+      throw const EzkeyLocalStateException(ezkeyKeyNotInSecureHardware);
+    }
+    _lastGeneratedTier = tier;
     return key.publicKey;
   });
+
+  /// Returns where the key of [alias] lives, as the platform reports it now, or `null` when it does
+  /// not exist.
+  Future<DevicePrivateKeyStorageTier?> keyTier(String alias) => _guard(() async {
+    EzkeyKeyTier? tier = await keystore.keyTier(alias);
+    return tier == null ? null : _tier(tier);
+  });
+
+  /// The SDK's name for [tier].
+  static DevicePrivateKeyStorageTier _tier(EzkeyKeyTier tier) => switch (tier) {
+    EzkeyKeyTier.strong => DevicePrivateKeyStorageTier.strong,
+    EzkeyKeyTier.standard => DevicePrivateKeyStorageTier.standard,
+    EzkeyKeyTier.none => DevicePrivateKeyStorageTier.none,
+  };
 
   @override
   Future<String> sign(String alias, String payload) => _guard(() => keystore.sign(alias, payload));
@@ -82,6 +105,9 @@ class NativeEzkeyDeviceKeyStore implements EzkeyDeviceKeyStore {
     try {
       return await action();
     } on PlatformException catch (ex) {
+      if (ex.code == 'not_secure_hardware') {
+        throw const EzkeyLocalStateException(ezkeyKeyNotInSecureHardware);
+      }
       throw EzkeyLocalStateException('Device key store failed (${ex.code})');
     }
   }

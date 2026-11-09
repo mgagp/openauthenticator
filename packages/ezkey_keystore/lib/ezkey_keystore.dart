@@ -6,25 +6,37 @@
 /// client serves them all. Implemented today on Android (Android Keystore: StrongBox first, then the
 /// TEE).
 ///
+/// The tier a platform reports is what its key store says about the key, read back after
+/// generation, never what was requested (#108). A key outside secure hardware is deleted and
+/// refused with `not_secure_hardware`.
+///
 /// Keys are non-exportable and sign-only. Only aliases, strings to sign, signatures and public keys
 /// cross the channel.
 ///
 /// Failures are [PlatformException]s with one of these codes:
 /// * `key_not_found`: no key for the alias;
 /// * `invalid_arguments`: a required argument is missing;
+/// * `not_secure_hardware`: the generated key is not in secure hardware, or the platform cannot tell;
+///   the key was deleted;
 /// * `keystore_error`: any other key store failure (message is the error type only, never key
 ///   material or payloads).
 library;
 
 import 'package:flutter/services.dart';
 
-/// Where a generated key lives, in platform-neutral terms. On the channel: `strong` or `standard`.
+/// Where a key lives, in platform-neutral terms, as the platform reports it. On the channel:
+/// `strong`, `standard` or `none`.
 enum EzkeyKeyTier {
-  /// A discrete secure element (Android StrongBox).
+  /// A discrete secure element (Android StrongBox), confirmed by the platform.
   strong,
 
-  /// The platform's main hardware key store (Android TEE; Apple Secure Enclave; a TPM).
+  /// The platform's main hardware key store (Android TEE; Apple Secure Enclave; a TPM), or secure
+  /// hardware the platform does not name.
   standard,
+
+  /// Not in secure hardware, or the platform cannot tell. Never the tier of a generated key:
+  /// generation refuses such a key. Only [EzkeyKeystore.keyTier] can report it.
+  none,
 }
 
 /// Result of [EzkeyKeystore.generateKeyPair].
@@ -66,6 +78,13 @@ class EzkeyKeystore {
 
   /// Returns the SPKI DER public key of [alias] (standard Base64), or `null` when it does not exist.
   Future<String?> publicKey(String alias) => channel.invokeMethod<String>('publicKey', {'alias': alias});
+
+  /// Returns where the key of [alias] lives, as the platform reports it now, or `null` when it does
+  /// not exist.
+  Future<EzkeyKeyTier?> keyTier(String alias) async {
+    String? tier = await channel.invokeMethod<String>('keyTier', {'alias': alias});
+    return tier == null ? null : EzkeyKeyTier.values.byName(tier);
+  }
 
   /// Deletes the key pair of [alias] (no-op when it does not exist).
   Future<void> deleteKeyPair(String alias) => channel.invokeMethod<void>('deleteKeyPair', {'alias': alias});

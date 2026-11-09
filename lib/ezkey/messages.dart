@@ -1,4 +1,5 @@
 import 'package:ezkey_dart/ezkey_dart.dart';
+import 'package:open_authenticator/ezkey/device_key_store.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 
 /// Returns the localized message to show for an enrollment failure.
@@ -14,6 +15,7 @@ String ezkeyEnrollmentErrorMessage(Object error) => switch (error) {
   EzkeyApiException() => translations.ezkey.error.server,
   EzkeyNetworkException() => translations.ezkey.error.network,
   EzkeyIntegrityException() => translations.ezkey.error.integrity,
+  EzkeyLocalStateException(message: ezkeyKeyNotInSecureHardware) => translations.ezkey.error.notSecureHardware,
   EzkeyLocalStateException() => translations.ezkey.error.keyStore,
   EzkeyValidationException() => translations.ezkey.error.invalidInvitation,
   _ => translations.ezkey.error.server,

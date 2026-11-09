@@ -38,6 +38,42 @@ void main() {
       ]);
     });
 
+    test('refuses a key the platform reports outside secure hardware, and deletes it', () async {
+      NativeEzkeyDeviceKeyStore store = NativeEzkeyDeviceKeyStore();
+      answer = (call) => call.method == 'generateKeyPair' ? {'publicKey': 'SPKI-soft', 'tier': 'none'} : null;
+
+      await expectLater(
+        store.generateKeyPair('ezkey-device-1-a'),
+        throwsA(isA<EzkeyLocalStateException>().having((e) => e.message, 'message', ezkeyKeyNotInSecureHardware)),
+      );
+
+      expect(calls.map((call) => call.method), ['generateKeyPair', 'deleteKeyPair']);
+      expect(calls.last.arguments, {'alias': 'ezkey-device-1-a'});
+      expect(store.storageTier, isNot(DevicePrivateKeyStorageTier.none));
+    });
+
+    test('the platform refusal becomes the not-in-secure-hardware error', () async {
+      NativeEzkeyDeviceKeyStore store = NativeEzkeyDeviceKeyStore();
+      answer = (call) => throw PlatformException(code: 'not_secure_hardware', message: 'The generated key is not in secure hardware; it was deleted');
+
+      await expectLater(
+        store.generateKeyPair('ezkey-device-1-a'),
+        throwsA(isA<EzkeyLocalStateException>().having((e) => e.message, 'message', ezkeyKeyNotInSecureHardware)),
+      );
+    });
+
+    test('reads the tier of an existing key from the platform', () async {
+      NativeEzkeyDeviceKeyStore store = NativeEzkeyDeviceKeyStore();
+      Map<String, String?> tiers = {'strong-key': 'strong', 'tee-key': 'standard', 'soft-key': 'none', 'missing': null};
+      answer = (call) => tiers[(call.arguments as Map<Object?, Object?>)['alias']];
+
+      expect(await store.keyTier('strong-key'), DevicePrivateKeyStorageTier.strong);
+      expect(await store.keyTier('tee-key'), DevicePrivateKeyStorageTier.standard);
+      expect(await store.keyTier('soft-key'), DevicePrivateKeyStorageTier.none);
+      expect(await store.keyTier('missing'), isNull);
+      expect(calls.map((call) => call.method).toSet(), {'keyTier'});
+    });
+
     test('passes alias and payload through to the platform', () async {
       NativeEzkeyDeviceKeyStore store = NativeEzkeyDeviceKeyStore();
       answer = (call) => switch (call.method) {
