@@ -44,6 +44,14 @@ This fork is also how EzKey's gaps are found: integrating EzKey into a real app 
 
 The maintainer can still decide otherwise for a given case. That decision then goes in the issue.
 
+## When a finding concerns upstream code
+
+Work here sometimes finds a weakness in upstream code. The fork follows upstream, so it does not fix the weakness itself, and reporting it upstream is a separate decision by the maintainer (see `CLAUDE.md`, Development workflow):
+
+- **Open an issue here** labelled `upstream`. It says what was found, its effect upstream and in this fork, and the possible changes. Nothing is sent upstream.
+- **Note the effect on this fork** in the owning dossier, with a link to the issue.
+- **Revisit** these issues when the maintainer decides whether to report them. For an example, see #118.
+
 ## Recording the outcome
 
 - The decision goes in the PR that applies it: a line in the owning document, or an ADR ([`README.md`](README.md) § Rules).
