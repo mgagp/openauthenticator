@@ -76,77 +76,40 @@ class _EzkeyHomeZonesState extends ConsumerState<EzkeyHomeZones> {
 
   @override
   Widget build(BuildContext context) {
-    bool hasEnrollments = ref.watch(ezkeyInstallationsProvider).value?.isNotEmpty ?? false;
-    // After a restore on a new device, the list to re-enroll is all the zone has to show, and it must be seen.
-    bool hasToReenroll = ref.watch(ezkeyToReenrollProvider).value?.isNotEmpty ?? false;
-    EzkeyHomeZoneState state = ref.watch(ezkeyHomeZoneStateProvider).value ?? .auto;
-    bool expanded = state.isExpanded(hasEnrollments: hasEnrollments || hasToReenroll);
-    bool totpExpanded = state.isTotpExpanded;
-    double savedShare = ref.watch(ezkeyHomeZoneSplitProvider).value ?? 0;
+    _ZonesState zones = _watchZones();
     // The same widget types in every state, so the upstream content keeps its state.
     return SafeArea(
       top: false,
       child: LayoutBuilder(
         builder: (context, constraints) {
           _sharedHeight = constraints.maxHeight - _SplitHandle.height;
-          // Too little height for both minimums (small window, landscape): no divider.
-          bool split = expanded && totpExpanded && _minShare <= _maxShare;
-          // A share of 0 means automatic: the EzKey zone takes the height it needs. A remembered share is
-          // kept within this screen's limits.
-          double share = split ? (_dragShare ?? (savedShare > 0 ? _clampShare(savedShare) : 0)) : 0;
-          int ezkeyFlex = totpExpanded ? (share * 1000).round() : 1;
-          int totpFlex = totpExpanded ? (share > 0 ? 1000 - ezkeyFlex : 1) : 0;
+          _ZonesLayout layout = _layout(zones);
           return Column(
             crossAxisAlignment: .stretch,
             children: [
               AnimatedSize(
                 duration: const Duration(milliseconds: 200),
                 alignment: .topCenter,
-                child: totpExpanded ? const SizedBox(width: double.infinity) : const _TotpCollapsedBar(),
+                child: layout.totpExpanded ? const SizedBox(width: double.infinity) : const _TotpCollapsedBar(),
               ),
               Expanded(
-                flex: totpFlex,
-                child: SizedBox(
-                  height: totpExpanded ? null : 0,
-                  child: Visibility(
-                    visible: totpExpanded,
-                    maintainState: true,
-                    child: _ZoneFrame(
-                      framed: expanded,
-                      // The divider holds the space between the zones.
-                      margin: EdgeInsets.fromLTRB(kSpace, 0, kSpace, split ? 0 : kSpace),
-                      child: Column(
-                        crossAxisAlignment: .stretch,
-                        children: [
-                          expanded ? const _TotpHeader() : const SizedBox.shrink(),
-                          Expanded(child: widget.totpZone),
-                        ],
-                      ),
-                    ),
-                  ),
+                flex: layout.totpFlex,
+                child: _TotpZone(
+                  layout: layout,
+                  child: widget.totpZone,
                 ),
               ),
-              split
-                  ? _SplitHandle(
-                      share: share > 0 ? share : _measuredShare(),
-                      step: _shareStep,
-                      onDragStart: _startDrag,
-                      onDrag: (delta) => setState(() => _dragShare = _clampShare(_dragShare! - delta / _sharedHeight)),
-                      onDragEnd: _endDrag,
-                      onAdjust: (step) => _saveShare(_clampShare((share > 0 ? share : _measuredShare()) + step * _shareStep)),
-                      onReset: () => _saveShare(0),
-                    )
-                  : const SizedBox.shrink(),
+              _splitHandle(layout),
               Expanded(
                 key: _ezkeyZoneKey,
-                flex: ezkeyFlex,
+                flex: layout.ezkeyFlex,
                 child: AnimatedSize(
                   duration: const Duration(milliseconds: 200),
                   alignment: .bottomCenter,
-                  child: expanded
+                  child: layout.expanded
                       ? _ZoneFrame(
-                          margin: EdgeInsets.fromLTRB(kSpace, totpExpanded ? 0 : kSpace, kSpace, kSpace),
-                          child: EzkeyHomeZone(fill: !totpExpanded || share > 0),
+                          margin: layout.ezkeyMargin,
+                          child: EzkeyHomeZone(fill: layout.ezkeyFills),
                         )
                       : const _CollapsedBar(),
                 ),
@@ -157,6 +120,50 @@ class _EzkeyHomeZonesState extends ConsumerState<EzkeyHomeZones> {
       ),
     );
   }
+
+  /// Reads the state of both zones and the remembered share, and rebuilds when they change.
+  _ZonesState _watchZones() {
+    bool hasEnrollments = ref.watch(ezkeyInstallationsProvider).value?.isNotEmpty ?? false;
+    // After a restore on a new device, the list to re-enroll is all the zone has to show, and it must be seen.
+    bool hasToReenroll = ref.watch(ezkeyToReenrollProvider).value?.isNotEmpty ?? false;
+    EzkeyHomeZoneState state = ref.watch(ezkeyHomeZoneStateProvider).value ?? .auto;
+    return (
+      expanded: state.isExpanded(hasEnrollments: hasEnrollments || hasToReenroll),
+      totpExpanded: state.isTotpExpanded,
+      savedShare: ref.watch(ezkeyHomeZoneSplitProvider).value ?? 0,
+    );
+  }
+
+  /// Decides the layout of this screen for [zones].
+  _ZonesLayout _layout(_ZonesState zones) {
+    // Too little height for both minimums (small window, landscape): no divider.
+    bool split = zones.expanded && zones.totpExpanded && _minShare <= _maxShare;
+    // A share of 0 means automatic: the EzKey zone takes the height it needs. A remembered share is
+    // kept within this screen's limits.
+    double share = split ? (_dragShare ?? (zones.savedShare > 0 ? _clampShare(zones.savedShare) : 0)) : 0;
+    return _ZonesLayout(
+      expanded: zones.expanded,
+      totpExpanded: zones.totpExpanded,
+      split: split,
+      share: share,
+    );
+  }
+
+  /// The divider between the zones while [_ZonesLayout.split], else nothing.
+  Widget _splitHandle(_ZonesLayout layout) => layout.split
+      ? _SplitHandle(
+          share: _currentShare(layout),
+          step: _shareStep,
+          onDragStart: _startDrag,
+          onDrag: _drag,
+          onDragEnd: _endDrag,
+          onAdjust: (step) => _saveShare(_clampShare(_currentShare(layout) + step * _shareStep)),
+          onReset: () => _saveShare(0),
+        )
+      : const SizedBox.shrink();
+
+  /// The EzKey zone's share in [layout], measured while automatic.
+  double _currentShare(_ZonesLayout layout) => layout.share > 0 ? layout.share : _measuredShare();
 
   /// The EzKey zone's share of the height in the last layout (automatic height included).
   double _measuredShare() {
@@ -182,6 +189,9 @@ class _EzkeyHomeZonesState extends ConsumerState<EzkeyHomeZones> {
     setState(() => _dragShare = saved > 0 ? saved : _measuredShare());
   }
 
+  /// Moves the divider by [delta] (downwards is positive) during a drag.
+  void _drag(double delta) => setState(() => _dragShare = _clampShare(_dragShare! - delta / _sharedHeight));
+
   /// Ends a drag, and remembers where it ended.
   void _endDrag() {
     double? share = _dragShare;
@@ -195,6 +205,89 @@ class _EzkeyHomeZonesState extends ConsumerState<EzkeyHomeZones> {
     ref.read(ezkeyHomeZoneSplitProvider.notifier).changeValue(share);
     setState(() => _dragShare = null);
   }
+}
+
+/// What the home zones layout depends on: whether each zone is expanded, and the remembered share of the
+/// EzKey zone (`0` for automatic).
+typedef _ZonesState = ({bool expanded, bool totpExpanded, double savedShare});
+
+/// How the home zones share the screen in one layout.
+class _ZonesLayout {
+  /// Whether the EzKey zone is expanded.
+  final bool expanded;
+
+  /// Whether the TOTP zone is expanded.
+  final bool totpExpanded;
+
+  /// Whether the divider is shown: both zones expanded, and enough height for both minimums.
+  final bool split;
+
+  /// The EzKey zone's share of the height, kept within this screen's limits; `0` while automatic.
+  final double share;
+
+  /// Creates a new zones layout instance.
+  const _ZonesLayout({
+    required this.expanded,
+    required this.totpExpanded,
+    required this.split,
+    required this.share,
+  });
+
+  /// The EzKey zone's flex.
+  int get ezkeyFlex => totpExpanded ? (share * 1000).round() : 1;
+
+  /// The TOTP zone's flex: `0` while collapsed, an even share with automatic height, the rest otherwise.
+  int get totpFlex {
+    if (!totpExpanded) {
+      return 0;
+    }
+    return share > 0 ? 1000 - ezkeyFlex : 1;
+  }
+
+  /// Whether the EzKey zone takes all the height it is given, instead of the height it needs.
+  bool get ezkeyFills => !totpExpanded || share > 0;
+
+  /// The space around the TOTP zone frame. The divider holds the space between the zones.
+  EdgeInsets get totpMargin => EdgeInsets.fromLTRB(kSpace, 0, kSpace, split ? 0 : kSpace);
+
+  /// The space around the EzKey zone frame.
+  EdgeInsets get ezkeyMargin => EdgeInsets.fromLTRB(kSpace, totpExpanded ? 0 : kSpace, kSpace, kSpace);
+}
+
+/// The TOTP zone: the upstream content, framed with its header while EzKey is expanded. Collapsed, it
+/// stays in the tree, hidden, so it keeps its state.
+class _TotpZone extends StatelessWidget {
+  /// The layout of the zones.
+  final _ZonesLayout layout;
+
+  /// The upstream home content.
+  final Widget child;
+
+  /// Creates a new TOTP zone instance.
+  const _TotpZone({
+    required this.layout,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: layout.totpExpanded ? null : 0,
+    child: Visibility(
+      visible: layout.totpExpanded,
+      maintainState: true,
+      child: _ZoneFrame(
+        framed: layout.expanded,
+        margin: layout.totpMargin,
+        child: Column(
+          crossAxisAlignment: .stretch,
+          children: [
+            layout.expanded ? const _TotpHeader() : const SizedBox.shrink(),
+            Expanded(child: child),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 /// The divider between the expanded zones: a grip to drag, a slider for screen readers.
@@ -509,140 +602,80 @@ class EzkeyHomeZone extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context, WidgetRef ref) => Padding(
+    padding: const EdgeInsets.all(kSpace),
+    child: Column(
+      mainAxisSize: fill ? .max : .min,
+      crossAxisAlignment: .stretch,
+      children: [
+        const _EzkeyHeader(),
+        const SizedBox(height: kSpace),
+        ..._content(context, ref),
+        const SizedBox(height: kSpace),
+        // Alone in its corner, at the same distance from the frame as the upstream add button in
+        // the TOTP zone (page padding), so both line up.
+        Align(
+          alignment: .centerRight,
+          child: Padding(
+            padding: const EdgeInsets.only(right: kBigSpace - kSpace, bottom: kBigSpace - kSpace),
+            child: _AddButton(
+              onPress: () => _addEnrollment(context, ref),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  /// The zone's content under the header: an error, a progress indicator, or the enrollments.
+  List<Widget> _content(BuildContext context, WidgetRef ref) {
     AsyncValue<List<EzkeyInstallation>> installations = ref.watch(ezkeyInstallationsProvider);
+    ClickableTile? toReenrollTile = _toReenrollTile(context, ref);
+    if (installations.hasError) {
+      return [
+        Text(
+          translations.ezkey.home.loadError,
+          style: context.theme.typography.body.sm.copyWith(color: context.theme.colors.destructive),
+        ),
+        if (fill) const Spacer(),
+      ];
+    }
+    if (installations.isLoading && !installations.hasValue) {
+      return [
+        const Center(child: FCircularProgress()),
+        if (fill) const Spacer(),
+      ];
+    }
     List<EzkeyEnrollment> enrollments = [
       for (EzkeyInstallation installation in installations.value ?? []) ...installation.enrollments,
     ];
+    return [
+      enrollments.isEmpty
+          ? _EmptyList(
+              fill: fill,
+              toReenrollTile: toReenrollTile,
+            )
+          : _EnrollmentList(
+              fill: fill,
+              enrollments: enrollments,
+              toReenrollTile: toReenrollTile,
+            ),
+    ];
+  }
+
+  /// The row that says how many enrollments to re-enroll and leads to the EzKey page, or `null` when there is none.
+  ClickableTile? _toReenrollTile(BuildContext context, WidgetRef ref) {
     int toReenroll = ref.watch(ezkeyToReenrollProvider).value?.length ?? 0;
+    if (toReenroll == 0) {
+      return null;
+    }
     // In the scrolling part, so it never overflows at the smallest zone height.
-    ClickableTile? toReenrollTile = toReenroll == 0
-        ? null
-        : ClickableTile(
-            key: const ValueKey('ezkey-home-to-reenroll'),
-            prefix: const Icon(FLucideIcons.rotateCcw),
-            title: Text(translations.ezkey.home.toReenroll(n: toReenroll)),
-            suffix: const Icon(FLucideIcons.chevronRight),
-            onPress: () => EzkeyPage.open(context),
-          );
-    return Padding(
-      padding: const EdgeInsets.all(kSpace),
-      child: Column(
-        mainAxisSize: fill ? .max : .min,
-        crossAxisAlignment: .stretch,
-        children: [
-          Row(
-            children: [
-              // The logo and the name also open "about": EzKey is little known.
-              Expanded(
-                child: GestureDetector(
-                  behavior: .opaque,
-                  onTap: () => EzkeyAboutDialog.show(context),
-                  child: Row(
-                    children: [
-                      const SizedScalableImage(
-                        asset: 'assets/images/ezkey_logo.si',
-                        width: 32,
-                        height: 32,
-                      ),
-                      const SizedBox(width: kSpace),
-                      Text(
-                        translations.ezkey.home.title,
-                        style: context.theme.typography.body.lg.copyWith(fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const _AboutButton(),
-              // Icon only: a tooltip on long press, which also labels it for screen readers.
-              Tooltip(
-                message: translations.ezkey.home.manage,
-                child: ClickableButton.icon(
-                  key: const ValueKey('ezkey-home-manage'),
-                  variant: .ghost,
-                  onPress: () => EzkeyPage.open(context),
-                  child: const Icon(FLucideIcons.settings2),
-                ),
-              ),
-              // Icon only: a tooltip on long press, which also labels it for screen readers.
-              Tooltip(
-                message: translations.ezkey.home.collapse,
-                child: ClickableButton.icon(
-                  key: const ValueKey('ezkey-home-collapse'),
-                  variant: .ghost,
-                  onPress: () => _setExpanded(ref, false),
-                  child: const Icon(FLucideIcons.chevronDown),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: kSpace),
-          if (installations.hasError) ...[
-            Text(
-              translations.ezkey.home.loadError,
-              style: context.theme.typography.body.sm.copyWith(color: context.theme.colors.destructive),
-            ),
-            if (fill) const Spacer(),
-          ] else if (installations.isLoading && !installations.hasValue) ...[
-            const Center(child: FCircularProgress()),
-            if (fill) const Spacer(),
-          ] else if (enrollments.isEmpty) ...[
-            Flexible(
-              fit: fill ? .tight : .loose,
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: .stretch,
-                  children: [
-                    if (toReenrollTile != null) ...[
-                      FTileGroup(children: [toReenrollTile]),
-                      const SizedBox(height: kSpace),
-                    ],
-                    Text(
-                      translations.ezkey.home.empty,
-                      style: context.theme.typography.body.sm.copyWith(color: context.theme.colors.mutedForeground),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ] else ...[
-            Flexible(
-              fit: fill ? .tight : .loose,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: fill ? double.infinity : _maxListHeight),
-                child: SingleChildScrollView(
-                  child: FTileGroup(
-                    children: [
-                      ?toReenrollTile,
-                      // Flat, with the server when there are several installations (ADR-0007).
-                      for (EzkeyEnrollment enrollment in enrollments)
-                        EzkeyEnrollmentTile(
-                          enrollment: enrollment,
-                          showServer: ref.watch(ezkeySeveralInstallationsProvider),
-                          onPress: () => EzkeyEnrollmentPage.open(context, enrollment),
-                          suffix: _CheckButton(enrollment: enrollment),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-          const SizedBox(height: kSpace),
-          // Alone in its corner, at the same distance from the frame as the upstream add button in
-          // the TOTP zone (page padding), so both line up.
-          Align(
-            alignment: .centerRight,
-            child: Padding(
-              padding: const EdgeInsets.only(right: kBigSpace - kSpace, bottom: kBigSpace - kSpace),
-              child: _AddButton(
-                onPress: () => _addEnrollment(context, ref),
-              ),
-            ),
-          ),
-        ],
-      ),
+    return ClickableTile(
+      key: const ValueKey('ezkey-home-to-reenroll'),
+      prefix: const Icon(FLucideIcons.rotateCcw),
+      title: Text(translations.ezkey.home.toReenroll(n: toReenroll)),
+      suffix: const Icon(FLucideIcons.chevronRight),
+      onPress: () => EzkeyPage.open(context),
     );
   }
 
@@ -689,6 +722,141 @@ class EzkeyHomeZone extends ConsumerWidget {
       .text => EzkeyActions.addFromText(context, ref),
     };
   }
+}
+
+/// The header of the EzKey zone: the logo and the name, which open "about", then the about, manage and
+/// collapse buttons.
+class _EzkeyHeader extends ConsumerWidget {
+  /// Creates a new EzKey header instance.
+  const _EzkeyHeader();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => Row(
+    children: [
+      // The logo and the name also open "about": EzKey is little known.
+      Expanded(
+        child: GestureDetector(
+          behavior: .opaque,
+          onTap: () => EzkeyAboutDialog.show(context),
+          child: Row(
+            children: [
+              const SizedScalableImage(
+                asset: 'assets/images/ezkey_logo.si',
+                width: 32,
+                height: 32,
+              ),
+              const SizedBox(width: kSpace),
+              Text(
+                translations.ezkey.home.title,
+                style: context.theme.typography.body.lg.copyWith(fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ),
+      ),
+      const _AboutButton(),
+      // Icon only: a tooltip on long press, which also labels it for screen readers.
+      Tooltip(
+        message: translations.ezkey.home.manage,
+        child: ClickableButton.icon(
+          key: const ValueKey('ezkey-home-manage'),
+          variant: .ghost,
+          onPress: () => EzkeyPage.open(context),
+          child: const Icon(FLucideIcons.settings2),
+        ),
+      ),
+      // Icon only: a tooltip on long press, which also labels it for screen readers.
+      Tooltip(
+        message: translations.ezkey.home.collapse,
+        child: ClickableButton.icon(
+          key: const ValueKey('ezkey-home-collapse'),
+          variant: .ghost,
+          onPress: () => _setExpanded(ref, false),
+          child: const Icon(FLucideIcons.chevronDown),
+        ),
+      ),
+    ],
+  );
+}
+
+/// The EzKey zone without enrollment: an invitation to add one, under the row to re-enroll if any.
+class _EmptyList extends StatelessWidget {
+  /// Whether the zone takes the full height.
+  final bool fill;
+
+  /// The row that leads to the enrollments to re-enroll, if any.
+  final ClickableTile? toReenrollTile;
+
+  /// Creates a new empty list instance.
+  const _EmptyList({
+    required this.fill,
+    this.toReenrollTile,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    ClickableTile? toReenrollTile = this.toReenrollTile;
+    return Flexible(
+      fit: fill ? .tight : .loose,
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: .stretch,
+          children: [
+            if (toReenrollTile != null) ...[
+              FTileGroup(children: [toReenrollTile]),
+              const SizedBox(height: kSpace),
+            ],
+            Text(
+              translations.ezkey.home.empty,
+              style: context.theme.typography.body.sm.copyWith(color: context.theme.colors.mutedForeground),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The enrollments of the EzKey zone, each with its own check, under the row to re-enroll if any.
+class _EnrollmentList extends ConsumerWidget {
+  /// Whether the zone takes the full height: the list then scrolls in all the space there is.
+  final bool fill;
+
+  /// The enrollments, of every installation.
+  final List<EzkeyEnrollment> enrollments;
+
+  /// The row that leads to the enrollments to re-enroll, if any.
+  final ClickableTile? toReenrollTile;
+
+  /// Creates a new enrollment list instance.
+  const _EnrollmentList({
+    required this.fill,
+    required this.enrollments,
+    this.toReenrollTile,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => Flexible(
+    fit: fill ? .tight : .loose,
+    child: ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: fill ? double.infinity : EzkeyHomeZone._maxListHeight),
+      child: SingleChildScrollView(
+        child: FTileGroup(
+          children: [
+            ?toReenrollTile,
+            // Flat, with the server when there are several installations (ADR-0007).
+            for (EzkeyEnrollment enrollment in enrollments)
+              EzkeyEnrollmentTile(
+                enrollment: enrollment,
+                showServer: ref.watch(ezkeySeveralInstallationsProvider),
+                onPress: () => EzkeyEnrollmentPage.open(context, enrollment),
+                suffix: _CheckButton(enrollment: enrollment),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 /// How the user adds an enrollment.
