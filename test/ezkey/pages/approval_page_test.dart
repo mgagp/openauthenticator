@@ -117,6 +117,24 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// Makes the server answer the decision with [result], signed by the enrollment's integration.
+  Future<void> answerSigned(WidgetTester tester, String result) async {
+    Ed25519TestKeyPair integrationKey = (await tester.runAsync(generateEd25519TestKeyPair))!;
+    enrollment = EzkeyEnrollment.fromJson({
+      ...enrollment.toJson(),
+      'integrationPublicKey': integrationKey.publicKeyBase64Url,
+    });
+    api.answer = (request) async => RespondAuthResponse(
+      authAttemptId: request.authAttemptId,
+      authAttemptResult: result,
+      authAttemptMessage: '',
+      authAttemptProofTokenResultSignedByIntegration: await signEd25519WithPkcs8(
+        buildRespondResultPayload(attempt.authAttemptProofToken, '${request.authAttemptId}', result, ''),
+        integrationKey.pkcs8Base64Std,
+      ),
+    );
+  }
+
   /// Leaves the approval page as the system back gesture would.
   Future<void> leave(WidgetTester tester) async {
     tester.state<NavigatorState>(find.byType(Navigator)).maybePop();
@@ -262,28 +280,29 @@ void main() {
       // Without the semantics tree: with it, Flutter's own semantics assertions fail while the page with the code field closes.
     }, semanticsEnabled: false);
 
-    testWidgets('a signed approval says the sign-in is approved and leaves the page', (tester) async {
-      Ed25519TestKeyPair integrationKey = (await tester.runAsync(generateEd25519TestKeyPair))!;
-      enrollment = EzkeyEnrollment.fromJson({
-        ...enrollment.toJson(),
-        'integrationPublicKey': integrationKey.publicKeyBase64Url,
-      });
-      attempt = testAttempt();
-      api.answer = (request) async => RespondAuthResponse(
-        authAttemptId: request.authAttemptId,
-        authAttemptResult: 'APPROVED',
-        authAttemptMessage: '',
-        authAttemptProofTokenResultSignedByIntegration: await signEd25519WithPkcs8(
-          buildRespondResultPayload(attempt.authAttemptProofToken, '${request.authAttemptId}', 'APPROVED', ''),
-          integrationKey.pkcs8Base64Std,
-        ),
-      );
+    testWidgets('a signed approval is shown as a success and leaves the page', (tester) async {
+      await answerSigned(tester, 'APPROVED');
       await openPage(tester);
 
       await tester.tap(find.byKey(const ValueKey('ezkey-attempt-approve')));
       await tester.pumpAndSettle();
 
       expect(find.text(translations.ezkey.attempt.result.approved), findsOneWidget);
+      expect(find.text(translations.miscellaneous.toast.success), findsOneWidget);
+      expect(find.byType(EzkeyApprovalPage), findsNothing);
+      expect(api.responds, hasLength(1));
+      await drainToasts(tester);
+    });
+
+    testWidgets('a signed refusal of the approval is shown as an error and leaves the page', (tester) async {
+      await answerSigned(tester, 'FAILED');
+      await openPage(tester);
+
+      await tester.tap(find.byKey(const ValueKey('ezkey-attempt-approve')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(translations.ezkey.attempt.result.failed), findsOneWidget);
+      expect(find.text(translations.miscellaneous.toast.error), findsOneWidget);
       expect(find.byType(EzkeyApprovalPage), findsNothing);
       expect(api.responds, hasLength(1));
       await drainToasts(tester);
