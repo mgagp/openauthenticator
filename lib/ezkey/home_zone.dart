@@ -420,47 +420,25 @@ class _TotpCollapsedBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     int? count = ref.watch(totpRepositoryProvider).value?.length;
-    return Semantics(
-      button: true,
+    return _ZoneBar(
+      tapKey: const ValueKey('ezkey-home-totp-expand'),
       label: translations.ezkey.home.totpExpand,
-      child: GestureDetector(
-        key: const ValueKey('ezkey-home-totp-expand'),
-        behavior: .opaque,
-        onTap: () => _setTotpExpanded(ref, true),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            border: Border(bottom: BorderSide(color: context.theme.colors.border, width: 2)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: kBigSpace, vertical: kSpace),
-            child: Row(
-              children: [
-                const SizedScalableImage(
-                  asset: 'assets/images/logo.si',
-                  width: 24,
-                  height: 24,
-                ),
-                const SizedBox(width: kSpace),
-                Expanded(
-                  child: Text(
-                    translations.ezkey.home.totpTitle,
-                    style: context.theme.typography.body.md.copyWith(fontWeight: FontWeight.w600),
-                  ),
-                ),
-                if (count != null)
-                  Padding(
-                    padding: const EdgeInsets.only(right: kSpace),
-                    child: Text(
-                      translations.ezkey.home.totpCount(n: count),
-                      style: context.theme.typography.body.sm.copyWith(color: context.theme.colors.mutedForeground),
-                    ),
-                  ),
-                const Icon(FLucideIcons.chevronDown),
-              ],
+      onTap: () => _setTotpExpanded(ref, true),
+      atTop: true,
+      verticalPadding: kSpace,
+      logo: 'assets/images/logo.si',
+      title: translations.ezkey.home.totpTitle,
+      trailing: [
+        if (count != null)
+          Padding(
+            padding: const EdgeInsets.only(right: kSpace),
+            child: Text(
+              translations.ezkey.home.totpCount(n: count),
+              style: context.theme.typography.body.sm.copyWith(color: context.theme.colors.mutedForeground),
             ),
           ),
-        ),
-      ),
+        const Icon(FLucideIcons.chevronDown),
+      ],
     );
   }
 }
@@ -473,40 +451,96 @@ class _CollapsedBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     int toReenroll = ref.watch(ezkeyToReenrollProvider).value?.length ?? 0;
+    return _ZoneBar(
+      tapKey: const ValueKey('ezkey-home-expand'),
+      label: translations.ezkey.home.expand,
+      onTap: () => _setExpanded(ref, true),
+      atTop: false,
+      verticalPadding: kSpace / 2,
+      logo: 'assets/images/ezkey_logo.si',
+      title: translations.ezkey.home.title,
+      trailing: [
+        if (toReenroll > 0)
+          Text(
+            translations.ezkey.home.toReenroll(n: toReenroll),
+            style: context.theme.typography.body.sm.copyWith(color: context.theme.colors.mutedForeground),
+          ),
+        const _AboutButton(),
+        const Icon(FLucideIcons.chevronUp),
+      ],
+    );
+  }
+}
+
+/// A collapsed zone: a thin bar with the zone's logo and name, which expands the zone on tap.
+class _ZoneBar extends StatelessWidget {
+  /// The key of the tap target.
+  final Key tapKey;
+
+  /// What a screen reader says the bar does.
+  final String label;
+
+  /// Expands the zone.
+  final VoidCallback onTap;
+
+  /// Whether the bar is at the top of the screen: its border is then below it, else above it.
+  final bool atTop;
+
+  /// The space above and below the bar's content.
+  final double verticalPadding;
+
+  /// The zone's logo asset.
+  final String logo;
+
+  /// The zone's name.
+  final String title;
+
+  /// What follows the name: a count, buttons, the chevron.
+  final List<Widget> trailing;
+
+  /// Creates a new zone bar instance.
+  const _ZoneBar({
+    required this.tapKey,
+    required this.label,
+    required this.onTap,
+    required this.atTop,
+    required this.verticalPadding,
+    required this.logo,
+    required this.title,
+    required this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    BorderSide border = BorderSide(color: context.theme.colors.border, width: 2);
     return Semantics(
       button: true,
-      label: translations.ezkey.home.expand,
+      label: label,
       child: GestureDetector(
-        key: const ValueKey('ezkey-home-expand'),
+        key: tapKey,
         behavior: .opaque,
-        onTap: () => _setExpanded(ref, true),
+        onTap: onTap,
         child: DecoratedBox(
           decoration: BoxDecoration(
-            border: Border(top: BorderSide(color: context.theme.colors.border, width: 2)),
+            border: atTop ? Border(bottom: border) : Border(top: border),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: kBigSpace, vertical: kSpace / 2),
+            padding: EdgeInsets.symmetric(horizontal: kBigSpace, vertical: verticalPadding),
             child: Row(
               children: [
-                const SizedScalableImage(
-                  asset: 'assets/images/ezkey_logo.si',
+                SizedScalableImage(
+                  asset: logo,
                   width: 24,
                   height: 24,
                 ),
                 const SizedBox(width: kSpace),
                 Expanded(
                   child: Text(
-                    translations.ezkey.home.title,
+                    title,
                     style: context.theme.typography.body.md.copyWith(fontWeight: FontWeight.w600),
                   ),
                 ),
-                if (toReenroll > 0)
-                  Text(
-                    translations.ezkey.home.toReenroll(n: toReenroll),
-                    style: context.theme.typography.body.sm.copyWith(color: context.theme.colors.mutedForeground),
-                  ),
-                const _AboutButton(),
-                const Icon(FLucideIcons.chevronUp),
+                ...trailing,
               ],
             ),
           ),

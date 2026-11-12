@@ -461,6 +461,25 @@ void main() {
       expect(find.byType(EzkeyHomeZone), findsOneWidget);
     });
 
+    testWidgets('a screen reader can expand EzKey from its bar', (tester) async {
+      await pumpZones(tester, [testEnrollment(1)], state: .collapsed);
+
+      tester.semantics.tap(find.semantics.byLabel(RegExp(RegExp.escape(translations.ezkey.home.expand))));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(EzkeyHomeZone), findsOneWidget);
+    });
+
+    testWidgets('a screen reader can expand the TOTP zone from its bar', (tester) async {
+      await pumpZones(tester, [testEnrollment(1)], state: .totpCollapsed);
+
+      tester.semantics.tap(find.semantics.byLabel(RegExp(RegExp.escape(translations.ezkey.home.totpExpand))));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('ezkey-home-totp-expand')), findsNothing);
+      expect(find.text('totp'), findsOneWidget);
+    });
+
     testWidgets('shows no TOTP header while EzKey is collapsed, so the app looks like the original', (tester) async {
       await pumpZones(tester, []);
 
