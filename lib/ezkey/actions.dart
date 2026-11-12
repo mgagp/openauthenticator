@@ -19,6 +19,10 @@ import 'package:open_authenticator/widgets/waiting_overlay.dart';
 /// The lab and the emulator e2e (no camera) rely on it. Tests may change it.
 bool ezkeyManualInvitationEntry = kDebugMode;
 
+/// Where to bind an invitation: [override] is the Auth API address the user typed, or `null` to use the
+/// invitation's own.
+typedef _ServerChoice = ({String? override});
+
 /// The EzKey user actions, shared by the home zone and the EzKey page.
 class EzkeyActions {
   /// The last Auth API address typed by the user, offered again for the next invitation.
@@ -51,39 +55,63 @@ class EzkeyActions {
   /// Returns whether [EzkeyEnrollPage] was opened: `false` when the code is not an invitation, the user
   /// cancelled, or binding failed (the user was told).
   static Future<bool> addEnrollment(BuildContext context, WidgetRef ref, String rawCode, {bool replaceRoute = false}) async {
-    EnrollmentCode code;
+    EnrollmentCode? code = _parse(context, rawCode);
+    if (code == null) {
+      return false;
+    }
+    _ServerChoice? server = await _chooseServer(context, ref, code);
+    if (server == null || !context.mounted) {
+      return false;
+    }
+    EzkeyBoundEnrollment? bound = await _bind(context, ref, code, server.override);
+    if (bound == null || !context.mounted) {
+      return false;
+    }
+    await EzkeyEnrollPage.open(context, bound, replace: replaceRoute);
+    return true;
+  }
+
+  /// Parses [rawCode] as an invitation, or says it is not one and returns `null`.
+  static EnrollmentCode? _parse(BuildContext context, String rawCode) {
     try {
-      code = EnrollmentCode.parse(rawCode);
+      return EnrollmentCode.parse(rawCode);
     } on EzkeyValidationException {
       showEzkeyErrorToast(context, text: translations.ezkey.scan.notAnInvitation);
-      return false;
+      return null;
     }
-    String? serverUrl;
+  }
+
+  /// Decides where to bind [code]: at the invitation's address if this build accepts it, else at an
+  /// address the user types when the invitation has none.
+  ///
+  /// Returns `null` to stop: the address was refused (the user was told) or the user cancelled.
+  static Future<_ServerChoice?> _chooseServer(BuildContext context, WidgetRef ref, EnrollmentCode code) async {
     String? authUrl = code.authUrl;
-    if (authUrl != null && !await _acceptsServer(ref, authUrl)) {
-      // Said before binding: the SDK refuses such an address with the same exception as an invitation
-      // already enrolled here, and the user should learn the real reason.
-      if (context.mounted) {
-        showEzkeyErrorToast(context, text: translations.ezkey.error.insecureServer);
-      }
-      return false;
-    }
-    if (!context.mounted) {
-      return false;
-    }
     if (authUrl == null) {
-      serverUrl = await askServerUrl(context, ref);
-      if (serverUrl == null || !context.mounted) {
-        return false;
-      }
+      String? serverUrl = await askServerUrl(context, ref);
+      return serverUrl == null ? null : (override: serverUrl);
     }
-    EzkeyBoundEnrollment bound;
+    if (await _acceptsServer(ref, authUrl)) {
+      return (override: null);
+    }
+    // Said before binding: the SDK refuses such an address with the same exception as an invitation
+    // already enrolled here, and the user should learn the real reason.
+    if (context.mounted) {
+      showEzkeyErrorToast(context, text: translations.ezkey.error.insecureServer);
+    }
+    return null;
+  }
+
+  /// Binds [code] at [serverUrl], or at the invitation's own address when it is `null`, while the user waits.
+  ///
+  /// Returns `null` when binding failed (the user was told) or the screen is gone.
+  static Future<EzkeyBoundEnrollment?> _bind(BuildContext context, WidgetRef ref, EnrollmentCode code, String? serverUrl) async {
     try {
       EzkeyAuthenticator authenticator = await ref.read(ezkeyAuthenticatorProvider.future);
       if (!context.mounted) {
-        return false;
+        return null;
       }
-      bound = await showWaitingOverlay(
+      return await showWaitingOverlay(
         context,
         message: translations.ezkey.enroll.binding,
         future: authenticator.bindEnrollment(code, authApiBaseUrlOverride: serverUrl),
@@ -93,13 +121,8 @@ class EzkeyActions {
       if (context.mounted) {
         showEzkeyErrorToast(context, text: ex is EzkeyValidationException ? translations.ezkey.error.alreadyEnrolled : ezkeyEnrollmentErrorMessage(ex));
       }
-      return false;
+      return null;
     }
-    if (!context.mounted) {
-      return false;
-    }
-    await EzkeyEnrollPage.open(context, bound, replace: replaceRoute);
-    return true;
   }
 
   /// Claims the pending auth attempt of [enrollment], if any, and opens [EzkeyApprovalPage] for it.

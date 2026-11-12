@@ -20,52 +20,6 @@ import 'package:open_authenticator/widgets/scan/scanner.dart';
 
 import 'support.dart';
 
-/// An Auth API that answers every bind with a validly signed answer for the invitation.
-class _BindingAuthApi implements EzkeyAuthApi {
-  /// The administrator type the bind answers with, for an administrator's invitation.
-  final String? adminType;
-
-  /// The integration key that signs the answers.
-  final Ed25519TestKeyPair integrationKey;
-
-  /// Creates a new binding Auth API instance.
-  _BindingAuthApi(this.integrationKey, {this.adminType});
-
-  @override
-  Future<EnrollmentBindResponse> bind(EnrollmentBindRequest request) async {
-    String payload = buildEnrollmentBindPayload(
-      enrollmentProofToken: request.enrollmentProofToken,
-      enrollmentId: request.enrollmentId,
-      integrationPublicKey: integrationKey.publicKeyBase64Url,
-      integrationKeyAlgorithm: 'ed25519',
-      integrationName: 'Orbit Console',
-      integrationDescription: null,
-      enrollmentName: 'Alice Chen',
-      tenantId: 1,
-      tenantName: 'Ezkey System',
-      tenantDescription: null,
-      isSystemIntegration: adminType != null,
-      adminType: adminType,
-    );
-    return EnrollmentBindResponse(
-      enrollmentId: request.enrollmentId,
-      enrollmentProofToken: request.enrollmentProofToken,
-      integrationPublicKey: integrationKey.publicKeyBase64Url,
-      integrationKeyAlgorithm: 'ed25519',
-      isSystemIntegration: adminType != null,
-      adminType: adminType,
-      enrollmentBindPayloadSignedByIntegration: await signEd25519WithPkcs8(payload, integrationKey.pkcs8Base64Std),
-      integrationName: 'Orbit Console',
-      enrollmentName: 'Alice Chen',
-      tenantId: 1,
-      tenantName: 'Ezkey System',
-    );
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError('${invocation.memberName}');
-}
-
 /// A crypto store notifier that holds a fixed store, without the secure storage.
 class _FixedCryptoStore extends CryptoStoreNotifier {
   /// The store.
@@ -105,7 +59,7 @@ void main() {
     platform = currentPlatform;
     currentPlatform = .android;
     enrollmentStore = InMemoryEnrollmentStore();
-    authenticator = EzkeyAuthenticator(keyStore: SoftwareDeviceKeyStore(), enrollmentStore: enrollmentStore, apiFactory: (uri) => _BindingAuthApi(integrationKey));
+    authenticator = EzkeyAuthenticator(keyStore: SoftwareDeviceKeyStore(), enrollmentStore: enrollmentStore, apiFactory: (uri) => BindingAuthApi(integrationKey));
     pushedRouteNames = [];
   });
 
@@ -198,7 +152,7 @@ void main() {
       authenticator = EzkeyAuthenticator(
         keyStore: SoftwareDeviceKeyStore(),
         enrollmentStore: enrollmentStore,
-        apiFactory: (uri) => _BindingAuthApi(integrationKey, adminType: 'GLOBAL_ADMIN'),
+        apiFactory: (uri) => BindingAuthApi(integrationKey, adminType: 'GLOBAL_ADMIN'),
       );
       await pumpScanner(tester, ezkey: false);
 
@@ -238,7 +192,7 @@ void main() {
       authenticator = EzkeyAuthenticator(
         keyStore: SoftwareDeviceKeyStore(),
         enrollmentStore: enrollmentStore,
-        apiFactory: (uri) => _BindingAuthApi(integrationKey),
+        apiFactory: (uri) => BindingAuthApi(integrationKey),
         urlPolicy: ezkeyUrlPolicyFor(debug: false),
       );
       await pumpScanner(tester, ezkey: false);
@@ -255,7 +209,7 @@ void main() {
       authenticator = EzkeyAuthenticator(
         keyStore: SoftwareDeviceKeyStore(),
         enrollmentStore: enrollmentStore,
-        apiFactory: (uri) => _BindingAuthApi(integrationKey),
+        apiFactory: (uri) => BindingAuthApi(integrationKey),
         urlPolicy: ezkeyUrlPolicyFor(debug: true),
       );
       await pumpScanner(tester, ezkey: false);
