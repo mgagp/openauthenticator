@@ -27,6 +27,32 @@
       "path": "integration_test/",
       "symbol": "main",
       "reason": "Same as test/: group and test closures nest by design."
+    },
+    {
+      "tool": "dart_code_linter",
+      "rule": "source-lines-of-code",
+      "path": "lib/ezkey/",
+      "symbol": "build",
+      "reason": "A build method is a declarative widget tree: its length is layout, not logic, and a Flutter reviewer does not flag it. Its complexity and nesting are still measured (pass 2)."
+    },
+    {
+      "tool": "dart_code_linter",
+      "rule": "number-of-parameters",
+      "path": "lib/ezkey/toast.dart",
+      "symbol": "_showEzkeyToast",
+      "reason": "A private function with named parameters, behind the two public toast functions; it mirrors upstream's toast (pass 2)."
+    },
+    {
+      "tool": "detekt",
+      "rule": "detekt.complexity.TooManyFunctions",
+      "path": "packages/ezkey_keystore/android/src/main/kotlin/org/ezkey/keystore/EzkeyKeystorePlugin.kt",
+      "reason": "12 functions for a threshold of 11, in a class with one role: the key store's method channel (pass 2)."
+    },
+    {
+      "tool": "detekt",
+      "rule": "detekt.exceptions.TooGenericExceptionCaught",
+      "path": "packages/ezkey_keystore/android/src/main/kotlin/org/ezkey/keystore/EzkeyKeystorePlugin.kt",
+      "reason": "The intended catch-all at the method channel's boundary, after the two specific cases: without it, a Keystore failure would leave the Dart call without an answer (pass 2)."
     }
   ]
 }

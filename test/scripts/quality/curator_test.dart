@@ -157,6 +157,15 @@ void main() {
       expect(suppression.matches(_finding(tool: 'dart_code_linter', rule: 'source-lines-of-code', path: 'test/a_test.dart', symbol: 'pump')), isFalse);
       expect(suppression.matches(_finding(tool: 'dart_code_linter', rule: 'cyclomatic-complexity', path: 'test/a_test.dart', symbol: 'main')), isFalse);
     });
+
+    test('matches a bare method name in every class, and no other method', () {
+      Suppression suppression = Suppression.fromJson({'tool': 'dart_code_linter', 'rule': 'source-lines-of-code', 'symbol': 'build', 'reason': 'Widget trees.'});
+
+      expect(suppression.matches(_finding(tool: 'dart_code_linter', rule: 'source-lines-of-code', symbol: '_PageState.build')), isTrue);
+      expect(suppression.matches(_finding(tool: 'dart_code_linter', rule: 'source-lines-of-code', symbol: 'build')), isTrue);
+      expect(suppression.matches(_finding(tool: 'dart_code_linter', rule: 'source-lines-of-code', symbol: '_PageState.rebuild')), isFalse);
+      expect(suppression.matches(_finding(tool: 'dart_code_linter', rule: 'source-lines-of-code', symbol: '_PageState.submit')), isFalse);
+    });
   });
 
   group('curate', () {

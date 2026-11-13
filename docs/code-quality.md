@@ -17,7 +17,7 @@ scripts/with-env.sh dart scripts/quality_doctor.dart --skip semgrep
 
 It writes `build/quality/doctor.curated.md` and `.json` (curated), and `build/quality/raw/` (each analyzer's output). It exits 0 whatever it finds: it is a report, not a gate. A missing runtime (Node, a JDK, Docker) makes its analyzer show as skipped, with the reason.
 
-**Keyword:** `doctor-curated`. Run the pass, read the curated report, then go through the findings one at a time with the maintainer. Each one gets a fix, a suppression with its reason, or nothing. Record the decisions in a pass note under [`quality/`](quality/).
+**Keyword:** `doctor-curated`. Run the pass, read the curated report, then decide with the maintainer what each P1 and P2 gets: a fix, a suppression with its reason, or nothing. The [compass](#compass-how-far-to-go) says how far to go. Record the decisions in a pass note under [`quality/`](quality/).
 
 ## Analyzers
 
@@ -49,7 +49,20 @@ Test code is ranked one level lower. The metrics of one function are merged into
 
 **Thresholds** (`config/quality/doctor.json`): cyclomatic complexity 10, nesting 3, parameters 4, 50 source lines per function. dart_code_linter reports a value at the threshold as noted, then warning and alarm further past it.
 
-**Suppressions** (`config/quality/suppressions.json`) drop a rule by analyzer, and optionally by path or by function. Each one needs a written reason, or the pass refuses to run. The report lists every suppression with its count.
+**Suppressions** (`config/quality/suppressions.json`) drop a rule by analyzer, and optionally by path or by function. A bare method name, like `build`, covers that method in every class. Each one needs a written reason, or the pass refuses to run. The report lists every suppression with its count.
+
+## Compass: how far to go
+
+Agreed on 2026-11-13, after pass 2 ([`quality/2026-11-11-pass-2.md`](quality/2026-11-11-pass-2.md) § What the pass taught). The aim is the code a professional who knows the language, its community and its practices would write with reasonable care. It is not a perfect report: past a point, more work on a finding brings less than it costs. Read these eight rules before going through a report.
+
+1. **The report is a signal, not a task list.** A finding asks for a look. The default decision is to change nothing.
+2. **The rank sets the action.** P1: act. P2: act only when that code is touched for another reason. P3: do nothing.
+3. **Risk comes before the metric.** Act ahead of time only when both are true: the code is sensitive (approving, keys, storage, backups), and the finding points to code that is really hard to read or to a path with no test.
+4. **The professional's test.** Would an experienced developer of the language raise it in a review? If not, suppress it with a written reason, or adjust the threshold.
+5. **A missing test is worth more than a split.** On sensitive code, add the tests. Split a function only when it really helps the reader.
+6. **Check in proportion to the change.** A moved piece of layout: the analyzer and the existing tests. Sensitive logic: tests first, a break of each path to see red, then a device.
+7. **A pass has an end.** It ends when the P1 are fixed and each P2 has a decision, not when the report is empty.
+8. **A signal that keeps coming back without value is settled in the tool.** Adjust a threshold or add a suppression with its reason, and leave the code.
 
 ## Criteria for new code
 
@@ -57,7 +70,7 @@ Phase 2 of #114. They apply to the fork's code, whoever writes it, a person or a
 
 | Criterion | Checked by |
 | --- | --- |
-| A function stays within the thresholds above: complexity 10, nesting 3, 4 parameters, 50 lines. Past them, split it, or say in the PR why not | The pass. CI fails on a new P1, which is about twice a threshold |
+| A function stays within the thresholds above: complexity 10, nesting 3, 4 parameters, 50 lines. Past them, split it, or say in the PR why not. A `build` method in `lib/ezkey/` has no line limit: it is a widget tree | The pass. CI fails on a new P1, which is about twice a threshold |
 | The extra lint rules of our folders pass (below) | `flutter analyze` in CI |
 | No secret, token or key material in a log, no plain HTTP URL in app code | Semgrep rules, in CI |
 | A catch names what it catches. A catch-all is only for an intended fail-open, written `on Object catch`, with the reason next to it | `avoid_catches_without_on_clauses` |
