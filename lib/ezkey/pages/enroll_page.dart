@@ -7,6 +7,7 @@ import 'package:open_authenticator/ezkey/identity.dart';
 import 'package:open_authenticator/ezkey/messages.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
 import 'package:open_authenticator/ezkey/toast.dart';
+import 'package:open_authenticator/ezkey/widgets/administrator_alert.dart';
 import 'package:open_authenticator/ezkey/widgets/information_tile.dart';
 import 'package:open_authenticator/ezkey/widgets/purpose_tile.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
@@ -63,7 +64,6 @@ class _EzkeyEnrollPageState extends ConsumerState<EzkeyEnrollPage> {
   @override
   Widget build(BuildContext context) {
     EzkeyBoundEnrollment bound = widget.bound;
-    EzkeyIdentity identity = EzkeyIdentity.ofBound(bound);
     return AppScaffold.scrollable(
       header: FHeader.nested(
         prefixes: [
@@ -76,35 +76,10 @@ class _EzkeyEnrollPageState extends ConsumerState<EzkeyEnrollPage> {
       children: [
         Text(translations.ezkey.enroll.intro),
         const SizedBox(height: kSpace),
-        FTileGroup(
-          children: [
-            EzkeyPurposeTile(identity: identity, details: bound.integrationDescription),
-            if (identity.organization != null) EzkeyInformationTile(icon: FLucideIcons.building, label: translations.ezkey.enroll.organization, value: identity.organization),
-            if (identity.account != null) EzkeyInformationTile(icon: FLucideIcons.user, label: translations.ezkey.enroll.account, value: identity.account),
-            EzkeyInformationTile(icon: FLucideIcons.server, label: translations.ezkey.enroll.server, value: Uri.parse(bound.authApiBaseUrl).authority),
-          ],
-        ),
-        if (bound.isSystemIntegration) ...[
-          const SizedBox(height: kSpace),
-          FAlert(
-            icon: const Icon(FLucideIcons.shieldAlert),
-            title: Text(translations.ezkey.enroll.administrator),
-          ),
-        ],
+        _WhoIsAsking(bound: bound),
+        if (bound.isSystemIntegration) EzkeyAdministratorAlert(text: translations.ezkey.enroll.administrator),
         const SizedBox(height: kBigSpace),
-        FTextField(
-          key: const ValueKey('ezkey-enrollment-code'),
-          control: .managed(controller: codeController),
-          label: Text(translations.ezkey.enroll.codeLabel),
-          description: Text(translations.ezkey.enroll.codeHelp),
-          keyboardType: TextInputType.number,
-          inputFormatters: [
-            FilteringTextInputFormatter.digitsOnly,
-            LengthLimitingTextInputFormatter(6),
-          ],
-          enabled: !submitting,
-          onSubmit: (_) => submit(),
-        ),
+        _CodeField(controller: codeController, enabled: !submitting, onSubmit: submit),
         const SizedBox(height: kBigSpace),
         ClickableButton(
           key: const ValueKey('ezkey-enroll-submit'),
@@ -155,4 +130,62 @@ class _EzkeyEnrollPageState extends ConsumerState<EzkeyEnrollPage> {
     codeController.dispose();
     super.dispose();
   }
+}
+
+/// Who is asking for the enrollment, from the signed bind answer, and the server that answered.
+class _WhoIsAsking extends StatelessWidget {
+  /// The bound invitation.
+  final EzkeyBoundEnrollment bound;
+
+  /// Creates a new who is asking instance.
+  const _WhoIsAsking({
+    required this.bound,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    EzkeyIdentity identity = EzkeyIdentity.ofBound(bound);
+    return FTileGroup(
+      children: [
+        EzkeyPurposeTile(identity: identity, details: bound.integrationDescription),
+        if (identity.organization != null) EzkeyInformationTile(icon: FLucideIcons.building, label: translations.ezkey.enroll.organization, value: identity.organization),
+        if (identity.account != null) EzkeyInformationTile(icon: FLucideIcons.user, label: translations.ezkey.enroll.account, value: identity.account),
+        EzkeyInformationTile(icon: FLucideIcons.server, label: translations.ezkey.enroll.server, value: Uri.parse(bound.authApiBaseUrl).authority),
+      ],
+    );
+  }
+}
+
+/// The field for the six-digit enrollment code.
+class _CodeField extends StatelessWidget {
+  /// The code controller.
+  final TextEditingController controller;
+
+  /// Whether the code can be typed.
+  final bool enabled;
+
+  /// Sends the code, from the keyboard.
+  final VoidCallback onSubmit;
+
+  /// Creates a new code field instance.
+  const _CodeField({
+    required this.controller,
+    required this.enabled,
+    required this.onSubmit,
+  });
+
+  @override
+  Widget build(BuildContext context) => FTextField(
+    key: const ValueKey('ezkey-enrollment-code'),
+    control: .managed(controller: controller),
+    label: Text(translations.ezkey.enroll.codeLabel),
+    description: Text(translations.ezkey.enroll.codeHelp),
+    keyboardType: TextInputType.number,
+    inputFormatters: [
+      FilteringTextInputFormatter.digitsOnly,
+      LengthLimitingTextInputFormatter(6),
+    ],
+    enabled: enabled,
+    onSubmit: (_) => onSubmit(),
+  );
 }

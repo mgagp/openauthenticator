@@ -277,7 +277,7 @@ void main() {
       expect(api.responds.single.authAttemptAccepted, isTrue);
       expect(api.responds.single.authAttemptChallengeResponse, 123456);
       await drainToasts(tester);
-      // Without the semantics tree: with it, Flutter's own semantics assertions fail while the page with the code field closes.
+      // A focused forui text field fails a semantics assertion (forui 0.25, docs/ezkey/integration.md § Open points), hence `semanticsEnabled: false`.
     }, semanticsEnabled: false);
 
     testWidgets('a signed approval is shown as a success and leaves the page', (tester) async {

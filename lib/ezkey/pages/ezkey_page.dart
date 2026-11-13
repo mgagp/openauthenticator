@@ -45,21 +45,7 @@ class EzkeyPage extends ConsumerWidget {
           child: Text(translations.ezkey.page.empty),
         )
       else
-        Padding(
-          padding: const EdgeInsets.only(bottom: kBigSpace),
-          child: FTileGroup(
-            label: Text(translations.ezkey.page.enrollments),
-            children: [
-              for (EzkeyEnrollment enrollment in enrollments)
-                EzkeyEnrollmentTile(
-                  enrollment: enrollment,
-                  showDetails: true,
-                  suffix: const Icon(FLucideIcons.chevronRight),
-                  onPress: () => EzkeyEnrollmentPage.open(context, enrollment),
-                ),
-            ],
-          ),
-        ),
+        _EnrollmentsGroup(enrollments: enrollments),
       const EzkeyToReenrollGroup(),
       Padding(
         padding: const EdgeInsets.only(bottom: kBigSpace),
@@ -70,26 +56,63 @@ class EzkeyPage extends ConsumerWidget {
           ],
         ),
       ),
-      FTileGroup(
-        label: Text(translations.ezkey.page.add),
-        children: [
-          ClickableTile(
-            key: const ValueKey('ezkey-add-scan'),
-            prefix: const Icon(FLucideIcons.qrCode),
-            title: Text(translations.ezkey.page.scan.title),
-            subtitle: Text(translations.ezkey.page.scan.subtitle),
-            onPress: () => EzkeyActions.addFromScan(context, ref),
+      const _AddGroup(),
+    ],
+  );
+}
+
+/// The enrollments of this device: each one opens its own page.
+class _EnrollmentsGroup extends StatelessWidget {
+  /// The enrollments.
+  final List<EzkeyEnrollment> enrollments;
+
+  /// Creates a new enrollments group instance.
+  const _EnrollmentsGroup({
+    required this.enrollments,
+  });
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: kBigSpace),
+    child: FTileGroup(
+      label: Text(translations.ezkey.page.enrollments),
+      children: [
+        for (EzkeyEnrollment enrollment in enrollments)
+          EzkeyEnrollmentTile(
+            enrollment: enrollment,
+            showDetails: true,
+            suffix: const Icon(FLucideIcons.chevronRight),
+            onPress: () => EzkeyEnrollmentPage.open(context, enrollment),
           ),
-          if (ezkeyManualInvitationEntry)
-            ClickableTile(
-              key: const ValueKey('ezkey-add-paste'),
-              prefix: const Icon(FLucideIcons.keyboard),
-              title: Text(translations.ezkey.page.paste.title),
-              subtitle: Text(translations.ezkey.page.paste.subtitle),
-              onPress: () => EzkeyActions.addFromText(context, ref),
-            ),
-        ],
+      ],
+    ),
+  );
+}
+
+/// The ways to add an enrollment: scanning the invitation, and typing it where that is allowed.
+class _AddGroup extends ConsumerWidget {
+  /// Creates a new add group instance.
+  const _AddGroup();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => FTileGroup(
+    label: Text(translations.ezkey.page.add),
+    children: [
+      ClickableTile(
+        key: const ValueKey('ezkey-add-scan'),
+        prefix: const Icon(FLucideIcons.qrCode),
+        title: Text(translations.ezkey.page.scan.title),
+        subtitle: Text(translations.ezkey.page.scan.subtitle),
+        onPress: () => EzkeyActions.addFromScan(context, ref),
       ),
+      if (ezkeyManualInvitationEntry)
+        ClickableTile(
+          key: const ValueKey('ezkey-add-paste'),
+          prefix: const Icon(FLucideIcons.keyboard),
+          title: Text(translations.ezkey.page.paste.title),
+          subtitle: Text(translations.ezkey.page.paste.subtitle),
+          onPress: () => EzkeyActions.addFromText(context, ref),
+        ),
     ],
   );
 }
