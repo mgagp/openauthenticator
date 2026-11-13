@@ -93,7 +93,9 @@ Future<Map<String, Object>> invite(String name) async {
   return {
     'enrollmentId': enrollmentId,
     'enrollmentChallenge': '${created['enrollmentChallenge']}'.padLeft(6, '0'),
-    'code': jsonEncode({'enrollmentId': enrollmentId, 'enrollmentProofToken': details['enrollmentProofToken']}),
+    // The Admin API only gives the QR content as a PNG image, so this composes the same JSON:
+    // the proof token alone (EzKey ADR-0019). The lab stack sets no `authUrl`.
+    'code': jsonEncode({'enrollmentProofToken': details['enrollmentProofToken']}),
   };
 }
 

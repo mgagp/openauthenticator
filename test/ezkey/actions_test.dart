@@ -21,10 +21,10 @@ class _UnreachableAuthApi implements EzkeyAuthApi {
 }
 
 /// An invitation for enrollment 14 that does not carry its Auth API address.
-const String _invitationWithoutServer = '{"enrollmentId":14,"enrollmentProofToken":"proof-token-14"}';
+const String _invitationWithoutServer = '{"enrollmentProofToken":"proof-token-14"}';
 
 /// An invitation for enrollment 12 that carries its Auth API address.
-const String _invitation = '{"enrollmentId":12,"enrollmentProofToken":"proof-token-12","authUrl":"https://auth.example.com"}';
+const String _invitation = '{"enrollmentProofToken":"proof-token-12","authUrl":"https://auth.example.com"}';
 
 void main() {
   late Ed25519TestKeyPair integrationKey;
