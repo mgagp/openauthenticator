@@ -98,7 +98,7 @@ One checklist for the whole app, run on each platform and deployment model upstr
 | # | Check | How (Android) | Android | Windows | macOS | iOS sim | Linux |
 |---|---|---|---|---|---|---|---|
 | U1 | First launch: intro slides, master password set, home empty | emu | pass 11-13 | — | — | — | — |
-| U2 | Add a TOTP by camera scan of an `otpauth://` QR | device | — | — | — | — | — |
+| U2 | Add a TOTP by camera scan of an `otpauth://` QR | device | pass 11-13 (Pixel) | — | — | — | — |
 | U3 | Add a TOTP by hand (secret, issuer, label, algorithm, digits, period) | emu | pass 11-13 | — | — | — | — |
 | U4 | Add a TOTP from an `otpauth://` link opened from outside the app | emu (`adb shell am start -d`) | pass 11-13 | — | — | — | — |
 | U5 | The code shown matches a reference generator, and the countdown rolls over | emu | pass 11-13 | — | — | — | — |
@@ -108,7 +108,7 @@ One checklist for the whole app, run on each platform and deployment model upstr
 | U9 | Settings: theme, language, display options persist after a restart | emu | pass 11-13 | — | — | — | — |
 | U10 | Change the master password; the TOTPs still decrypt | emu | pass 11-13 | — | — | — | — |
 | U11 | App unlock: master password at start, wrong then right password | emu | pass 11-13 | — | — | — | — |
-| U12 | App unlock: biometric / system authentication | device | — | — | — | — | — |
+| U12 | App unlock: biometric / system authentication | device | pass 11-13 (Pixel) | — | — | — | — |
 | U13 | Backup now, then restore it after deleting a TOTP; wrong backup password refused | emu | pass 11-13 | — | — | — | — |
 | U14 | Manage backups: list, delete | emu | fail #141 | — | — | — | — |
 | U15 | Clear data: everything gone, back to the intro | emu | fail #141 | — | — | — | — |
@@ -124,8 +124,8 @@ One checklist for the whole app, run on each platform and deployment model upstr
 | E1 | Key store contract (`keystore_test.dart`), tier read back from the key | auto | pass 11-13 | — | — | — | — |
 | E2 | Enroll, check, approve through the providers against the live stack (`live_stack_test.dart`) | auto | pass 11-13 | — | — | — | — |
 | E3 | Enroll and approve through the screens (`enrollment_ui_test.dart`) | auto | pass 11-13 | — | — | — | — |
-| E4 | Enroll by camera scan of the invitation QR | device | — | — | — | — | — |
-| E5 | Approve with local confirmation; cancelled confirmation sends nothing; deny | device | partial 11-13 | — | — | — | — |
+| E4 | Enroll by camera scan of the invitation QR | device | pass 11-13 (Pixel) | — | — | — | — |
+| E5 | Approve with local confirmation; cancelled confirmation sends nothing; deny | device | pass 11-13 (Pixel) | — | — | — | — |
 | E6 | Home zones: EzKey zone collapsed until the first enrollment, collapse, split | emu | pass 11-13 | — | — | — | — |
 | E7 | Enrollment page, identity shown, removal | emu | pass 11-13 | — | — | — | — |
 | E8 | Backup keeps the enrollment inventory; restore lists "to re-enroll" | emu | pass 11-13 | — | — | — | — |
@@ -146,9 +146,16 @@ One checklist for the whole app, run on each platform and deployment model upstr
 
 Record one dated paragraph per platform run: build, target, what was automated, failures with their issues, items left `—` and why.
 
-**Android, emulator `oa_api35`, 2026-11-13 (#131; the Pixel items are still to run).** Debug APK from `main` at 1104bf9, fresh install, driven with `adb` (taps, `uiautomator dump` for node labels, screenshots). Codes checked against an independent RFC 6238 computation from the emulator's clock: SHA1 6 digits (`otpauth://` link) and SHA256 8 digits (manual entry), across a 30 s rollover. Backup restored after deleting a TOTP; a wrong backup password shows "Invalid password entered". Master password changed, then "Save encryption / decryption key" turned off: at the next start the app asks for the password, refuses the old and a wrong one, and the new one decrypts both TOTPs.
+**Android, emulator `oa_api35`, 2026-11-13 (#131).** Debug APK from `main` at 1104bf9, fresh install, driven with `adb` (taps, `uiautomator dump` for node labels, screenshots). Codes checked against an independent RFC 6238 computation from the emulator's clock: SHA1 6 digits (`otpauth://` link) and SHA256 8 digits (manual entry), across a 30 s rollover. Backup restored after deleting a TOTP; a wrong backup password shows "Invalid password entered". Master password changed, then "Save encryption / decryption key" turned off: at the next start the app asks for the password, refuses the old and a wrong one, and the new one decrypts both TOTPs.
 
 Then: theme and the copy-button option survive a restart (U9; the language entry was not tried). EzKey in the real app, against the local stack (`scripts/ezkey_lab.dart invite` / `attempt`), with the debug manual entry: the server dialog, the identity before the code, enrollment, one approval (`ACCEPTED`) and one denial (`REJECTED`) through the home row's Check button. Approval Security was left at Standard, which asks for no confirmation; the confirmation prompt needs a device with a screen lock (E5, Pixel). Enrollment page with "Not hardware-protected" (the emulator's key tier is `none`, #108); collapse and split of the zones; backup with the EzKey note, local removal, restore lists "To re-enroll: 1" (E8); Clear data names the enrollment in its EzKey warning, then the app is back to the intro after a restart (E9; the key deletion itself is covered by unit tests, not observed here). `keystore_test.dart`: 3/3, `tier=none`, 8/16 high-S, all normalized (E1). Through `scripts/ezkey_lab.dart e2e`: `live_stack_test.dart` and `enrollment_ui_test.dart` pass (E2, E3; enrollments 11 and 10, revoked by the script). The manual enrollments 7 and 9 stay active on the local stack, since the app's removal is local only.
+
+**Android, Pixel 7 Pro, 2026-11-13 (#131), with the maintainer's go-ahead and hands.** The same debug build (arm64) installed over the phone's debug app, data kept, French UI. Fingerprint unlock at a cold start (U12). Camera scan of a test `otpauth://` QR shown on the PC screen, then the TOTP deleted (U2). EzKey through the local stack (`adb reverse tcp:8080`): camera scan of a lab invitation (`round-131-pixel`, enrollment 12), server `http://localhost:8080`, code, enrollment `VERIFIED` (E4). With Approval Security set to confirm: Approve asked for the fingerprint and sent `ACCEPTED`; Approve with the fingerprint cancelled sent nothing, then Deny sent `REJECTED`, the only decision the server recorded for that attempt (E5). E10 stays partial: a profile build was not installed on the phone (debug only, to keep the enrollments of each build type apart).
+
+Pixel notes:
+- `adb exec-out screencap` returns a black image of the app on the Pixel (not on the emulator); nothing in the app's code or manifest sets `FLAG_SECURE`, cause not identified. The `uiautomator dump` of the home screen can be stale there: it kept showing "Enrôlement de cet appareil..." minutes after the home screen was back. Injected taps and text were also unreliable on that phone (a tap right after a dump is often lost), so the maintainer did the taps for E4 and E5.
+- Upstream's TOTP + button has no accessibility label (empty `content-desc`), where the EzKey + says "Ajouter un enrôlement". Noted only.
+- Lab leftovers: enrollment 12 (`round-131-pixel`) stays on the phone and active on the local stack.
 
 Failures:
 - U14, U15: #141 (upstream code). Deleting a backup leaves it listed until the dialog is reopened, and Clear data with "delete your backups" throws `Concurrent modification during iteration`: the restart dialog never shows, and with several backups only the first is deleted.
