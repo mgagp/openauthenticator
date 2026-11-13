@@ -89,7 +89,8 @@ The rules: `public_member_api_docs`, `avoid_dynamic_calls`, `unawaited_futures`,
 
 Nothing in the curator (`scripts/quality/curator.dart`) is specific to this app: it reads the analyzers' standard outputs. To reuse it for `ezkey_dart`, copy `scripts/quality_doctor.dart`, `scripts/quality/` and `config/quality/`, set the paths in `doctor.json`, and drop the Kotlin part.
 
-## Next phases (#114)
+## Phases (#114, closed)
 
+- **Phases 0 and 1:** done, see [Analyzers](#analyzers) and [Running it](#running-it).
 - **Phase 2:** done, see [Criteria for new code](#criteria-for-new-code).
-- **Phase 3:** the plugin's Kotlin gets the same treatment, with a narrowed Detekt configuration.
+- **Phase 3:** done. Detekt and its ktlint rules run on the plugin's Kotlin since pass 2, with Detekt's default configuration. It was not narrowed: the plugin's few findings are settled by suppressions with their reasons, as the [compass](#compass-how-far-to-go) says.
