@@ -33,10 +33,10 @@ class _FixedCryptoStore extends CryptoStoreNotifier {
 }
 
 /// An invitation for enrollment 12 that carries its Auth API address.
-const String _invitation = '{"enrollmentId":12,"enrollmentProofToken":"proof-token-12","authUrl":"https://auth.example.com"}';
+const String _invitation = '{"enrollmentProofToken":"proof-token-12","authUrl":"https://auth.example.com"}';
 
 /// An invitation for enrollment 13 to the local stack, as the emulator reaches it over plain HTTP.
-const String _localInvitation = '{"enrollmentId":13,"enrollmentProofToken":"proof-token-13","authUrl":"http://10.0.2.2:8080"}';
+const String _localInvitation = '{"enrollmentProofToken":"proof-token-13","authUrl":"http://10.0.2.2:8080"}';
 
 /// A TOTP QR code.
 const String _totpUri = 'otpauth://totp/Orbit:alice@example.com?secret=JBSWY3DPEHPK3PXP&issuer=Orbit';
@@ -115,9 +115,13 @@ void main() {
   }
 
   group('isEzkeyInvitation', () {
-    test('recognizes both invitation formats', () {
+    test('recognizes an invitation, with or without a leftover enrollment id', () {
       expect(isEzkeyInvitation(_invitation), isTrue);
-      expect(isEzkeyInvitation('12|proof-token-12'), isTrue);
+      expect(isEzkeyInvitation('{"enrollmentId":12,"enrollmentProofToken":"proof-token-12"}'), isTrue);
+    });
+
+    test('rejects the former id and token form', () {
+      expect(isEzkeyInvitation('12|proof-token-12'), isFalse);
     });
 
     test('rejects TOTP URIs and other content', () {

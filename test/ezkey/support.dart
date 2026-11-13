@@ -48,7 +48,7 @@ EzkeyEnrollment testAdminEnrollment(int enrollmentId, {required String adminType
   'adminType': adminType,
 });
 
-/// An Auth API that answers every bind with a validly signed answer for the invitation.
+/// An Auth API that answers every bind with a validly signed answer for the invitation, under [enrollmentId].
 class BindingAuthApi implements EzkeyAuthApi {
   /// The administrator type the bind answers with, for an administrator's invitation.
   final String? adminType;
@@ -56,14 +56,17 @@ class BindingAuthApi implements EzkeyAuthApi {
   /// The integration key that signs the answers.
   final Ed25519TestKeyPair integrationKey;
 
+  /// The enrollment id the bind answers with: the invitation carries none.
+  final int enrollmentId;
+
   /// Creates a new binding Auth API instance.
-  BindingAuthApi(this.integrationKey, {this.adminType});
+  BindingAuthApi(this.integrationKey, {this.adminType, this.enrollmentId = 12});
 
   @override
   Future<EnrollmentBindResponse> bind(EnrollmentBindRequest request) async {
     String payload = buildEnrollmentBindPayload(
       enrollmentProofToken: request.enrollmentProofToken,
-      enrollmentId: request.enrollmentId,
+      enrollmentId: enrollmentId,
       integrationPublicKey: integrationKey.publicKeyBase64Url,
       integrationKeyAlgorithm: 'ed25519',
       integrationName: 'Orbit Console',
@@ -76,7 +79,7 @@ class BindingAuthApi implements EzkeyAuthApi {
       adminType: adminType,
     );
     return EnrollmentBindResponse(
-      enrollmentId: request.enrollmentId,
+      enrollmentId: enrollmentId,
       enrollmentProofToken: request.enrollmentProofToken,
       integrationPublicKey: integrationKey.publicKeyBase64Url,
       integrationKeyAlgorithm: 'ed25519',

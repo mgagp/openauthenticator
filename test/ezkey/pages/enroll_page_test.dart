@@ -11,7 +11,7 @@ import 'package:open_authenticator/widgets/clickable.dart';
 import '../support.dart';
 
 /// An invitation for enrollment 12 that carries its Auth API address.
-const String _invitation = '{"enrollmentId":12,"enrollmentProofToken":"proof-token-12","authUrl":"https://auth.example.com"}';
+const String _invitation = '{"enrollmentProofToken":"proof-token-12","authUrl":"https://auth.example.com"}';
 
 void main() {
   /// Shows the page for [_invitation], bound as an administrator of type [adminType] when it is set.

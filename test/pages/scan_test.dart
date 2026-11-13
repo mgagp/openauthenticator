@@ -122,7 +122,7 @@ void main() {
     testWidgets('shows an error and resumes scanning on an EzKey invitation', (tester) async {
       await pumpScan(tester);
 
-      bool resume = await scan(tester, '{"enrollmentId":12,"enrollmentProofToken":"proof-token-12","authUrl":"https://auth.example.com"}');
+      bool resume = await scan(tester, '{"enrollmentProofToken":"proof-token-12","authUrl":"https://auth.example.com"}');
 
       expect(resume, isTrue);
       expect(find.text(translations.error.scan.noUri), findsOneWidget);

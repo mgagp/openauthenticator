@@ -67,6 +67,7 @@ The reference app shows one valid answer, not the only one. When you differ from
 
 ## 5. Enrollment
 
+- **Take the enrollment id from the bind answer, never from the invitation.** The invitation holds the proof token and, optionally, the server address (EzKey ADR-0019). Let the SDK parse it, and do not read its fields yourself: this app needed no code change when the id left the invitation (#129).
 - **The invitation may carry no server address,** so be ready to ask for it, and validate it with the SDK's URL policy.
 - **Require HTTPS in release builds.** The SDK's default policy also accepts plain HTTP to `localhost`, `127.0.0.1` and `10.0.2.2`, as the reference app does. Keep that for debug builds, where a local stack and an emulator need it, and pass `EzkeyUrlPolicy.httpsOnly` elsewhere (#109). The SDK refuses an address with the same exception as an invitation already enrolled, so check the address first to tell the user the real reason.
 - **Scanning is the release path.** The QR content carries a bearer token, so typing or pasting it belongs in debug builds unless you decide otherwise for a platform with no camera (ADR-0004 D5).
