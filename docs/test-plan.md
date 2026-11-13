@@ -84,3 +84,66 @@ Legend for effort: S < ½ day, M ≈ 1 day, L > 1 day.
 - **Deep-link routing** lives in the private `_RouteWidgetState` in `lib/main.dart`: it handles `openauthenticator://` and `otpauth://totp/` links, once each through `consumeLink`, and ignores the others. It cannot be reached without the whole app, so `test/model/app_links/` pins the link types and the listener only (#55).
 - **QR scanner** (`pages/scan.dart`): the camera is out of scope, but the page's decision is not. `test/pages/scan_test.dart` calls the `QrCodeScanner.onScan` callback with the scanned content and pins what follows: a valid `otpauth` URI opens the TOTP page (its label keeps the `Issuer:` prefix of the URI path), anything else shows `error.scan.noUri` and resumes scanning, EzKey invitations included (#64, before harmonization H6). Without a camera the scanner placeholder spins forever, so these tests pump fixed durations instead of `pumpAndSettle`.
 - **Core upstream tests, seams used** (#76): the database and repository tests open upstream's own `AppDatabase()` in a temporary directory by mocking path_provider's channel (`getApplicationSupportDirectory`, `getTemporaryDirectory`). The settings tests swap `SharedPreferencesAsyncPlatform.instance` for the in-memory store, with `currentPlatform = .android`. The repository tests hold the salt and the derived key in memory instead of the secure storage plugin. Not covered yet: the backup that `changeMasterPassword` can take first, and a storage-type change to `shared`, which needs the backend and password verification (P3).
+
+## 6. Full round (every platform)
+
+One checklist for the whole app, run on each platform and deployment model upstream ships (#139). Android is the reference (#131); Windows (#132), macOS and the iOS simulator (#136) and Linux (#138) reuse it. Unit and widget tests (`flutter test`) stay the first line; this round checks the real app on a real target.
+
+**How:** `auto` = an automated test on the target (`flutter test`, `integration_test/`); `emu` = by hand on the Android emulator, with screenshots; `device` = by hand on a physical device (the Pixel needs the user's go-ahead, debug build only, no build-type switch). On desktop, "by hand" means the app run with `flutter run -d <platform>`.
+
+**Result cells:** `pass` / `fail #n` (the issue) / `n/a` (not offered on that platform) / `—` (not run yet) / `blocked` (with the reason in the notes), followed by the date (MM-DD, 2026).
+
+### Upstream features
+
+| # | Check | How (Android) | Android | Windows | macOS | iOS sim | Linux |
+|---|---|---|---|---|---|---|---|
+| U1 | First launch: intro slides, master password set, home empty | emu | pass 11-13 | — | — | — | — |
+| U2 | Add a TOTP by camera scan of an `otpauth://` QR | device | — | — | — | — | — |
+| U3 | Add a TOTP by hand (secret, issuer, label, algorithm, digits, period) | emu | — | — | — | — | — |
+| U4 | Add a TOTP from an `otpauth://` link opened from outside the app | emu (`adb shell am start -d`) | open 11-13 | — | — | — | — |
+| U5 | The code shown matches a reference generator, and the countdown rolls over | emu | — | — | — | — | — |
+| U6 | Copy a code (tap, copy button setting) | emu | — | — | — | — | — |
+| U7 | Edit a TOTP, then delete it | emu | — | — | — | — | — |
+| U8 | Search (button setting, filter) | emu | — | — | — | — | — |
+| U9 | Settings: theme, language, display options persist after a restart | emu | — | — | — | — | — |
+| U10 | Change the master password; the TOTPs still decrypt | emu | — | — | — | — | — |
+| U11 | App unlock: master password at start, wrong then right password | emu | — | — | — | — | — |
+| U12 | App unlock: biometric / system authentication | device | — | — | — | — | — |
+| U13 | Backup now, then restore it after deleting a TOTP; wrong backup password refused | emu | — | — | — | — | — |
+| U14 | Manage backups: list, delete | emu | — | — | — | — | — |
+| U15 | Clear data: everything gone, back to the intro | emu | — | — | — | — | — |
+| U16 | Account sign-in (email link or a provider) and synchronization with the official backend | device | — | — | — | — | — |
+| U17 | `openauthenticator://` link handling (debug "Input link" entry) | emu | — | — | — | — | — |
+| U18 | Contributor Plan screen opens (no purchase) | emu | — | — | — | — | — |
+| U19 | App restart keeps the TOTPs and settings | emu | — | — | — | — | — |
+
+### EzKey (where `ezkeySupportedPlatforms` offers it)
+
+| # | Check | How (Android) | Android | Windows | macOS | iOS sim | Linux |
+|---|---|---|---|---|---|---|---|
+| E1 | Key store contract (`keystore_test.dart`), tier read back from the key | auto | — | — | — | — | — |
+| E2 | Enroll, check, approve through the providers against the live stack (`live_stack_test.dart`) | auto | — | — | — | — | — |
+| E3 | Enroll and approve through the screens (`enrollment_ui_test.dart`) | auto | — | — | — | — | — |
+| E4 | Enroll by camera scan of the invitation QR | device | — | — | — | — | — |
+| E5 | Approve with local confirmation; cancelled confirmation sends nothing; deny | device | — | — | — | — | — |
+| E6 | Home zones: EzKey zone collapsed until the first enrollment, collapse, split | emu | — | — | — | — | — |
+| E7 | Enrollment page, identity shown, removal | emu | — | — | — | — | — |
+| E8 | Backup keeps the enrollment inventory; restore lists "to re-enroll" | emu | — | — | — | — | — |
+| E9 | Clear data warns about enrollments and deletes their keys | emu | — | — | — | — | — |
+| E10 | HTTPS-only server rule in a profile build | emu (profile) | — | — | — | — | — |
+| E11 | EzKey hidden where it is not offered: the app is upstream's | — | n/a | — | — | — | — |
+
+### Deployment models
+
+| Platform | Upstream's package | What this fork can check |
+|---|---|---|
+| Android | Play Store APK / AAB, signed by upstream | Debug and profile APKs; release needs upstream's key |
+| Windows | MSIX (Microsoft Store), `protocol_activation` registers the link schemes | Debug `.exe`; an MSIX signed with a local test certificate (#132) |
+| macOS, iOS | App Store, upstream's Apple team | Debug builds, locally signed or unsigned (#135, #136) |
+| Linux | Flatpak (Flathub), Snap | To decide (#138) |
+
+### Notes per run
+
+Record one dated paragraph per platform run: build, target, what was automated, failures with their issues, items left `—` and why.
+
+**Android, emulator `oa_api35`, 2026-11-13 (in progress, #131).** Debug APK from `main` at 1104bf9, fresh install. Driven with `adb` (taps, `uiautomator dump` for the node labels, screenshots). U1 passes: intro, master password (score 30/40, key saved), empty home, EzKey zone collapsed. After an emulator restart the app opens on the home screen without the intro (part of U19). U4 is open: `am start -a VIEW -d otpauth://totp/...` is delivered to the running instance ("intent has been delivered to currently running top-most instance"), but no TOTP page opens. Still to check: a cold start with the link, a delay, and logcat. The emulator crashed once (exit 139, nothing in its log) right after the first such intent, but not after the second, so the link is probably not the cause.
