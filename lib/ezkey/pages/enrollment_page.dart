@@ -7,6 +7,7 @@ import 'package:open_authenticator/ezkey/identity.dart';
 import 'package:open_authenticator/ezkey/messages.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
 import 'package:open_authenticator/ezkey/toast.dart';
+import 'package:open_authenticator/ezkey/widgets/administrator_alert.dart';
 import 'package:open_authenticator/ezkey/widgets/information_tile.dart';
 import 'package:open_authenticator/ezkey/widgets/purpose_tile.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
@@ -48,27 +49,8 @@ class EzkeyEnrollmentPage extends ConsumerWidget {
       title: Text(translations.ezkey.page.title),
     ),
     children: [
-      FTileGroup(
-        children: [
-          EzkeyPurposeTile(identity: identity, details: enrollment.integrationDescription),
-          if (identity.organization != null) EzkeyInformationTile(icon: FLucideIcons.building, label: translations.ezkey.enroll.organization, value: identity.organization),
-          if (identity.account != null) EzkeyInformationTile(icon: FLucideIcons.user, label: translations.ezkey.enroll.account, value: identity.account),
-          EzkeyInformationTile(icon: FLucideIcons.keyRound, label: translations.ezkey.enrollment.keyStorage, value: ezkeyStorageTierLabel(enrollment.devicePrivateKeyStorageTier)),
-          EzkeyInformationTile(icon: FLucideIcons.server, label: translations.ezkey.enroll.server, value: enrollment.authApiBaseUri.authority),
-          EzkeyInformationTile(
-            icon: FLucideIcons.calendarCheck,
-            label: translations.ezkey.enrollment.enrolledAt,
-            value: MaterialLocalizations.of(context).formatMediumDate(enrollment.enrolledAt.toLocal()),
-          ),
-        ],
-      ),
-      if (enrollment.isSystemIntegration) ...[
-        const SizedBox(height: kSpace),
-        FAlert(
-          icon: const Icon(FLucideIcons.shieldAlert),
-          title: Text(translations.ezkey.enrollment.administrator),
-        ),
-      ],
+      _EnrollmentDetails(enrollment: enrollment),
+      if (enrollment.isSystemIntegration) EzkeyAdministratorAlert(text: translations.ezkey.enrollment.administrator),
       const SizedBox(height: kBigSpace),
       FTileGroup(
         children: [
@@ -117,5 +99,35 @@ class EzkeyEnrollmentPage extends ConsumerWidget {
         showEzkeyErrorToast(context, text: ezkeyEnrollmentErrorMessage(ex));
       }
     }
+  }
+}
+
+/// Who the enrollment is for, where its key lives, its server and its date.
+class _EnrollmentDetails extends StatelessWidget {
+  /// The enrollment.
+  final EzkeyEnrollment enrollment;
+
+  /// Creates a new enrollment details instance.
+  const _EnrollmentDetails({
+    required this.enrollment,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    EzkeyIdentity identity = EzkeyIdentity.of(enrollment);
+    return FTileGroup(
+      children: [
+        EzkeyPurposeTile(identity: identity, details: enrollment.integrationDescription),
+        if (identity.organization != null) EzkeyInformationTile(icon: FLucideIcons.building, label: translations.ezkey.enroll.organization, value: identity.organization),
+        if (identity.account != null) EzkeyInformationTile(icon: FLucideIcons.user, label: translations.ezkey.enroll.account, value: identity.account),
+        EzkeyInformationTile(icon: FLucideIcons.keyRound, label: translations.ezkey.enrollment.keyStorage, value: ezkeyStorageTierLabel(enrollment.devicePrivateKeyStorageTier)),
+        EzkeyInformationTile(icon: FLucideIcons.server, label: translations.ezkey.enroll.server, value: enrollment.authApiBaseUri.authority),
+        EzkeyInformationTile(
+          icon: FLucideIcons.calendarCheck,
+          label: translations.ezkey.enrollment.enrolledAt,
+          value: MaterialLocalizations.of(context).formatMediumDate(enrollment.enrolledAt.toLocal()),
+        ),
+      ],
+    );
   }
 }
