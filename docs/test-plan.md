@@ -105,32 +105,32 @@ One checklist for the whole app, run on each platform and deployment model upstr
 | U6 | Copy a code (tap, copy button setting) | emu | pass 11-13 | — | — | — | — |
 | U7 | Edit a TOTP, then delete it | emu | pass 11-13 | — | — | — | — |
 | U8 | Search (button setting, filter) | emu | pass 11-13 | — | — | — | — |
-| U9 | Settings: theme, language, display options persist after a restart | emu | — | — | — | — | — |
+| U9 | Settings: theme, language, display options persist after a restart | emu | pass 11-13 | — | — | — | — |
 | U10 | Change the master password; the TOTPs still decrypt | emu | pass 11-13 | — | — | — | — |
 | U11 | App unlock: master password at start, wrong then right password | emu | pass 11-13 | — | — | — | — |
 | U12 | App unlock: biometric / system authentication | device | — | — | — | — | — |
 | U13 | Backup now, then restore it after deleting a TOTP; wrong backup password refused | emu | pass 11-13 | — | — | — | — |
-| U14 | Manage backups: list, delete | emu | — | — | — | — | — |
-| U15 | Clear data: everything gone, back to the intro | emu | — | — | — | — | — |
+| U14 | Manage backups: list, delete | emu | fail #141 | — | — | — | — |
+| U15 | Clear data: everything gone, back to the intro | emu | fail #141 | — | — | — | — |
 | U16 | Account sign-in (email link or a provider) and synchronization with the official backend | device | — | — | — | — | — |
-| U17 | `openauthenticator://` link handling (debug "Input link" entry) | emu | — | — | — | — | — |
-| U18 | Contributor Plan screen opens (no purchase) | emu | — | — | — | — | — |
+| U17 | `openauthenticator://` link handling (debug "Input link" entry) | emu | with U16 | — | — | — | — |
+| U18 | Contributor Plan screen opens (no purchase) | emu | n/a (no RevenueCat key) | — | — | — | — |
 | U19 | App restart keeps the TOTPs and settings | emu | pass 11-13 | — | — | — | — |
 
 ### EzKey (where `ezkeySupportedPlatforms` offers it)
 
 | # | Check | How (Android) | Android | Windows | macOS | iOS sim | Linux |
 |---|---|---|---|---|---|---|---|
-| E1 | Key store contract (`keystore_test.dart`), tier read back from the key | auto | — | — | — | — | — |
-| E2 | Enroll, check, approve through the providers against the live stack (`live_stack_test.dart`) | auto | — | — | — | — | — |
-| E3 | Enroll and approve through the screens (`enrollment_ui_test.dart`) | auto | — | — | — | — | — |
+| E1 | Key store contract (`keystore_test.dart`), tier read back from the key | auto | pass 11-13 | — | — | — | — |
+| E2 | Enroll, check, approve through the providers against the live stack (`live_stack_test.dart`) | auto | pass 11-13 | — | — | — | — |
+| E3 | Enroll and approve through the screens (`enrollment_ui_test.dart`) | auto | pass 11-13 | — | — | — | — |
 | E4 | Enroll by camera scan of the invitation QR | device | — | — | — | — | — |
-| E5 | Approve with local confirmation; cancelled confirmation sends nothing; deny | device | — | — | — | — | — |
-| E6 | Home zones: EzKey zone collapsed until the first enrollment, collapse, split | emu | — | — | — | — | — |
-| E7 | Enrollment page, identity shown, removal | emu | — | — | — | — | — |
-| E8 | Backup keeps the enrollment inventory; restore lists "to re-enroll" | emu | — | — | — | — | — |
-| E9 | Clear data warns about enrollments and deletes their keys | emu | — | — | — | — | — |
-| E10 | HTTPS-only server rule in a profile build | emu (profile) | — | — | — | — | — |
+| E5 | Approve with local confirmation; cancelled confirmation sends nothing; deny | device | partial 11-13 | — | — | — | — |
+| E6 | Home zones: EzKey zone collapsed until the first enrollment, collapse, split | emu | pass 11-13 | — | — | — | — |
+| E7 | Enrollment page, identity shown, removal | emu | pass 11-13 | — | — | — | — |
+| E8 | Backup keeps the enrollment inventory; restore lists "to re-enroll" | emu | pass 11-13 | — | — | — | — |
+| E9 | Clear data warns about enrollments and deletes their keys | emu | pass 11-13 | — | — | — | — |
+| E10 | HTTPS-only server rule in a profile build | emu (profile) | partial 11-13 | — | — | — | — |
 | E11 | EzKey hidden where it is not offered: the app is upstream's | — | n/a | — | — | — | — |
 
 ### Deployment models
@@ -146,10 +146,18 @@ One checklist for the whole app, run on each platform and deployment model upstr
 
 Record one dated paragraph per platform run: build, target, what was automated, failures with their issues, items left `—` and why.
 
-**Android, emulator `oa_api35`, 2026-11-13 (in progress, #131).** Debug APK from `main` at 1104bf9, fresh install, driven with `adb` (taps, `uiautomator dump` for node labels, screenshots). Codes checked against an independent RFC 6238 computation from the emulator's clock: SHA1 6 digits (`otpauth://` link) and SHA256 8 digits (manual entry), across a 30 s rollover. Backup restored after deleting a TOTP; a wrong backup password shows "Invalid password entered". Master password changed, then "Save encryption / decryption key" turned off: at the next start the app asks for the password, refuses the old and a wrong one, and the new one decrypts both TOTPs.
+**Android, emulator `oa_api35`, 2026-11-13 (#131; the Pixel items are still to run).** Debug APK from `main` at 1104bf9, fresh install, driven with `adb` (taps, `uiautomator dump` for node labels, screenshots). Codes checked against an independent RFC 6238 computation from the emulator's clock: SHA1 6 digits (`otpauth://` link) and SHA256 8 digits (manual entry), across a 30 s rollover. Backup restored after deleting a TOTP; a wrong backup password shows "Invalid password entered". Master password changed, then "Save encryption / decryption key" turned off: at the next start the app asks for the password, refuses the old and a wrong one, and the new one decrypts both TOTPs.
+
+Then: theme and the copy-button option survive a restart (U9; the language entry was not tried). EzKey in the real app, against the local stack (`scripts/ezkey_lab.dart invite` / `attempt`), with the debug manual entry: the server dialog, the identity before the code, enrollment, one approval (`ACCEPTED`) and one denial (`REJECTED`) through the home row's Check button. Approval Security was left at Standard, which asks for no confirmation; the confirmation prompt needs a device with a screen lock (E5, Pixel). Enrollment page with "Not hardware-protected" (the emulator's key tier is `none`, #108); collapse and split of the zones; backup with the EzKey note, local removal, restore lists "To re-enroll: 1" (E8); Clear data names the enrollment in its EzKey warning, then the app is back to the intro after a restart (E9; the key deletion itself is covered by unit tests, not observed here). `keystore_test.dart`: 3/3, `tier=none`, 8/16 high-S, all normalized (E1). Through `scripts/ezkey_lab.dart e2e`: `live_stack_test.dart` and `enrollment_ui_test.dart` pass (E2, E3; enrollments 11 and 10, revoked by the script). The manual enrollments 7 and 9 stay active on the local stack, since the app's removal is local only.
+
+Failures:
+- U14, U15: #141 (upstream code). Deleting a backup leaves it listed until the dialog is reopened, and Clear data with "delete your backups" throws `Concurrent modification during iteration`: the restart dialog never shows, and with several backups only the first is deleted.
+
+Not run on the emulator: U2, U12, E4, E5's confirmation (camera, biometrics: Pixel, with the user's go-ahead); U16 and U17 (an account on the official backend); U18 shows the Contributor Plan entry disabled, since a build without upstream's RevenueCat key cannot reach the store. E10 in part: a profile build opens the scanner directly from the EzKey + (no manual entry outside debug, #38); refusing an `http://` server needs a scanned QR, so it is left for the Pixel (the rule itself is unit-tested, #109).
 
 Observations, not failures:
 - The same `otpauth://` link sent twice in one app session does nothing the second time: upstream consumes each link once (`AppLinksListener.consumeLink`). Use a different link for each try.
 - The label keeps the `Issuer:` prefix of the link's path (`RoundTest:bob@example.com`), as already pinned by `test/pages/scan_test.dart`.
 - Upstream's success and error toasts stay about 1 s; take the screenshot within a second.
-- Tooling: `uiautomator dump` fails on the home screen (the countdown animation never lets the screen go idle), so check it with screenshots. The emulator (37.2.12, `swiftshader_indirect`) crashed twice with exit 139 and nothing in its log; the app's data survived each restart.
+- Tooling: Gboard rewrites `enrollmentProofToken` as `enrollment proof token` when `adb shell input text` types it followed by `"`, even after turning off its auto-correction on the emulator: type the invitation without the key, then insert the key in place. A system Back while no keyboard is open leaves the page (and burns an invitation on the enroll page).
+- Tooling: `uiautomator dump` fails on the home screen (the countdown animation never lets the screen go idle), so check it with screenshots. The emulator (37.2.12, `-gpu swiftshader_indirect`) crashed three times with exit 139 and nothing in its log, twice right after a system Back that left Settings; with `-gpu host` (Intel Arc) it ran the rest of the round without a crash. The app's data survived each restart.

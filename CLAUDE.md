@@ -113,13 +113,14 @@ Fork-only addition (#16): `integration_test` (`sdk: flutter`) is in `dev_depende
 
 - **Emulator (default, autonomous):** AVD `oa_api35` (API 35, `google_apis_playstore` x86_64, WHPX acceleration; no secure hardware: Android reports its Keystore keys as software, so their tier is `none`, #108). It is separate from the user's phone, so it can be wiped and reinstalled freely.
   ```sh
-  "$LOCALAPPDATA/Android/Sdk/emulator/emulator.exe" -avd oa_api35 -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot-save   # run in background
+  "$LOCALAPPDATA/Android/Sdk/emulator/emulator.exe" -avd oa_api35 -no-window -no-audio -no-boot-anim -gpu host -no-snapshot-save   # run in background; with -gpu swiftshader_indirect it crashed (exit 139) on screen transitions (#131)
   adb reconnect offline   # the emulator can stay "offline" in adb after booting; this fixes it without dropping the Pixel
   adb -s emulator-5554 shell getprop sys.boot_completed   # 1 when ready
   scripts/with-env.sh flutter test integration_test/ezkey/keystore_test.dart -d emulator-5554
   adb -s emulator-5554 exec-out screencap -p > shot.png   # screenshot (scratchpad) to check the UI
   ```
   Always pass `-d`: the Pixel is usually connected too. The emulator reaches a local EzKey stack at `http://10.0.2.2:8080`.
+  Driving the real app by hand with `adb` (#131, notes in `docs/test-plan.md` § 6): `uiautomator dump` gives the labels except on the home screen (its countdown never lets it go idle: use screenshots), and Gboard splits `enrollmentProofToken` when `adb shell input text` types it before a `"`. A system Back with no keyboard open leaves the page; on the enroll page that burns the invitation.
 - **Live EzKey stack:** `scripts/with-env.sh dart scripts/ezkey_lab.dart e2e --test <integration_test file>` creates the invitation and auth attempt on a running clean-start stack and saves screenshots under `build/ezkey-lab/screens/` (details: `docs/ezkey/integration.md` § Lab setup). Never run the stack's `clean-start.sh` yourself: it wipes its database.
 - **adb from Git Bash:** prefix with `MSYS_NO_PATHCONV=1` when an argument is a device path (`/sdcard/...`), or Git Bash rewrites it to a Windows path.
 - **Pixel (StrongBox, final checks):** only with the user's go-ahead; installing a build replaces the app on the phone (see "Android device build").
