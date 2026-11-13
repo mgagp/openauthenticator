@@ -137,7 +137,7 @@ Go through every host feature and ask what it means for an enrollment. [`harmoni
 | Uninstalling the app | Removes the enrollments, and the server still lists them | Tell the user that an administrator must revoke them. Never uninstall on a device without asking |
 | `forget` is local | The server-side enrollment stays active | Say so in the removal copy |
 | A claimed attempt lives in memory | If the app dies before the decision, the attempt simply expires | Accept it |
-| Starting the app behind the lock screen, with biometric unlock (Flutter `local_auth`) | The prompt is refused silently, and the app stays locked until force-stopped | Tracked in #98. In device scripts, check that the device is unlocked first |
+| Starting the app behind the lock screen, with biometric unlock (Flutter `local_auth`) | The prompt is refused silently, and the app stays locked until force-stopped | Left as a known limit: only a start through adb was seen to cause it (#98, which holds the diagnosis). In device scripts, check that the device is unlocked first |
 | Icon button inside a list tile (forui) | The tile merges its semantics, leaving a button with no name | Give the button its own semantics node, and test it |
 | Widget tests run as Android | Availability is true, so tests reach the real secure storage plugin | Override the enrollment store in any test that shows the zone |
 | Automated device tests | The screen locks during a long step, and later taps land on the lock screen | Check the lock state before each tap sequence |
