@@ -81,7 +81,7 @@ class Suppression {
   /// Only files whose path starts with this, when set.
   final String? pathPrefix;
 
-  /// Only this function or class, when set.
+  /// Only this function or class, when set. A bare method name (`build`) also covers that method in every class.
   final String? symbol;
 
   /// Why the signal is not worth acting on. Required.
@@ -106,7 +106,11 @@ class Suppression {
   }
 
   /// Whether this suppression drops [finding].
-  bool matches(Finding finding) => finding.tool == tool && finding.rule == rule && (pathPrefix == null || finding.path.startsWith(pathPrefix!)) && (symbol == null || finding.symbol == symbol);
+  bool matches(Finding finding) =>
+      finding.tool == tool &&
+      finding.rule == rule &&
+      (pathPrefix == null || finding.path.startsWith(pathPrefix!)) &&
+      (symbol == null || finding.symbol == symbol || (finding.symbol?.endsWith('.$symbol') ?? false));
 
   /// The label shown in the report.
   String get label => [
