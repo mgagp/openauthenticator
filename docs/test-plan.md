@@ -99,23 +99,23 @@ One checklist for the whole app, run on each platform and deployment model upstr
 |---|---|---|---|---|---|---|---|
 | U1 | First launch: intro slides, master password set, home empty | emu | pass 11-13 | — | — | — | — |
 | U2 | Add a TOTP by camera scan of an `otpauth://` QR | device | — | — | — | — | — |
-| U3 | Add a TOTP by hand (secret, issuer, label, algorithm, digits, period) | emu | — | — | — | — | — |
-| U4 | Add a TOTP from an `otpauth://` link opened from outside the app | emu (`adb shell am start -d`) | open 11-13 | — | — | — | — |
-| U5 | The code shown matches a reference generator, and the countdown rolls over | emu | — | — | — | — | — |
-| U6 | Copy a code (tap, copy button setting) | emu | — | — | — | — | — |
-| U7 | Edit a TOTP, then delete it | emu | — | — | — | — | — |
-| U8 | Search (button setting, filter) | emu | — | — | — | — | — |
+| U3 | Add a TOTP by hand (secret, issuer, label, algorithm, digits, period) | emu | pass 11-13 | — | — | — | — |
+| U4 | Add a TOTP from an `otpauth://` link opened from outside the app | emu (`adb shell am start -d`) | pass 11-13 | — | — | — | — |
+| U5 | The code shown matches a reference generator, and the countdown rolls over | emu | pass 11-13 | — | — | — | — |
+| U6 | Copy a code (tap, copy button setting) | emu | pass 11-13 | — | — | — | — |
+| U7 | Edit a TOTP, then delete it | emu | pass 11-13 | — | — | — | — |
+| U8 | Search (button setting, filter) | emu | pass 11-13 | — | — | — | — |
 | U9 | Settings: theme, language, display options persist after a restart | emu | — | — | — | — | — |
-| U10 | Change the master password; the TOTPs still decrypt | emu | — | — | — | — | — |
-| U11 | App unlock: master password at start, wrong then right password | emu | — | — | — | — | — |
+| U10 | Change the master password; the TOTPs still decrypt | emu | pass 11-13 | — | — | — | — |
+| U11 | App unlock: master password at start, wrong then right password | emu | pass 11-13 | — | — | — | — |
 | U12 | App unlock: biometric / system authentication | device | — | — | — | — | — |
-| U13 | Backup now, then restore it after deleting a TOTP; wrong backup password refused | emu | — | — | — | — | — |
+| U13 | Backup now, then restore it after deleting a TOTP; wrong backup password refused | emu | pass 11-13 | — | — | — | — |
 | U14 | Manage backups: list, delete | emu | — | — | — | — | — |
 | U15 | Clear data: everything gone, back to the intro | emu | — | — | — | — | — |
 | U16 | Account sign-in (email link or a provider) and synchronization with the official backend | device | — | — | — | — | — |
 | U17 | `openauthenticator://` link handling (debug "Input link" entry) | emu | — | — | — | — | — |
 | U18 | Contributor Plan screen opens (no purchase) | emu | — | — | — | — | — |
-| U19 | App restart keeps the TOTPs and settings | emu | — | — | — | — | — |
+| U19 | App restart keeps the TOTPs and settings | emu | pass 11-13 | — | — | — | — |
 
 ### EzKey (where `ezkeySupportedPlatforms` offers it)
 
@@ -146,4 +146,10 @@ One checklist for the whole app, run on each platform and deployment model upstr
 
 Record one dated paragraph per platform run: build, target, what was automated, failures with their issues, items left `—` and why.
 
-**Android, emulator `oa_api35`, 2026-11-13 (in progress, #131).** Debug APK from `main` at 1104bf9, fresh install. Driven with `adb` (taps, `uiautomator dump` for the node labels, screenshots). U1 passes: intro, master password (score 30/40, key saved), empty home, EzKey zone collapsed. After an emulator restart the app opens on the home screen without the intro (part of U19). U4 is open: `am start -a VIEW -d otpauth://totp/...` is delivered to the running instance ("intent has been delivered to currently running top-most instance"), but no TOTP page opens. Still to check: a cold start with the link, a delay, and logcat. The emulator crashed once (exit 139, nothing in its log) right after the first such intent, but not after the second, so the link is probably not the cause.
+**Android, emulator `oa_api35`, 2026-11-13 (in progress, #131).** Debug APK from `main` at 1104bf9, fresh install, driven with `adb` (taps, `uiautomator dump` for node labels, screenshots). Codes checked against an independent RFC 6238 computation from the emulator's clock: SHA1 6 digits (`otpauth://` link) and SHA256 8 digits (manual entry), across a 30 s rollover. Backup restored after deleting a TOTP; a wrong backup password shows "Invalid password entered". Master password changed, then "Save encryption / decryption key" turned off: at the next start the app asks for the password, refuses the old and a wrong one, and the new one decrypts both TOTPs.
+
+Observations, not failures:
+- The same `otpauth://` link sent twice in one app session does nothing the second time: upstream consumes each link once (`AppLinksListener.consumeLink`). Use a different link for each try.
+- The label keeps the `Issuer:` prefix of the link's path (`RoundTest:bob@example.com`), as already pinned by `test/pages/scan_test.dart`.
+- Upstream's success and error toasts stay about 1 s; take the screenshot within a second.
+- Tooling: `uiautomator dump` fails on the home screen (the countdown animation never lets the screen go idle), so check it with screenshots. The emulator (37.2.12, `swiftshader_indirect`) crashed twice with exit 139 and nothing in its log; the app's data survived each restart.
