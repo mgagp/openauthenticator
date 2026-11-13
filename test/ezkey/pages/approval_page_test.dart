@@ -14,25 +14,35 @@ import 'package:open_authenticator/themes.dart';
 
 import '../support.dart';
 
-/// Records the respond calls and refuses them with a 409 conflict, so no result signature is needed.
+/// Records the respond calls. Unless [answer] is set, it refuses them with a 409 conflict, so no
+/// result signature is needed.
 class _RecordingAuthApi implements EzkeyAuthApi {
   /// The respond requests, in order.
   final List<RespondAuthRequest> responds = [];
 
+  /// Answers the respond calls, when set.
+  Future<RespondAuthResponse> Function(RespondAuthRequest request)? answer;
+
   @override
   Future<RespondAuthResponse> respond(RespondAuthRequest request) async {
     responds.add(request);
-    throw EzkeyApiException(
-      method: 'POST',
-      path: '/api/v1/auth-attempts/respond',
-      statusCode: 409,
-      problem: const EzkeyProblem(type: 'https://ezkey.io/problems/auth/auth-attempt-state-conflict'),
-    );
+    if (answer != null) {
+      return answer!(request);
+    }
+    throw _refusal(409, type: 'https://ezkey.io/problems/auth/auth-attempt-state-conflict');
   }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError('${invocation.memberName}');
 }
+
+/// Returns the refusal of a respond call with [statusCode] and the problem [type].
+EzkeyApiException _refusal(int statusCode, {String? type}) => EzkeyApiException(
+  method: 'POST',
+  path: '/api/v1/auth-attempts/respond',
+  statusCode: statusCode,
+  problem: type == null ? null : EzkeyProblem(type: type),
+);
 
 /// Keeps the approval protection in memory instead of the shared preferences.
 class _MemorySecurity extends EzkeyApprovalSecurityEntry {
@@ -53,20 +63,23 @@ void main() {
   late PendingAuthAttempt attempt;
   late EzkeyAuthenticator authenticator;
 
+  /// Returns an attempt of [enrollment], claimed at [receivedAt] (now by default).
+  PendingAuthAttempt testAttempt({bool challengeRequired = false, DateTime? receivedAt}) => PendingAuthAttempt(
+    enrollmentLocalId: enrollment.localId,
+    authAttemptId: 7,
+    authAttemptProofToken: 'attempt-proof-token',
+    challengeRequired: challengeRequired,
+    receivedAt: receivedAt ?? DateTime.now().toUtc(),
+    contextTitle: 'Sign in to Orbit Console',
+  );
+
   setUp(() async {
     api = _RecordingAuthApi();
     confirmations = 0;
     SoftwareDeviceKeyStore keyStore = SoftwareDeviceKeyStore();
     await keyStore.generateKeyPair('test-key');
     enrollment = testEnrollment(5, deviceKeyAlias: 'test-key');
-    attempt = PendingAuthAttempt(
-      enrollmentLocalId: enrollment.localId,
-      authAttemptId: 7,
-      authAttemptProofToken: 'attempt-proof-token',
-      challengeRequired: false,
-      receivedAt: DateTime.now().toUtc(),
-      contextTitle: 'Sign in to Orbit Console',
-    );
+    attempt = testAttempt();
     authenticator = EzkeyAuthenticator(keyStore: keyStore, enrollmentStore: InMemoryEnrollmentStore(), apiFactory: (uri) => api);
   });
 
@@ -102,6 +115,24 @@ void main() {
     );
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
+  }
+
+  /// Makes the server answer the decision with [result], signed by the enrollment's integration.
+  Future<void> answerSigned(WidgetTester tester, String result) async {
+    Ed25519TestKeyPair integrationKey = (await tester.runAsync(generateEd25519TestKeyPair))!;
+    enrollment = EzkeyEnrollment.fromJson({
+      ...enrollment.toJson(),
+      'integrationPublicKey': integrationKey.publicKeyBase64Url,
+    });
+    api.answer = (request) async => RespondAuthResponse(
+      authAttemptId: request.authAttemptId,
+      authAttemptResult: result,
+      authAttemptMessage: '',
+      authAttemptProofTokenResultSignedByIntegration: await signEd25519WithPkcs8(
+        buildRespondResultPayload(attempt.authAttemptProofToken, '${request.authAttemptId}', result, ''),
+        integrationKey.pkcs8Base64Std,
+      ),
+    );
   }
 
   /// Leaves the approval page as the system back gesture would.
@@ -184,6 +215,126 @@ void main() {
 
       expect(confirmations, 0);
       expect(api.responds.single.authAttemptAccepted, isTrue);
+      await drainToasts(tester);
+    });
+
+    testWidgets('a failed leave-as-deny says the request will expire on its own', (tester) async {
+      await openPage(tester);
+
+      await leave(tester);
+
+      expect(find.text(translations.ezkey.attempt.leaveDenyFailed), findsOneWidget);
+      await drainToasts(tester);
+    });
+
+    testWidgets('leaving an expired attempt sends nothing', (tester) async {
+      attempt = testAttempt(receivedAt: DateTime.now().toUtc().subtract(const Duration(minutes: 3)));
+      await openPage(tester);
+
+      await leave(tester);
+
+      expect(api.responds, isEmpty);
+    });
+
+    testWidgets('denying asks for no confirmation, sends the denial and leaves the page', (tester) async {
+      await openPage(tester);
+
+      await tester.tap(find.byKey(const ValueKey('ezkey-attempt-deny')));
+      await tester.pumpAndSettle();
+
+      expect(confirmations, 0);
+      expect(api.responds.single.authAttemptAccepted, isFalse);
+      expect(find.byType(EzkeyApprovalPage), findsNothing);
+      await drainToasts(tester);
+    });
+
+    testWidgets('deciding on an expired attempt sends nothing, says so and leaves the page', (tester) async {
+      attempt = testAttempt(receivedAt: DateTime.now().toUtc().subtract(const Duration(minutes: 3)));
+      await openPage(tester);
+
+      await tester.tap(find.byKey(const ValueKey('ezkey-attempt-approve')));
+      await tester.pumpAndSettle();
+
+      expect(confirmations, 0);
+      expect(api.responds, isEmpty);
+      expect(find.byType(EzkeyApprovalPage), findsNothing);
+      expect(find.text(translations.ezkey.attempt.result.expired), findsOneWidget);
+      await drainToasts(tester);
+    });
+
+    testWidgets('an attempt with a code cannot be approved without it, and sends it', (tester) async {
+      attempt = testAttempt(challengeRequired: true);
+      await openPage(tester);
+
+      await tester.tap(find.byKey(const ValueKey('ezkey-attempt-approve')));
+      await tester.pumpAndSettle();
+      expect(api.responds, isEmpty);
+      await tester.enterText(find.byKey(const ValueKey('ezkey-attempt-code')), '123456');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('ezkey-attempt-approve')));
+      await tester.pumpAndSettle();
+
+      expect(api.responds.single.authAttemptAccepted, isTrue);
+      expect(api.responds.single.authAttemptChallengeResponse, 123456);
+      await drainToasts(tester);
+      // Without the semantics tree: with it, Flutter's own semantics assertions fail while the page with the code field closes.
+    }, semanticsEnabled: false);
+
+    testWidgets('a signed approval is shown as a success and leaves the page', (tester) async {
+      await answerSigned(tester, 'APPROVED');
+      await openPage(tester);
+
+      await tester.tap(find.byKey(const ValueKey('ezkey-attempt-approve')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(translations.ezkey.attempt.result.approved), findsOneWidget);
+      expect(find.text(translations.miscellaneous.toast.success), findsOneWidget);
+      expect(find.byType(EzkeyApprovalPage), findsNothing);
+      expect(api.responds, hasLength(1));
+      await drainToasts(tester);
+    });
+
+    testWidgets('a signed refusal of the approval is shown as an error and leaves the page', (tester) async {
+      await answerSigned(tester, 'FAILED');
+      await openPage(tester);
+
+      await tester.tap(find.byKey(const ValueKey('ezkey-attempt-approve')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(translations.ezkey.attempt.result.failed), findsOneWidget);
+      expect(find.text(translations.miscellaneous.toast.error), findsOneWidget);
+      expect(find.byType(EzkeyApprovalPage), findsNothing);
+      expect(api.responds, hasLength(1));
+      await drainToasts(tester);
+    });
+
+    testWidgets('a refusal that can be retried keeps the page open for another decision', (tester) async {
+      api.answer = (request) async => throw _refusal(429);
+      await openPage(tester);
+
+      await tester.tap(find.byKey(const ValueKey('ezkey-attempt-approve')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(translations.ezkey.error.rateLimited), findsOneWidget);
+      expect(find.byType(EzkeyApprovalPage), findsOneWidget);
+      expect(attempt.canDecide, isTrue);
+      await tester.tap(find.byKey(const ValueKey('ezkey-attempt-deny')));
+      await tester.pumpAndSettle();
+      expect(api.responds, hasLength(2));
+      expect(api.responds.last.authAttemptAccepted, isFalse);
+      await drainToasts(tester);
+    });
+
+    testWidgets('an answer whose result is unknown says so, leaves the page and sends nothing more', (tester) async {
+      api.answer = (request) async => throw const EzkeyNetworkException('connection reset');
+      await openPage(tester);
+
+      await tester.tap(find.byKey(const ValueKey('ezkey-attempt-approve')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(translations.ezkey.attempt.uncertain), findsOneWidget);
+      expect(find.byType(EzkeyApprovalPage), findsNothing);
+      expect(api.responds, hasLength(1));
       await drainToasts(tester);
     });
 
