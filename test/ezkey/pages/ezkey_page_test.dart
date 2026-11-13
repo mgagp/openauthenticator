@@ -9,6 +9,7 @@ import 'package:open_authenticator/ezkey/actions.dart';
 import 'package:open_authenticator/ezkey/backup_inventory.dart';
 import 'package:open_authenticator/ezkey/enrollment_store.dart';
 import 'package:open_authenticator/ezkey/local_confirmation.dart';
+import 'package:open_authenticator/ezkey/pages/enrollment_page.dart';
 import 'package:open_authenticator/ezkey/pages/ezkey_page.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
 import 'package:open_authenticator/ezkey/to_reenroll.dart';
@@ -18,10 +19,16 @@ import 'package:open_authenticator/widgets/dialog/confirmation_dialog.dart';
 
 import '../support.dart';
 
-/// Serves no enrollment instead of the device stores.
-class _NoEnrollments extends EzkeyEnrollmentsNotifier {
+/// Serves [enrollments] instead of the device stores.
+class _FixedEnrollments extends EzkeyEnrollmentsNotifier {
+  /// The enrollments.
+  final List<EzkeyEnrollment> enrollments;
+
+  /// Creates a new fixed enrollments instance.
+  _FixedEnrollments(this.enrollments);
+
   @override
-  FutureOr<List<EzkeyEnrollment>> build() => [];
+  FutureOr<List<EzkeyEnrollment>> build() => enrollments;
 }
 
 /// Keeps the approval protection in memory instead of the shared preferences.
@@ -41,12 +48,12 @@ void main() {
 
   tearDown(() => ezkeyManualInvitationEntry = manualEntry);
 
-  /// Shows the EzKey page.
-  Future<void> pumpPage(WidgetTester tester) async {
+  /// Shows the EzKey page of a device that holds [enrollments].
+  Future<void> pumpPage(WidgetTester tester, {List<EzkeyEnrollment> enrollments = const []}) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          ezkeyEnrollmentsProvider.overrideWith(_NoEnrollments.new),
+          ezkeyEnrollmentsProvider.overrideWith(() => _FixedEnrollments(enrollments)),
           ezkeyEnrollmentStoreProvider.overrideWith((ref) async => SecureEzkeyEnrollmentStore(values)),
           ezkeyApprovalSecurityProvider.overrideWith(_StandardSecurity.new),
         ],
@@ -65,6 +72,32 @@ void main() {
   }
 
   group('EzkeyPage', () {
+    testWidgets('with no enrollment, says so and shows no list', (tester) async {
+      await pumpPage(tester);
+
+      expect(find.text(translations.ezkey.page.empty), findsOneWidget);
+      expect(find.text(translations.ezkey.page.enrollments), findsNothing);
+    });
+
+    testWidgets('lists the enrollments, and each one opens its page', (tester) async {
+      await pumpPage(
+        tester,
+        enrollments: [
+          testEnrollment(5),
+          testEnrollment(6, integrationName: 'Internal Tools'),
+        ],
+      );
+
+      expect(find.text(translations.ezkey.page.empty), findsNothing);
+      expect(find.text(translations.ezkey.page.enrollments), findsOneWidget);
+      expect(find.text('Orbit Console'), findsOneWidget);
+
+      await tester.tap(find.text('Internal Tools'));
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<EzkeyEnrollmentPage>(find.byType(EzkeyEnrollmentPage)).enrollment.enrollmentId, 6);
+    });
+
     testWidgets('offers manual invitation entry when it is allowed (debug builds)', (tester) async {
       ezkeyManualInvitationEntry = true;
 

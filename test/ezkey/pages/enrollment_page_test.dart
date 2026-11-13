@@ -86,6 +86,27 @@ void main() {
       expect(find.text('Ezkey System'), findsNothing);
     });
 
+    testWidgets('only an administrator enrollment carries the administrator warning', (tester) async {
+      await pumpPage(tester);
+      expect(find.text(translations.ezkey.enrollment.administrator), findsNothing);
+
+      enrollment = testAdminEnrollment(5, adminType: 'TENANT_ADMIN');
+      await pumpPage(tester);
+
+      expect(find.text(translations.ezkey.enrollment.administrator), findsOneWidget);
+    });
+
+    testWidgets('offers to remove the enrollment, and asks before doing it', (tester) async {
+      await pumpPage(tester);
+
+      await tester.ensureVisible(find.byKey(const ValueKey('ezkey-enrollment-forget')));
+      await tester.tap(find.byKey(const ValueKey('ezkey-enrollment-forget')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(translations.ezkey.page.forget.confirmTitle), findsOneWidget);
+      expect(await authenticator.listEnrollments(), hasLength(2));
+    });
+
     testWidgets('checks for requests on this enrollment only', (tester) async {
       await pumpPage(tester);
 
