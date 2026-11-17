@@ -112,8 +112,8 @@ One checklist for the whole app, run on each platform and deployment model upstr
 | U13 | Backup now, then restore it after deleting a TOTP; wrong backup password refused | emu | pass 11-13 | pass 11-13 (auto) | — | — | — |
 | U14 | Manage backups: list, delete | emu | fail #141 | — | — | — | — |
 | U15 | Clear data: everything gone, back to the intro | emu | fail #141 | pass 11-13 (auto) | — | — | — |
-| U16 | Account sign-in (email link or a provider) and synchronization with the official backend | device | — | — | — | — | — |
-| U17 | `openauthenticator://` link handling (debug "Input link" entry) | emu | with U16 | — | — | — | — |
+| U16 | Account sign-in (email link or a provider) and synchronization with the official backend | device | blocked 11-17 (account) | — | — | — | — |
+| U17 | `openauthenticator://` link handling (debug "Input link" entry) | emu | blocked 11-17 (account) | — | — | — | — |
 | U18 | Contributor Plan screen opens (no purchase) | emu | n/a (no RevenueCat key) | — | — | — | — |
 | U19 | App restart keeps the TOTPs and settings | emu | pass 11-13 | — | — | — | — |
 
@@ -161,6 +161,8 @@ Failures:
 - U14, U15: #141 (upstream code). Deleting a backup leaves it listed until the dialog is reopened, and Clear data with "delete your backups" throws `Concurrent modification during iteration`: the restart dialog never shows, and with several backups only the first is deleted.
 
 Not run on the emulator: U2, U12, E4, E5's confirmation (camera, biometrics: Pixel, with the user's go-ahead); U16 and U17 (an account on the official backend); U18 shows the Contributor Plan entry disabled, since a build without upstream's RevenueCat key cannot reach the store. E10 in part: a profile build opens the scanner directly from the EzKey + (no manual entry outside debug, #38); refusing an `http://` server needs a scanned QR, so it is left for the Pixel (the rule itself is unit-tested, #109).
+
+U16 and U17 stay blocked (maintainer's decision, 2026-11-17): they need an account on upstream's official backend, and this round creates no data there. They come back if the fork gets a test account or a self-hosted backend. The Android round is closed with this reason.
 
 Observations, not failures:
 - The same `otpauth://` link sent twice in one app session does nothing the second time: upstream consumes each link once (`AppLinksListener.consumeLink`). Use a different link for each try.
