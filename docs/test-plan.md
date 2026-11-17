@@ -97,21 +97,21 @@ One checklist for the whole app, run on each platform and deployment model upstr
 
 | # | Check | How (Android) | Android | Windows | macOS | iOS sim | Linux |
 |---|---|---|---|---|---|---|---|
-| U1 | First launch: intro slides, master password set, home empty | emu | pass 11-13 | — | — | — | — |
+| U1 | First launch: intro slides, master password set, home empty | emu | pass 11-13 | pass 11-13 (auto) | — | — | — |
 | U2 | Add a TOTP by camera scan of an `otpauth://` QR | device | pass 11-13 (Pixel) | — | — | — | — |
-| U3 | Add a TOTP by hand (secret, issuer, label, algorithm, digits, period) | emu | pass 11-13 | — | — | — | — |
+| U3 | Add a TOTP by hand (secret, issuer, label, algorithm, digits, period) | emu | pass 11-13 | pass 11-13 (auto) | — | — | — |
 | U4 | Add a TOTP from an `otpauth://` link opened from outside the app | emu (`adb shell am start -d`) | pass 11-13 | — | — | — | — |
-| U5 | The code shown matches a reference generator, and the countdown rolls over | emu | pass 11-13 | — | — | — | — |
+| U5 | The code shown matches a reference generator, and the countdown rolls over | emu | pass 11-13 | pass 11-13 (auto) | — | — | — |
 | U6 | Copy a code (tap, copy button setting) | emu | pass 11-13 | — | — | — | — |
-| U7 | Edit a TOTP, then delete it | emu | pass 11-13 | — | — | — | — |
+| U7 | Edit a TOTP, then delete it | emu | pass 11-13 | pass 11-13 (auto) | — | — | — |
 | U8 | Search (button setting, filter) | emu | pass 11-13 | — | — | — | — |
 | U9 | Settings: theme, language, display options persist after a restart | emu | pass 11-13 | — | — | — | — |
 | U10 | Change the master password; the TOTPs still decrypt | emu | pass 11-13 | — | — | — | — |
 | U11 | App unlock: master password at start, wrong then right password | emu | pass 11-13 | — | — | — | — |
 | U12 | App unlock: biometric / system authentication | device | pass 11-13 (Pixel) | — | — | — | — |
-| U13 | Backup now, then restore it after deleting a TOTP; wrong backup password refused | emu | pass 11-13 | — | — | — | — |
+| U13 | Backup now, then restore it after deleting a TOTP; wrong backup password refused | emu | pass 11-13 | pass 11-13 (auto) | — | — | — |
 | U14 | Manage backups: list, delete | emu | fail #141 | — | — | — | — |
-| U15 | Clear data: everything gone, back to the intro | emu | fail #141 | — | — | — | — |
+| U15 | Clear data: everything gone, back to the intro | emu | fail #141 | pass 11-13 (auto) | — | — | — |
 | U16 | Account sign-in (email link or a provider) and synchronization with the official backend | device | — | — | — | — | — |
 | U17 | `openauthenticator://` link handling (debug "Input link" entry) | emu | with U16 | — | — | — | — |
 | U18 | Contributor Plan screen opens (no purchase) | emu | n/a (no RevenueCat key) | — | — | — | — |
@@ -131,7 +131,7 @@ One checklist for the whole app, run on each platform and deployment model upstr
 | E8 | Backup keeps the enrollment inventory; restore lists "to re-enroll" | emu | pass 11-13 | — | — | — | — |
 | E9 | Clear data warns about enrollments and deletes their keys | emu | pass 11-13 | — | — | — | — |
 | E10 | HTTPS-only server rule in a profile build | emu (profile) | partial 11-13 | — | — | — | — |
-| E11 | EzKey hidden where it is not offered: the app is upstream's | — | n/a | — | — | — | — |
+| E11 | EzKey hidden where it is not offered: the app is upstream's | — | n/a | pass 11-13 | — | — | — |
 
 ### Deployment models
 
@@ -168,3 +168,14 @@ Observations, not failures:
 - Upstream's success and error toasts stay about 1 s; take the screenshot within a second.
 - Tooling: Gboard rewrites `enrollmentProofToken` as `enrollment proof token` when `adb shell input text` types it followed by `"`, even after turning off its auto-correction on the emulator: type the invitation without the key, then insert the key in place. A system Back while no keyboard is open leaves the page (and burns an invitation on the enroll page).
 - Tooling: `uiautomator dump` fails on the home screen (the countdown animation never lets the screen go idle), so check it with screenshots. The emulator (37.2.12, `-gpu swiftshader_indirect`) crashed three times with exit 139 and nothing in its log, twice right after a system Back that left Settings; with `-gpu host` (Intel Arc) it ran the rest of the round without a crash. The app's data survived each restart.
+
+**Windows 11, debug, 2026-11-13 (#132).** The Windows app cannot be driven from outside: Flutter exposes no element to UI Automation there (the tree stops at `FLUTTERVIEW`), so mouse and keyboard injection would be the only way, and it takes over the desktop. Instead, `integration_test/round/upstream_round_test.dart` runs U1, U3, U5, U7, U13 and U15 in the real app process: `scripts/with-env.sh flutter test integration_test/round/upstream_round_test.dart -d windows` (about 1 min after the build). Passed twice in a row. Its window can be captured even when covered, with `PrintWindow` (`PW_RENDERFULLCONTENT`). Limits: U3 uses the default parameters, since the test could not open the algorithm select (Android covers SHA-256 / 8 digits); U13's wrong-password check only sees that nothing was restored; U15 keeps the backups, to stay off #141.
+
+The test needs a fresh install of the debug build type. This PC had debug data from #49 (a master password nobody remembers), so the run saved the three `app.openauthenticator.debug_sss_*` entries of the Credential Manager (`CredEnumerate`, blobs included; a backup, removal and restore round trip was checked identical first) and the two debug files of `%APPDATA%\Skyost\Open Authenticator`, cleared what each try left, and put everything back afterwards. A profile build would also start clean (it uses `flutter.` preferences, `app.sqlite` and the `app.openauthenticator` namespace), but `flutter test` builds debug.
+
+Windows observations:
+- No EzKey zone on the home screen (E11), as `ezkeySupportedPlatforms` decides.
+- Backups go to `Documents\Open Authenticator Backups (Debug)`, and Documents is redirected to OneDrive on this PC: upstream's backups, encrypted, are synced to the cloud without the app saying so. Noted only (upstream behaviour).
+- On desktop, the TOTP actions are in a `...` menu on each tile, and a tap copies the code (no copy button).
+
+Not run yet on Windows: U9 to U12, U14, U19 (to add to the test or check by hand); U2, U4, U17 and the MSIX package with its link schemes (`protocol_activation`); U16 (account).
