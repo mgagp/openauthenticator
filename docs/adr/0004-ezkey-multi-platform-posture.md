@@ -24,6 +24,8 @@ The SDK is pure Dart (`dart:io`, `cryptography`, `pointycastle`); the enrollment
    - accept the pasted invitation in release builds, since the code is one-time, short-lived and needs the 6-digit challenge;
    - read the QR code from an image or a screen capture;
    - leave EzKey off desktop.
+
+   Conditional on EzKey since 2026-11-13 (#133): the path for a device that cannot scan is a question for EzKey first (`docs/ezkey/integration.md` § Findings fed back), and it is the same gap as a phone showing its own invitation (#111). A link that opens the app is a fourth candidate.
 6. **Tests.** Shared logic is tested with a mocked channel, so the unit tests do not depend on the platform. `test/ezkey/availability_test.dart` pins D1. `integration_test/ezkey/keystore_test.dart` is the contract test every platform implementation must pass on a real key store. The iOS simulator has no Secure Enclave, so Apple needs a Mac with one or an iPhone.
 
 ## Alternatives considered
