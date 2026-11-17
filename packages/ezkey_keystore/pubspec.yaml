@@ -1,5 +1,5 @@
 name: ezkey_keystore
-description: Android Keystore EC P-256 signing keys for EzKey device keys (non-exportable, StrongBox first).
+description: EC P-256 signing keys for EzKey device keys, non-exportable (Android Keystore, StrongBox first; Windows TPM through CNG).
 version: 0.1.0
 publish_to: none
 
@@ -17,3 +17,5 @@ flutter:
       android:
         package: org.ezkey.keystore
         pluginClass: EzkeyKeystorePlugin
+      windows:
+        pluginClass: EzkeyKeystorePluginCApi
