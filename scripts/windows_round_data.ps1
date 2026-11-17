@@ -104,7 +104,7 @@ switch ($Action) {
     $json = Join-Path $SaveDir 'credentials.json'
     if (-not (Test-Path $json)) { throw "No save in $SaveDir." }
     foreach ($e in [OaCred]::List($filter)) { [void][OaCred]::CredDeleteW($e.Target, $e.Type, 0) }
-    foreach ($s in @(Get-Content -Raw $json | ConvertFrom-Json)) {
+    foreach ($s in (Get-Content -Raw $json | ConvertFrom-Json)) {
       if ($null -eq $s) { continue }
       $e = New-Object OaCred+Entry
       $e.Target = $s.Target; $e.Type = $s.Type; $e.Persist = $s.Persist; $e.User = $s.User; $e.Blob = $s.Blob
@@ -116,7 +116,7 @@ switch ($Action) {
     Get-ChildItem (Join-Path $SaveDir 'backups') -File | Copy-Item -Destination $backups
     # Verify against the save before removing it.
     $now = [OaCred]::List($filter)
-    $before = @(Get-Content -Raw $json | ConvertFrom-Json) | Where-Object { $null -ne $_ }
+    $before = (Get-Content -Raw $json | ConvertFrom-Json) | Where-Object { $null -ne $_ }
     foreach ($s in $before) {
       $match = $now | Where-Object { $_.Target -eq $s.Target -and $_.Blob -eq $s.Blob }
       if (-not $match) { throw "Restore check failed for $($s.Target)" }
@@ -125,7 +125,7 @@ switch ($Action) {
       $a = Join-Path $SaveDir "files\$f"; $b = Join-Path $appData $f
       if ((Test-Path $a) -and ((Get-FileHash $a).Hash -ne (Get-FileHash $b).Hash)) { throw "Restore check failed for $f" }
     }
-    Rename-Item $SaveDir ("$SaveDir-restored-" + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+    Rename-Item $SaveDir -NewName ((Split-Path -Leaf $SaveDir) + '-restored-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
     'Restored and verified.'
   }
 }

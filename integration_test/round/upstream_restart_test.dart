@@ -24,6 +24,8 @@ const String _phase = String.fromEnvironment('ROUND_PHASE');
 ///   password, U9 change settings, U11 turn on the master password at start, U14 manage backups.
 /// - `--dart-define=ROUND_PHASE=restart`, right after: U11 unlock at start (wrong, then right password),
 ///   U19 and U9 everything still there, U10 the TOTP still decrypts; then it clears the data.
+/// - `--dart-define=ROUND_PHASE=links`, on a fresh install: only the intro, leaving an unlocked app for the
+///   links opened from outside through the MSIX package (U4, U17); clear the data afterwards.
 ///
 /// Like `upstream_round_test.dart`, it writes to the app's real storage for this build type, and it uses
 /// the system clipboard (U6).
@@ -37,8 +39,12 @@ void main() {
         await _setup(tester);
       case 'restart':
         await _afterRestart(tester);
+      case 'links':
+        await app.main();
+        await completeIntro(tester);
+        report('links', 'intro done, home empty; the app is ready for links opened from outside (MSIX)');
       default:
-        fail('Pass --dart-define=ROUND_PHASE=setup, then ROUND_PHASE=restart.');
+        fail('Pass --dart-define=ROUND_PHASE=setup, then ROUND_PHASE=restart (or ROUND_PHASE=links).');
     }
   });
 }
