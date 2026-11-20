@@ -1,18 +1,18 @@
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/app.dart';
+import 'package:open_authenticator/core/app_unlock/methods/method.dart';
+import 'package:open_authenticator/core/app_unlock/state.dart';
+import 'package:open_authenticator/core/password_verification/methods/method.dart';
+import 'package:open_authenticator/core/password_verification/password_verification.dart';
+import 'package:open_authenticator/core/settings/app_unlock_method.dart';
+import 'package:open_authenticator/flows/app_unlock_interaction.dart';
 import 'package:open_authenticator/flows/master_password.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
-import 'package:open_authenticator/model/app_unlock/methods/method.dart';
-import 'package:open_authenticator/model/app_unlock/state.dart';
-import 'package:open_authenticator/model/password_verification/methods/method.dart';
-import 'package:open_authenticator/model/password_verification/password_verification.dart';
-import 'package:open_authenticator/model/settings/app_unlock_method.dart';
 import 'package:open_authenticator/spacing.dart';
-import 'package:open_authenticator/utils/app_unlock_interaction.dart';
 import 'package:open_authenticator/utils/result/handler.dart';
 import 'package:open_authenticator/utils/result/result.dart';
 import 'package:open_authenticator/widgets/app_scaffold.dart';
@@ -52,7 +52,7 @@ class _UnlockChallengeState extends ConsumerState<UnlockChallenge> {
 
   @override
   Widget build(BuildContext context) {
-    AsyncValue<AppLockState> appLockState = ref.watch(appLockStateProvider);
+    final AsyncValue<AppLockState> appLockState = ref.watch(appLockStateProvider);
     return switch (appLockState) {
       AsyncData<AppLockState>(:final value) =>
         value == .unlocked
@@ -62,14 +62,14 @@ class _UnlockChallengeState extends ConsumerState<UnlockChallenge> {
                 children: [
                   Blur(
                     above: switch (cannotUnlockException) {
-                      LocalAuthenticationDeviceNotSupported(:final localizedErrorMessage) => _UnlockChallengeContent(
+                      LocalAuthenticationDeviceNotSupported(:final String localizedErrorMessage) => _UnlockChallengeContent(
                         text: localizedErrorMessage,
                         buttonIcon: FLucideIcons.x,
                         buttonLabel: translations.appUnlock.button.disable,
                         onButtonPress: () async {
-                          List<PasswordVerificationMethod> passwordVerificationMethod = await ref.read(passwordVerificationProvider.future);
+                          final List<PasswordVerificationMethod> passwordVerificationMethod = await ref.read(passwordVerificationProvider.future);
                           if (passwordVerificationMethod.isNotEmpty) {
-                            String? password = context.mounted ? (await MasterPasswordInputDialog.prompt(context)) : null;
+                            final String? password = context.mounted ? (await MasterPasswordInputDialog.prompt(context)) : null;
                             if (password == null) {
                               return;
                             }
@@ -78,12 +78,12 @@ class _UnlockChallengeState extends ConsumerState<UnlockChallenge> {
                           await tryUnlockIfNeeded();
                         },
                       ),
-                      MasterPasswordNoPasswordVerificationMethodAvailable(:final localizedErrorMessage) || MasterPasswordNoSalt(:final localizedErrorMessage) => _UnlockChallengeContent(
+                      MasterPasswordNoPasswordVerificationMethodAvailable(:final String localizedErrorMessage) || MasterPasswordNoSalt(:final String localizedErrorMessage) => _UnlockChallengeContent(
                         text: localizedErrorMessage,
                         buttonIcon: FLucideIcons.keyRound,
                         buttonLabel: translations.appUnlock.button.changeMasterPassword,
                         onButtonPress: () async {
-                          Result<String> changeResult = await ref.read(masterPasswordFlowProvider).changeMasterPassword(context, askForUnlock: false);
+                          final Result<String> changeResult = await ref.read(masterPasswordFlowProvider).changeMasterPassword(context, askForUnlock: false);
                           if (changeResult is ResultSuccess<String>) {
                             await ref.read(appUnlockMethodSettingsEntryProvider.notifier).changeValue(NoneAppUnlockMethod.kMethodId, disableResult: changeResult);
                             await tryUnlockIfNeeded();
@@ -107,11 +107,11 @@ class _UnlockChallengeState extends ConsumerState<UnlockChallenge> {
 
   /// Tries to unlock the app.
   Future<void> tryUnlockIfNeeded() async {
-    AppLockState lockState = await ref.read(appLockStateProvider.future);
+    final AppLockState lockState = await ref.read(appLockStateProvider.future);
     if (!mounted || lockState != AppLockState.locked) {
       return;
     }
-    Result result = await ref.read(appLockStateProvider.notifier).unlock(context.appUnlockInteraction);
+    final Result result = await ref.read(appLockStateProvider.notifier).unlock(context.appUnlockInteraction);
     if (!mounted || result is! ResultError) {
       return;
     }

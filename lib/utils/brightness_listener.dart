@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:open_authenticator/model/settings/theme.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:open_authenticator/core/settings/theme.dart';
 
 /// Allows to listen to the platform's brightness.
 mixin BrightnessListener<T extends ConsumerStatefulWidget> on ConsumerState<T> {
@@ -23,12 +23,13 @@ mixin BrightnessListener<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    Brightness brightness = MediaQuery.platformBrightnessOf(context);
+    final Brightness brightness = MediaQuery.platformBrightnessOf(context);
     if (currentBrightness != brightness) {
       onBrightnessChange(brightness);
     }
   }
 
+  /// Triggered when the platform brightness has changed.
   @protected
   void onBrightnessChange(Brightness brightness) {
     void changeBrightness() => _currentBrightness = brightness;
@@ -42,7 +43,7 @@ mixin BrightnessListener<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   /// Triggered when [themeSettingsEntryProvider] has changed.
   @protected
   void onThemeSettingsEntryChange(AsyncValue<ThemeMode>? previous, AsyncValue<ThemeMode> next) {
-    ThemeMode themeMode = next.value ?? ThemeMode.system;
+    final ThemeMode themeMode = next.value ?? ThemeMode.system;
     void changeThemeMode() => _currentThemeMode = themeMode;
     if (mounted) {
       setState(changeThemeMode);

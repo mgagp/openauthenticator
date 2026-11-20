@@ -2,27 +2,27 @@ import 'dart:async';
 
 import 'package:animations/animations.dart';
 import 'package:equatable/equatable.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
-import 'package:open_authenticator/model/app_unlock/methods/method.dart';
-import 'package:open_authenticator/model/crypto/derived_key.dart';
-import 'package:open_authenticator/model/crypto/salt.dart';
-import 'package:open_authenticator/model/settings/app_unlock_method.dart';
-import 'package:open_authenticator/model/totp/repository.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:open_authenticator/core/app_unlock/methods/method.dart';
+import 'package:open_authenticator/core/crypto/derived_key.dart';
+import 'package:open_authenticator/core/crypto/salt.dart';
+import 'package:open_authenticator/core/settings/app_unlock_method.dart';
+import 'package:open_authenticator/core/totp/repository.dart';
 import 'package:open_authenticator/spacing.dart';
 import 'package:open_authenticator/utils/result/result.dart';
 import 'package:open_authenticator/widgets/sized_scalable_image.dart';
 
 /// The current intro page slide provider.
-final currentIntroPageSlideProvider = AsyncNotifierProvider.autoDispose<CurrentIntroPageSlideNotifier, CurrentIntroSlideState>(CurrentIntroPageSlideNotifier.new);
+final AsyncNotifierProvider<CurrentIntroPageSlideNotifier, CurrentIntroSlideState> currentIntroPageSlideProvider = AsyncNotifierProvider.autoDispose<CurrentIntroPageSlideNotifier, CurrentIntroSlideState>(CurrentIntroPageSlideNotifier.new);
 
 /// The current intro page slide notifier.
 class CurrentIntroPageSlideNotifier extends AsyncNotifier<CurrentIntroSlideState> {
   @override
   Future<CurrentIntroSlideState> build() async {
-    List<IntroPageSlide> slides = [
-      for (IntroPageSlide slide in IntroPageSlide.values)
+    final List<IntroPageSlide> slides = [
+      for (final IntroPageSlide slide in IntroPageSlide.values)
         if (!(await _shouldSkipSlide(slide))) slide,
     ];
     return CurrentIntroSlideState._(
@@ -41,9 +41,9 @@ class CurrentIntroPageSlideNotifier extends AsyncNotifier<CurrentIntroSlideState
   /// Goes to the next slide.
   /// Returns `true` if the intro should finish.
   Future<bool> goToNextSlide(BuildContext context) async {
-    CurrentIntroSlideState slideState = await future;
+    final CurrentIntroSlideState slideState = await future;
     if (slideState.slide == .password) {
-      String? password = (slideState as PasswordIntroPageSlideState).password;
+      final String? password = (slideState as PasswordIntroPageSlideState).password;
       if (password == null) {
         return false;
       }
@@ -58,7 +58,7 @@ class CurrentIntroPageSlideNotifier extends AsyncNotifier<CurrentIntroSlideState
       await ref.read(saltProvider.notifier).generateIfNeeded();
       await ref.read(derivedKeyProvider.notifier).updateFromPassword(password);
     }
-    CurrentIntroSlideState? next = slideState._createNextSlideState();
+    final CurrentIntroSlideState? next = slideState._createNextSlideState();
     if (next == null) {
       return true;
     }
@@ -93,7 +93,7 @@ class CurrentIntroSlideState with Equatable {
     if (slideIndex == slideCount - 1) {
       return null;
     }
-    IntroPageSlide slide = _slides[slideIndex + 1];
+    final IntroPageSlide slide = _slides[slideIndex + 1];
     return (slide == .password ? PasswordIntroPageSlideState._ : CurrentIntroSlideState._)(
       slides: _slides,
       slideIndex: slideIndex + 1,

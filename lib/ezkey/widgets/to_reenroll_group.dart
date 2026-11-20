@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/ezkey/backup_inventory.dart';
 import 'package:open_authenticator/ezkey/to_reenroll.dart';
 import 'package:open_authenticator/ezkey/toast.dart';
@@ -19,7 +19,7 @@ class EzkeyToReenrollGroup extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    List<EzkeyInventoryEntry> entries = ref.watch(ezkeyToReenrollProvider).value ?? const [];
+    final List<EzkeyInventoryEntry> entries = ref.watch(ezkeyToReenrollProvider).value ?? const [];
     if (entries.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -29,7 +29,7 @@ class EzkeyToReenrollGroup extends ConsumerWidget {
         label: Text(translations.ezkey.toReenroll.title),
         description: Text(translations.ezkey.toReenroll.help),
         children: [
-          for (EzkeyInventoryEntry entry in entries)
+          for (final EzkeyInventoryEntry entry in entries)
             _EzkeyToReenrollTile(
               entry: entry,
               onRemove: () => _remove(context, ref, entry),
@@ -41,7 +41,7 @@ class EzkeyToReenrollGroup extends ConsumerWidget {
 
   /// Removes [entry] from the list after confirmation.
   Future<void> _remove(BuildContext context, WidgetRef ref, EzkeyInventoryEntry entry) async {
-    bool confirmed = await ConfirmationDialog.ask(
+    final bool confirmed = await ConfirmationDialog.ask(
       context,
       title: translations.ezkey.toReenroll.remove.confirmTitle,
       message: translations.ezkey.toReenroll.remove.confirmMessage(integration: _name(entry)),
@@ -63,7 +63,7 @@ class EzkeyToReenrollGroup extends ConsumerWidget {
 
 /// Returns the name that designates [entry], the server when it has no integration name.
 String _name(EzkeyInventoryEntry entry) {
-  String? integration = entry.integrationName;
+  final String? integration = entry.integrationName;
   return integration == null || integration.isEmpty ? entry.authApiHost : integration;
 }
 
@@ -84,9 +84,9 @@ class _EzkeyToReenrollTile extends StatelessWidget with FTileMixin {
   @override
   Widget build(BuildContext context) {
     // The account first: one line can be cut, and it matters more than the organization.
-    String account = [entry.enrollmentName, entry.tenantName].whereType<String>().where((part) => part.isNotEmpty).join(' · ');
-    String date = MaterialLocalizations.of(context).formatShortDate(entry.enrolledAt.toLocal());
-    String action = translations.ezkey.toReenroll.remove.action(integration: _name(entry));
+    final String account = [entry.enrollmentName, entry.tenantName].whereType<String>().where((part) => part.isNotEmpty).join(' · ');
+    final String date = MaterialLocalizations.of(context).formatShortDate(entry.enrolledAt.toLocal());
+    final String action = translations.ezkey.toReenroll.remove.action(integration: _name(entry));
     return FTile(
       prefix: const Icon(FLucideIcons.rotateCcw),
       title: Text(entry.integrationName ?? '—'),

@@ -1,7 +1,7 @@
 import 'package:ezkey_dart/ezkey_dart.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/ezkey/actions.dart';
 import 'package:open_authenticator/ezkey/pages/enrollment_page.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
@@ -77,7 +77,7 @@ class _EnrollmentsGroup extends StatelessWidget {
     child: FTileGroup(
       label: Text(translations.ezkey.page.enrollments),
       children: [
-        for (EzkeyEnrollment enrollment in enrollments)
+        for (final EzkeyEnrollment enrollment in enrollments)
           EzkeyEnrollmentTile(
             enrollment: enrollment,
             showDetails: true,

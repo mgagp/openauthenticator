@@ -1,8 +1,8 @@
 import 'package:ezkey_dart/ezkey_dart.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/ezkey/actions.dart';
 import 'package:open_authenticator/ezkey/pages/enroll_page.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
@@ -44,7 +44,7 @@ void main() {
 
   /// Shows a page whose "Add" button adds [code], then presses it.
   Future<void> add(WidgetTester tester, String code) async {
-    EzkeyAuthenticator authenticator = EzkeyAuthenticator(
+    final EzkeyAuthenticator authenticator = EzkeyAuthenticator(
       keyStore: SoftwareDeviceKeyStore(),
       enrollmentStore: InMemoryEnrollmentStore(),
       apiFactory: (uri) {

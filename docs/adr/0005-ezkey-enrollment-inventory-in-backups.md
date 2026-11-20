@@ -5,9 +5,9 @@
 
 ## Context
 
-An upstream backup is one JSON file, `<13-digit timestamp>.bak`, with three keys: `passwordSignature`, `salt` and `totps`. The TOTPs are encrypted with a key derived from the backup password, labels and issuers included (`lib/model/backup/backup.dart`). Export shares that one file; import copies that one file (`lib/model/backup/store.dart`). Upstream's reader checks the three keys and reads nothing else, so a fourth key is ignored (pinned by `test/model/backup/backup_test.dart`).
+An upstream backup is one JSON file, `<13-digit timestamp>.bak`, with three keys: `passwordSignature`, `salt` and `totps`. The TOTPs are encrypted with a key derived from the backup password, labels and issuers included (`lib/core/backup/backup.dart`). Export shares that one file; import copies that one file (`lib/core/backup/store.dart`). Upstream's reader checks the three keys and reads nothing else, so a fourth key is ignored (pinned by `test/core/backup/backup_test.dart`).
 
-EzKey enrollments cannot be backed up: their keys stay in the device's hardware key store (ADR-0002). Since #61 the backup dialogs say so, but a backup keeps no trace of them. After a restore on a new device, the user has to remember which services, organizations and servers to re-enroll with. Upstream's `lib/model/backup/` is cold: one commit in 2026 (`docs/upstream-activity.md`).
+EzKey enrollments cannot be backed up: their keys stay in the device's hardware key store (ADR-0002). Since #61 the backup dialogs say so, but a backup keeps no trace of them. After a restore on a new device, the user has to remember which services, organizations and servers to re-enroll with. Upstream's `lib/core/backup/` is cold: one commit in 2026 (`docs/upstream-activity.md`).
 
 ## Decision
 
@@ -38,13 +38,13 @@ Upstream never rewrites an existing backup file, so it does not drop the key. A 
 
 ## Consequences
 
-- A divergence in `lib/model/backup/backup.dart`, a cold upstream file. Re-applying it after a sync means re-adding the calls listed in `docs/ezkey/integration.md`.
+- A divergence in `lib/core/backup/backup.dart`, a cold upstream file. Re-applying it after a sync means re-adding the calls listed in `docs/ezkey/integration.md`.
 - The test that pins "nothing else" in a backup (`backup_test.dart`) stays true without enrollments; a new test covers the case with enrollments.
-- The committed fixture `test/model/backup/fixtures/1793500000000.bak` keeps restoring unchanged; a fixture with an inventory is added with the implementation.
+- The committed fixture `test/core/backup/fixtures/1793500000000.bak` keeps restoring unchanged; a fixture with an inventory is added with the implementation.
 - When EzKey defines a device-replacement flow (H17, EzKey first), the inventory is its natural input.
 
 ## References
 
-- `lib/model/backup/backup.dart`, `lib/model/backup/store.dart`; `lib/ezkey/backups.dart` (#61 notes).
-- `test/model/backup/backup_test.dart`: the fixture, and the extra-key compatibility test (#89).
+- `lib/core/backup/backup.dart`, `lib/core/backup/store.dart`; `lib/ezkey/backups.dart` (#61 notes).
+- `test/core/backup/backup_test.dart`: the fixture, and the extra-key compatibility test (#89).
 - ADR-0002; `docs/ezkey/harmonization.md` H2, H16, H17.

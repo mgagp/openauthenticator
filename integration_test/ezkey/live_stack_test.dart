@@ -20,23 +20,23 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   test('enrolls with a live stack and approves an auth attempt', () async {
-    ProviderContainer container = ProviderContainer();
+    final ProviderContainer container = ProviderContainer();
     addTearDown(container.dispose);
-    EzkeyAuthenticator authenticator = await container.read(ezkeyAuthenticatorProvider.future);
+    final EzkeyAuthenticator authenticator = await container.read(ezkeyAuthenticatorProvider.future);
 
-    EzkeyBoundEnrollment bound = await authenticator.bindEnrollment(EnrollmentCode.parse(_enrollmentCode), authApiBaseUrlOverride: _authApiBaseUrl);
-    EzkeyEnrollment enrollment = await container.read(ezkeyEnrollmentsProvider.notifier).complete(bound, parseChallengeCode(_enrollmentChallenge));
+    final EzkeyBoundEnrollment bound = await authenticator.bindEnrollment(EnrollmentCode.parse(_enrollmentCode), authApiBaseUrlOverride: _authApiBaseUrl);
+    final EzkeyEnrollment enrollment = await container.read(ezkeyEnrollmentsProvider.notifier).complete(bound, parseChallengeCode(_enrollmentChallenge));
     try {
       expect(await container.read(ezkeyEnrollmentsProvider.future), contains(predicate<EzkeyEnrollment>((e) => e.localId == enrollment.localId)));
       // ignore: avoid_print
       print('EZKEY_LAB enrolled id=${enrollment.enrollmentId} integration=${enrollment.integrationName} tier=${enrollment.devicePrivateKeyStorageTier.name}');
 
-      PendingAuthAttempt? attempt = await authenticator.pollPending(enrollment, timeout: const Duration(seconds: 90));
+      final PendingAuthAttempt? attempt = await authenticator.pollPending(enrollment, timeout: const Duration(seconds: 90));
       expect(attempt, isNotNull, reason: 'no auth attempt arrived');
       // ignore: avoid_print
       print('EZKEY_LAB pending attempt=${attempt!.authAttemptId} title=${attempt.contextTitle}');
 
-      AuthAttemptOutcome outcome = await authenticator.approve(enrollment, attempt);
+      final AuthAttemptOutcome outcome = await authenticator.approve(enrollment, attempt);
       expect(outcome.result, AuthAttemptResult.approved);
       expect(attempt.canDecide, isFalse);
     } finally {

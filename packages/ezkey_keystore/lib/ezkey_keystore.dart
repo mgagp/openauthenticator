@@ -61,7 +61,7 @@ class EzkeyKeystore {
 
   /// Generates a new key pair under [alias], in the strongest tier the device offers.
   Future<EzkeyGeneratedKey> generateKeyPair(String alias) async {
-    Map<Object?, Object?> result = (await channel.invokeMapMethod<Object?, Object?>('generateKeyPair', {'alias': alias}))!;
+    final Map<Object?, Object?> result = (await channel.invokeMapMethod<Object?, Object?>('generateKeyPair', {'alias': alias}))!;
     return EzkeyGeneratedKey(
       publicKey: result['publicKey'] as String,
       tier: EzkeyKeyTier.values.byName(result['tier'] as String),
@@ -79,7 +79,7 @@ class EzkeyKeystore {
   /// Returns where the key of [alias] lives, as the platform reports it now, or `null` when it does
   /// not exist.
   Future<EzkeyKeyTier?> keyTier(String alias) async {
-    String? tier = await channel.invokeMethod<String>('keyTier', {'alias': alias});
+    final String? tier = await channel.invokeMethod<String>('keyTier', {'alias': alias});
     return tier == null ? null : EzkeyKeyTier.values.byName(tier);
   }
 

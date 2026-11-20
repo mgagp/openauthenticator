@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/spacing.dart';
 import 'package:open_authenticator/widgets/button_text.dart';
@@ -14,7 +14,7 @@ Future<T> showWaitingOverlay<T>(
   String? timeoutMessage,
   bool Function()? onCancel,
 }) async {
-  OverlayEntry entry = OverlayEntry(
+  final OverlayEntry entry = OverlayEntry(
     builder: (context) => Stack(
       children: [
         const ModalBarrier(
@@ -33,7 +33,7 @@ Future<T> showWaitingOverlay<T>(
   Overlay.of(context).insert(entry);
   if (future != null) {
     try {
-      T result = await future;
+      final T result = await future;
       return result;
     } catch (ex) {
       rethrow;

@@ -1,11 +1,11 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
 import 'package:intl/intl.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:open_authenticator/core/backend/synchronization/push/result.dart';
+import 'package:open_authenticator/core/backend/synchronization/queue.dart';
+import 'package:open_authenticator/core/database/database.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
-import 'package:open_authenticator/model/backend/synchronization/push/result.dart';
-import 'package:open_authenticator/model/backend/synchronization/queue.dart';
-import 'package:open_authenticator/model/database/database.dart';
 import 'package:open_authenticator/spacing.dart';
 import 'package:open_authenticator/widgets/app_scaffold.dart';
 import 'package:open_authenticator/widgets/button_text.dart';
@@ -26,7 +26,7 @@ class SyncIssuesPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    AsyncValue<List<PushOperationError>> errors = ref.watch(pushOperationsErrorsProvider);
+    final AsyncValue<List<PushOperationError>> errors = ref.watch(pushOperationsErrorsProvider);
     return AppScaffold.asyncValue(
       header: FHeader.nested(
         prefixes: [

@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// A simple button text.
 class ButtonText extends StatelessWidget {
@@ -26,7 +26,7 @@ class ButtonText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget child = Text(
+    final Widget child = Text(
       text,
       maxLines: maxLines,
       overflow: overflow,

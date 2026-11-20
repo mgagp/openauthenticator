@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:open_authenticator/core/backup/backup.dart';
 import 'package:open_authenticator/ezkey/backups.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
-import 'package:open_authenticator/model/backup/backup.dart';
 import 'package:open_authenticator/utils/result/handler.dart';
 import 'package:open_authenticator/utils/result/result.dart';
 import 'package:open_authenticator/widgets/clickable.dart';
@@ -23,11 +23,11 @@ class BackupNowSettingsEntryWidget extends ConsumerWidget with FTileMixin {
     title: Text(translations.settings.backups.backupNow.title),
     subtitle: Text(translations.settings.backups.backupNow.subtitle),
     onPress: () async {
-      String message = await withEzkeyBackupNote(ref, translations.settings.backups.backupNow.passwordDialog.message);
+      final String message = await withEzkeyBackupNote(ref, translations.settings.backups.backupNow.passwordDialog.message);
       if (!context.mounted) {
         return;
       }
-      String? password = await TextInputDialog.prompt(
+      final String? password = await TextInputDialog.prompt(
         context,
         title: translations.settings.backups.backupNow.passwordDialog.title,
         message: message,
@@ -36,7 +36,7 @@ class BackupNowSettingsEntryWidget extends ConsumerWidget with FTileMixin {
       if (password == null || !context.mounted) {
         return;
       }
-      Result<Backup> result = await showWaitingOverlay(
+      final Result<Backup> result = await showWaitingOverlay(
         context,
         future: ref.read(backupStoreProvider.notifier).doBackup(password),
       );

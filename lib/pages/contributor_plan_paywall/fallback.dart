@@ -1,16 +1,16 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
 import 'package:intl/intl.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/app.dart';
+import 'package:open_authenticator/core/backend/user.dart';
+import 'package:open_authenticator/core/purchases/clients/client.dart';
+import 'package:open_authenticator/core/purchases/contributor_plan.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
-import 'package:open_authenticator/model/backend/user.dart';
-import 'package:open_authenticator/model/purchases/clients/client.dart';
-import 'package:open_authenticator/model/purchases/contributor_plan.dart';
 import 'package:open_authenticator/spacing.dart';
+import 'package:open_authenticator/utils/color.dart';
 import 'package:open_authenticator/utils/result/handler.dart';
 import 'package:open_authenticator/utils/result/result.dart';
-import 'package:open_authenticator/utils/utils.dart';
 import 'package:open_authenticator/widgets/button_text.dart';
 import 'package:open_authenticator/widgets/centered_circular_progress_indicator.dart';
 import 'package:open_authenticator/widgets/clickable.dart';
@@ -82,8 +82,8 @@ class _ContributorPlanFallbackPaywallState extends ConsumerState<ContributorPlan
 
   @override
   Widget build(BuildContext context) {
-    RevenueCatClient? revenueCatClient = ref.watch(revenueCatClientProvider).value;
-    FButtonStyleDelta bottomButtonsStyle = .delta(
+    final RevenueCatClient? revenueCatClient = ref.watch(revenueCatClientProvider).value;
+    final FButtonStyleDelta bottomButtonsStyle = .delta(
       contentStyle: .delta(
         textStyle: .delta(
           [
@@ -113,7 +113,7 @@ class _ContributorPlanFallbackPaywallState extends ConsumerState<ContributorPlan
           child: Column(
             spacing: kSpace / 2,
             children: [
-              for (String feature in translations.contributorPlan.fallbackPaywall.features)
+              for (final String feature in translations.contributorPlan.fallbackPaywall.features)
                 Row(
                   mainAxisSize: .min,
                   children: [
@@ -196,8 +196,8 @@ class _ContributorPlanFallbackPaywallState extends ConsumerState<ContributorPlan
 
   /// Tries to do purchase the [packageType].
   Future<void> _tryPurchase(PackageType packageType) async {
-    ContributorPlan contributorPlan = ref.read(contributorPlanStateProvider.notifier);
-    Result<ContributorPlanState> result = await showWaitingOverlay(
+    final ContributorPlan contributorPlan = ref.read(contributorPlanStateProvider.notifier);
+    final Result<ContributorPlanState> result = await showWaitingOverlay(
       context,
       future: contributorPlan.purchase(packageType),
     );
@@ -212,8 +212,8 @@ class _ContributorPlanFallbackPaywallState extends ConsumerState<ContributorPlan
 
   /// Tries to refresh the user info.
   Future<void> _tryRefreshUserInfo() async {
-    ContributorPlan contributorPlan = ref.read(contributorPlanStateProvider.notifier);
-    Result<ContributorPlanState> result = await showWaitingOverlay(
+    final ContributorPlan contributorPlan = ref.read(contributorPlanStateProvider.notifier);
+    final Result<ContributorPlanState> result = await showWaitingOverlay(
       context,
       future: contributorPlan.refresh(),
     );
@@ -222,8 +222,8 @@ class _ContributorPlanFallbackPaywallState extends ConsumerState<ContributorPlan
 
   /// Tries to restore the purchases.
   Future<void> _tryRestorePurchases() async {
-    ContributorPlan contributorPlan = ref.read(contributorPlanStateProvider.notifier);
-    Result<ContributorPlanState> result = await showWaitingOverlay(
+    final ContributorPlan contributorPlan = ref.read(contributorPlanStateProvider.notifier);
+    final Result<ContributorPlanState> result = await showWaitingOverlay(
       context,
       future: contributorPlan.restore(),
     );
@@ -270,7 +270,7 @@ class _ContributorPlanBillingPlanPickerState extends ConsumerState<_ContributorP
 
   @override
   Widget build(BuildContext context) {
-    AsyncValue<User?> user = ref.watch(userProvider);
+    final AsyncValue<User?> user = ref.watch(userProvider);
     return Column(
       mainAxisSize: .min,
       children: [
@@ -292,15 +292,15 @@ class _ContributorPlanBillingPlanPickerState extends ConsumerState<_ContributorP
                 );
               }
               if (snapshot.hasData) {
-                Result<Prices> result = snapshot.requireData;
+                final Result<Prices> result = snapshot.requireData;
                 if (result is! ResultSuccess) {
-                  Object? exception = result is! ResultError ? null : (result as ResultError).exception;
+                  final Object? exception = result is! ResultError ? null : (result as ResultError).exception;
                   return Text(
                     exception == null ? translations.error.generic.tryAgain : translations.error.generic.withException(exception: exception),
                     textAlign: TextAlign.center,
                   );
                 }
-                Prices prices = (result as ResultSuccess).value;
+                final Prices prices = (result as ResultSuccess).value;
                 if (prices.packagesPrice.isEmpty) {
                   return Text(
                     translations.contributorPlan.fallbackPaywall.packageType.empty,
@@ -312,7 +312,7 @@ class _ContributorPlanBillingPlanPickerState extends ConsumerState<_ContributorP
                   mainAxisSize: .max,
                   spacing: kBigSpace,
                   children: [
-                    for (MapEntry<PackageType, Price> entry in prices.packagesPrice.entries)
+                    for (final MapEntry<PackageType, Price> entry in prices.packagesPrice.entries)
                       Expanded(
                         child: _createTile(
                           context,
@@ -343,9 +343,9 @@ class _ContributorPlanBillingPlanPickerState extends ConsumerState<_ContributorP
     required Price price,
     int? off,
   }) {
-    String? name = translations.contributorPlan.fallbackPaywall.packageType.name[packageType.name];
-    String? interval = translations.contributorPlan.fallbackPaywall.packageType.interval[packageType.name];
-    String? subtitle = translations.contributorPlan.fallbackPaywall.packageType.subtitle[packageType.name];
+    final String? name = translations.contributorPlan.fallbackPaywall.packageType.name[packageType.name];
+    final String? interval = translations.contributorPlan.fallbackPaywall.packageType.interval[packageType.name];
+    final String? subtitle = translations.contributorPlan.fallbackPaywall.packageType.subtitle[packageType.name];
     return name == null || interval == null || subtitle == null
         ? const SizedBox.shrink()
         : ClickableTile(

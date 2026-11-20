@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:open_authenticator/utils/result/reporter.dart';
 import 'package:open_authenticator/widgets/centered_circular_progress_indicator.dart';
@@ -36,17 +36,19 @@ class QrCodeScanner extends StatefulWidget {
 
 /// The QR code scanner state.
 class _QrCodeScannerState extends State<QrCodeScanner> {
-  /// The mobile scanner controller controller.
-  MobileScannerController controller = MobileScannerController(
+  /// The mobile scanner controller.
+  final MobileScannerController controller = MobileScannerController(
     formats: const [
       BarcodeFormat.qrCode,
     ],
   );
 
   @override
-  Widget build(BuildContext context) {
-    Size size = MediaQuery.sizeOf(context);
-    Rect scanWindow = Rect.fromCenter(
+  Widget build(BuildContext context) => LayoutBuilder(builder: _buildScanner);
+
+  Widget _buildScanner(BuildContext context, BoxConstraints constraints) {
+    final Size size = constraints.biggest;
+    final Rect scanWindow = Rect.fromCenter(
       center: size.center(Offset.zero),
       width: math.min(200, size.width),
       height: math.min(200, size.height),
@@ -58,13 +60,15 @@ class _QrCodeScannerState extends State<QrCodeScanner> {
           child: MobileScanner(
             placeholderBuilder: widget.placeholderBuilder,
             onDetect: (barcodes) {
-              String? barcodeValue = barcodes.barcodes.firstOrNull?.rawValue;
+              final String? barcodeValue = barcodes.barcodes.firstOrNull?.rawValue;
               if (barcodeValue != null && widget.onScan != null) {
                 controller.stop();
                 widget.onScan!(barcodeValue).then((resume) async {
                   if (resume) {
                     await Future.delayed(const Duration(seconds: 2));
-                    controller.start();
+                    if (mounted) {
+                      await controller.start();
+                    }
                   }
                 });
               }
@@ -76,17 +80,11 @@ class _QrCodeScannerState extends State<QrCodeScanner> {
             errorBuilder: (context, error) => ScannerErrorWidget(error: error),
           ),
         ),
-        ValueListenableBuilder(
-          valueListenable: controller,
-          builder: (context, value, child) {
-            if (!value.isInitialized || !value.isRunning || value.error != null) {
-              return const SizedBox();
-            }
-
-            return CustomPaint(
-              painter: ScannerOverlay(scanWindow: scanWindow),
-            );
-          },
+        ScanWindowOverlay(
+          controller: controller,
+          scanWindow: scanWindow,
+          borderRadius: BorderRadius.circular(12),
+          borderWidth: 4,
         ),
         Positioned(
           top: kToolbarHeight,
@@ -108,69 +106,8 @@ class _QrCodeScannerState extends State<QrCodeScanner> {
   }
 
   @override
-  Future<void> dispose() async {
-    controller.dispose();
+  void dispose() {
+    unawaited(controller.dispose());
     super.dispose();
   }
-}
-
-/// The scanner overlay.
-class ScannerOverlay extends CustomPainter {
-  /// The scan window instance.
-  final Rect scanWindow;
-
-  /// The border radius.
-  final double borderRadius;
-
-  /// Creates a new scanner overlay instance.
-  const ScannerOverlay({
-    required this.scanWindow,
-    this.borderRadius = 12.0,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    Path backgroundPath = Path()..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
-
-    Path cutoutPath = Path()
-      ..addRRect(
-        RRect.fromRectAndCorners(
-          scanWindow,
-          topLeft: Radius.circular(borderRadius),
-          topRight: Radius.circular(borderRadius),
-          bottomLeft: Radius.circular(borderRadius),
-          bottomRight: Radius.circular(borderRadius),
-        ),
-      );
-
-    Paint backgroundPaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.5)
-      ..style = PaintingStyle.fill
-      ..blendMode = BlendMode.dstOver;
-
-    Path backgroundWithCutout = Path.combine(
-      PathOperation.difference,
-      backgroundPath,
-      cutoutPath,
-    );
-
-    Paint borderPaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4.0;
-
-    RRect borderRect = RRect.fromRectAndCorners(
-      scanWindow,
-      topLeft: Radius.circular(borderRadius),
-      topRight: Radius.circular(borderRadius),
-      bottomLeft: Radius.circular(borderRadius),
-      bottomRight: Radius.circular(borderRadius),
-    );
-
-    canvas.drawPath(backgroundWithCutout, backgroundPaint);
-    canvas.drawRRect(borderRect, borderPaint);
-  }
-
-  @override
-  bool shouldRepaint(ScannerOverlay oldDelegate) => scanWindow != oldDelegate.scanWindow || borderRadius != oldDelegate.borderRadius;
 }

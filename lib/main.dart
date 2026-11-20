@@ -3,23 +3,22 @@ import 'dart:io' as io;
 
 import 'package:connectivity_plus_linux_portal/connectivity_plus_linux_portal.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/app.dart';
+import 'package:open_authenticator/core/app_links/app_auth.dart';
+import 'package:open_authenticator/core/app_links/app_purchases.dart';
+import 'package:open_authenticator/core/app_links/listener.dart';
+import 'package:open_authenticator/core/app_links/openauthenticator.dart';
+import 'package:open_authenticator/core/app_links/otpauth_totp.dart';
+import 'package:open_authenticator/core/backend/authentication/providers/provider.dart';
+import 'package:open_authenticator/core/backend/authentication/session.dart';
+import 'package:open_authenticator/core/crypto/store.dart';
+import 'package:open_authenticator/core/settings/show_intro.dart';
+import 'package:open_authenticator/core/settings/theme.dart';
+import 'package:open_authenticator/core/totp/limit.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
-import 'package:open_authenticator/model/app_links/app_auth.dart';
-import 'package:open_authenticator/model/app_links/app_purchases.dart';
-import 'package:open_authenticator/model/app_links/listener.dart';
-import 'package:open_authenticator/model/app_links/openauthenticator.dart';
-import 'package:open_authenticator/model/app_links/otpauth_totp.dart';
-import 'package:open_authenticator/model/backend/authentication/providers/provider.dart';
-import 'package:open_authenticator/model/backend/authentication/session.dart';
-import 'package:open_authenticator/model/crypto/store.dart';
-import 'package:open_authenticator/model/settings/show_intro.dart';
-import 'package:open_authenticator/model/settings/theme.dart';
-import 'package:open_authenticator/model/totp/limit.dart';
 import 'package:open_authenticator/pages/contributor_plan_paywall/page.dart';
 import 'package:open_authenticator/pages/home/page.dart';
 import 'package:open_authenticator/pages/intro/page.dart';
@@ -33,6 +32,7 @@ import 'package:open_authenticator/utils/rate_my_app.dart';
 import 'package:open_authenticator/utils/result/handler.dart';
 import 'package:open_authenticator/utils/result/result.dart';
 import 'package:open_authenticator/utils/sentry.dart';
+import 'package:open_authenticator/utils/window.dart';
 import 'package:open_authenticator/widgets/animated_theme.dart';
 import 'package:open_authenticator/widgets/app_scaffold.dart';
 import 'package:open_authenticator/widgets/centered_circular_progress_indicator.dart';
@@ -52,24 +52,18 @@ import 'package:window_manager/window_manager.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   if (currentPlatform.isDesktop) {
-    await windowManager.ensureInitialized();
-    windowManager.waitUntilReadyToShow(
-      const WindowOptions(
-        title: App.appName,
-        size: Size(800, 600),
-        minimumSize: Size(400, 400),
-        center: true,
-        titleBarStyle: TitleBarStyle.hidden,
-        windowButtonVisibility: false,
-      ),
-      () async {
-        await windowManager.show();
-        await windowManager.focus();
-      },
-    );
+    (await initializePrimaryWindow())
+      ?..titleBarStyle = TitleBarStyle.hidden
+      ..isWindowControlButtonsVisible = false
+      ..title = App.appName
+      ..setSize(const Size(800, 600).toNative(), false)
+      ..minimumSize = const Size(400, 400).toNative()
+      ..center()
+      ..show()
+      ..focus();
     if (currentPlatform == .linux) {
-      bool isFlatpak = io.Platform.environment.containsKey('FLATPAK_ID') || io.Platform.environment['container'] == 'flatpak';
-      String? backend = io.Platform.environment['CONNECTIVITY_BACKEND'];
+      final bool isFlatpak = io.Platform.environment.containsKey('FLATPAK_ID') || io.Platform.environment['container'] == 'flatpak';
+      final String? backend = io.Platform.environment['CONNECTIVITY_BACKEND'];
       if (isFlatpak || backend == 'portal') {
         ConnectivityPlusLinuxPortalPlugin.registerWith();
       }
@@ -106,11 +100,11 @@ class OpenAuthenticatorApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    AsyncValue<bool> showIntro = ref.watch(showIntroSettingsEntryProvider);
-    AsyncValue<ThemeMode> theme = ref.watch(themeSettingsEntryProvider);
-    Locale locale = TranslationProvider.of(context).flutterLocale;
+    final AsyncValue<bool> showIntro = ref.watch(showIntroSettingsEntryProvider);
+    final AsyncValue<ThemeMode> theme = ref.watch(themeSettingsEntryProvider);
+    final Locale locale = TranslationProvider.of(context).flutterLocale;
     return switch (showIntro) {
-      AsyncData(:bool value) => _createMaterialApp(
+      AsyncData(:final bool value) => _createMaterialApp(
         showIntroState: 'data',
         theme: theme,
         locale: locale,
@@ -148,17 +142,13 @@ class OpenAuthenticatorApp extends ConsumerWidget {
     String? initialRoute,
     Widget? home,
   }) {
-    FThemeData light = currentPlatform.isDesktop ? greenTheme.light.desktop : greenTheme.light.touch;
-    FThemeData dark = currentPlatform.isDesktop ? greenTheme.dark.desktop : greenTheme.dark.touch;
+    final FThemeData light = currentPlatform.isDesktop ? greenTheme.light.desktop : greenTheme.light.touch;
+    final FThemeData dark = currentPlatform.isDesktop ? greenTheme.dark.desktop : greenTheme.dark.touch;
     return MaterialApp(
       key: ValueKey('materialApp.$showIntroState'),
       title: App.appName,
       locale: locale,
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       navigatorObservers: [
         SentryNavigatorObserver(),
       ],
@@ -193,7 +183,7 @@ class OpenAuthenticatorApp extends ConsumerWidget {
                 child: SettingsPage(),
               ),
               TotpPage.name: (context) {
-                Map<String, dynamic>? arguments = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+                final Map<String, dynamic>? arguments = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
                 return _RouteWidget(
                   child: TotpPage(
                     totp: arguments?[kRouteParameterTotp],
@@ -245,11 +235,11 @@ class _RouteWidgetState extends ConsumerState<_RouteWidget> {
     if (widget.listen) {
       ref.listenManual(
         appLinksListenerProvider,
-        (previous, next) async {
+        (previous, next) {
           if (previous?.value == next.value || next is! AsyncData<Uri?> || next.value == null) {
             return;
           }
-          Uri uri = next.value!;
+          final Uri uri = next.value!;
           if ((uri as OpenAuthenticatorAppLink).isValid) {
             if (!ref.read(appLinksListenerProvider.notifier).consumeLink(uri)) {
               return;
@@ -269,7 +259,7 @@ class _RouteWidgetState extends ConsumerState<_RouteWidget> {
       );
       ref.listenManual(
         totpLimitProvider,
-        (previous, next) async {
+        (previous, next) {
           if (previous?.value == next.value || next is! AsyncData<TotpLimit> || !next.value.isExceeded) {
             return;
           }
@@ -292,7 +282,7 @@ class _RouteWidgetState extends ConsumerState<_RouteWidget> {
     }
     if (widget.rateMyApp) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
-        RateMyApp rateMyApp = RateMyApp.customConditions(
+        final RateMyApp rateMyApp = RateMyApp.customConditions(
           preferencesPrefix: kDebugMode ? 'flutterDebug.rateMyApp.' : 'flutter.rateMyApp.',
           appStoreIdentifier: Stores.appStoreIdentifier,
           googlePlayIdentifier: Stores.googlePlayIdentifier,
@@ -319,11 +309,11 @@ class _RouteWidgetState extends ConsumerState<_RouteWidget> {
   /// Handles an in-app link.
   Future<void> handleOpenAuthenticatorLink(OpenAuthenticatorAppLink appLink) async {
     if ((appLink as AppAuthLink).isValid) {
-      AuthenticationProvider? provider = ref.read(authenticationProviders).findProvider(appLink.providerId);
+      final AuthenticationProvider? provider = ref.read(authenticationProviders).findProvider(appLink.providerId);
       if (provider == null) {
         return;
       }
-      Result<RedirectResult> result = await showWaitingOverlay(
+      final Result<RedirectResult> result = await showWaitingOverlay(
         context,
         future: provider.onRedirectReceived(appLink),
       );

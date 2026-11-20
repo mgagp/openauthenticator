@@ -15,10 +15,10 @@ void main() {
     });
 
     test('save, load, list and delete round-trip a record', () async {
-      EzkeyEnrollment enrollment = testEnrollment(7);
+      final EzkeyEnrollment enrollment = testEnrollment(7);
       await store.save(enrollment);
 
-      EzkeyEnrollment? loaded = await store.load(enrollment.localId);
+      final EzkeyEnrollment? loaded = await store.load(enrollment.localId);
       expect(loaded?.toJson(), enrollment.toJson());
       expect((await store.list()).map((e) => e.localId), [enrollment.localId]);
 

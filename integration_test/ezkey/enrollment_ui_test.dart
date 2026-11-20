@@ -1,10 +1,9 @@
 import 'package:ezkey_dart/ezkey_dart.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forui/forui.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/ezkey/local_confirmation.dart';
 import 'package:open_authenticator/ezkey/pages/ezkey_page.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
@@ -31,7 +30,7 @@ void main() {
     'enrolls through the EzKey screens',
     (tester) async {
       // The emulator has no screen lock to confirm with; the Pixel pilot covers the real prompt.
-      ProviderContainer container = ProviderContainer(
+      final ProviderContainer container = ProviderContainer(
         overrides: [
           ezkeyApprovalConfirmationProvider.overrideWithValue((_) async => true),
         ],
@@ -42,11 +41,7 @@ void main() {
           container: container,
           child: TranslationProvider(
             child: MaterialApp(
-              localizationsDelegates: const [
-                GlobalMaterialLocalizations.delegate,
-                GlobalWidgetsLocalizations.delegate,
-                GlobalCupertinoLocalizations.delegate,
-              ],
+              localizationsDelegates: GlobalMaterialLocalizations.delegates,
               supportedLocales: AppLocaleUtils.supportedLocales,
               theme: greenTheme.light.touch.toApproximateMaterialTheme(),
               builder: (context, child) => FTheme(
@@ -83,14 +78,14 @@ void main() {
       await _settle(tester);
       await _screen(tester, '5-code');
       // The page is a lazy list: with the keyboard open, the button is not built until scrolled to.
-      Finder submit = find.byKey(const ValueKey('ezkey-enroll-submit'));
+      final Finder submit = find.byKey(const ValueKey('ezkey-enroll-submit'));
       await tester.scrollUntilVisible(submit, 100, scrollable: find.byType(Scrollable).first);
       await tester.tap(submit);
       await _settle(tester, until: find.text(translations.ezkey.page.enrollments));
       await _screen(tester, '6-enrolled');
 
-      List<EzkeyEnrollment> enrollments = await container.read(ezkeyEnrollmentsProvider.future);
-      EzkeyEnrollment enrollment = enrollments.single;
+      final List<EzkeyEnrollment> enrollments = await container.read(ezkeyEnrollmentsProvider.future);
+      final EzkeyEnrollment enrollment = enrollments.single;
       // ignore: avoid_print
       print('EZKEY_LAB enrolled id=${enrollment.enrollmentId} integration=${enrollment.integrationName} tier=${enrollment.devicePrivateKeyStorageTier.name}');
 
@@ -99,8 +94,8 @@ void main() {
       await _settle(tester, until: find.byKey(const ValueKey('ezkey-enrollment-check')));
 
       // The lab script creates the auth attempt once the enrollment is VERIFIED: check until it shows up.
-      Finder approve = find.byKey(const ValueKey('ezkey-attempt-approve'));
-      DateTime deadline = DateTime.now().add(const Duration(seconds: 90));
+      final Finder approve = find.byKey(const ValueKey('ezkey-attempt-approve'));
+      final DateTime deadline = DateTime.now().add(const Duration(seconds: 90));
       while (approve.evaluate().isEmpty && DateTime.now().isBefore(deadline)) {
         await tester.tap(find.byKey(const ValueKey('ezkey-enrollment-check')));
         await _settle(tester, until: approve, timeout: const Duration(seconds: 5));
@@ -132,7 +127,7 @@ void main() {
 
 /// Pumps frames for real time (network calls run on the real clock), until [until] shows up when given.
 Future<void> _settle(WidgetTester tester, {Finder? until, Duration timeout = const Duration(seconds: 30)}) async {
-  DateTime deadline = DateTime.now().add(timeout);
+  final DateTime deadline = DateTime.now().add(timeout);
   do {
     await tester.runAsync(() => Future.delayed(const Duration(milliseconds: 200)));
     await tester.pump(const Duration(milliseconds: 100));

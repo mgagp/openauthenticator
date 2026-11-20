@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/app.dart';
 import 'package:open_authenticator/i18n/localizable_exception.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
@@ -216,7 +216,7 @@ class _ErrorWithStackTraceState extends State<ErrorWithStackTrace> with SingleTi
       if (widget.error is LocalizableException) {
         exception = widget.error.runtimeType.toString();
       } else {
-        String error = widget.error.toString();
+        final String error = widget.error.toString();
         exception = error.length > 20 ? '${error.substring(0, 20)}...' : error;
       }
       description = translations.error.generic.withException(exception: exception);

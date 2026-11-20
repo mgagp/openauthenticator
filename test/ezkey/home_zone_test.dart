@@ -1,10 +1,15 @@
 import 'dart:async';
 
 import 'package:ezkey_dart/ezkey_dart.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:open_authenticator/core/crypto/salt.dart';
+import 'package:open_authenticator/core/crypto/store.dart';
+import 'package:open_authenticator/core/totp/decrypted.dart';
+import 'package:open_authenticator/core/totp/repository.dart';
+import 'package:open_authenticator/core/totp/totp.dart';
 import 'package:open_authenticator/ezkey/backup_inventory.dart';
 import 'package:open_authenticator/ezkey/enrollment_store.dart';
 import 'package:open_authenticator/ezkey/home_zone.dart';
@@ -15,11 +20,6 @@ import 'package:open_authenticator/ezkey/pages/ezkey_page.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
 import 'package:open_authenticator/ezkey/to_reenroll.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
-import 'package:open_authenticator/model/crypto/salt.dart';
-import 'package:open_authenticator/model/crypto/store.dart';
-import 'package:open_authenticator/model/totp/decrypted.dart';
-import 'package:open_authenticator/model/totp/repository.dart';
-import 'package:open_authenticator/model/totp/totp.dart';
 import 'package:open_authenticator/themes.dart';
 import 'package:open_authenticator/utils/platform.dart';
 
@@ -130,7 +130,7 @@ class _CounterZoneState extends State<_CounterZone> {
 void main() {
   /// Returns a secure storage holding [count] enrollments to re-enroll.
   Future<InMemorySecureValues> valuesToReenroll(int count) async {
-    InMemorySecureValues values = InMemorySecureValues();
+    final InMemorySecureValues values = InMemorySecureValues();
     await EzkeyToReenrollStore(values).write([
       for (int i = 0; i < count; i++) EzkeyInventoryEntry(enrollmentId: i, authApiHost: 'auth.orbit.example', enrolledAt: DateTime.utc(2026, 10, 27), integrationName: 'Service $i'),
     ]);
@@ -140,7 +140,7 @@ void main() {
   /// Shows the EzKey zone with [enrollments] and [toReenroll] enrollments to re-enroll, checking through
   /// [authenticator] when given.
   Future<void> pumpZone(WidgetTester tester, List<EzkeyEnrollment> enrollments, {int toReenroll = 0, EzkeyAuthenticator? authenticator}) async {
-    InMemorySecureValues values = await valuesToReenroll(toReenroll);
+    final InMemorySecureValues values = await valuesToReenroll(toReenroll);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -246,7 +246,7 @@ void main() {
           testAdminEnrollment(2, adminType: 'TENANT_ADMIN'),
         ]);
 
-        String administration = translations.ezkey.identity.administration;
+        final String administration = translations.ezkey.identity.administration;
         expect(find.semantics.byLabel(translations.ezkey.home.checkAction(integration: '$administration, ${translations.ezkey.identity.globalAdmin}, Alice Chen')), findsOne);
         expect(find.semantics.byLabel(translations.ezkey.home.checkAction(integration: '$administration, ${translations.ezkey.identity.tenantAdmin}, Alice Chen')), findsOne);
       });
@@ -259,15 +259,15 @@ void main() {
 
       setUp(() async {
         api = _RecordingAuthApi();
-        SoftwareDeviceKeyStore keyStore = SoftwareDeviceKeyStore();
+        final SoftwareDeviceKeyStore keyStore = SoftwareDeviceKeyStore();
         await keyStore.generateKeyPair('key-1');
         await keyStore.generateKeyPair('key-2');
         enrollments = [
           testEnrollment(1, deviceKeyAlias: 'key-1', integrationName: 'Internal Tools'),
           testEnrollment(2, deviceKeyAlias: 'key-2', integrationName: 'Payroll'),
         ];
-        InMemoryEnrollmentStore store = InMemoryEnrollmentStore();
-        for (EzkeyEnrollment enrollment in enrollments) {
+        final InMemoryEnrollmentStore store = InMemoryEnrollmentStore();
+        for (final EzkeyEnrollment enrollment in enrollments) {
           await store.save(enrollment);
         }
         authenticator = EzkeyAuthenticator(keyStore: keyStore, enrollmentStore: store, apiFactory: (uri) => api);
@@ -345,8 +345,8 @@ void main() {
 
   group('EzkeyHomeZoneState', () {
     test('never collapses both zones', () {
-      for (EzkeyHomeZoneState state in EzkeyHomeZoneState.values) {
-        for (bool hasEnrollments in [false, true]) {
+      for (final EzkeyHomeZoneState state in EzkeyHomeZoneState.values) {
+        for (final bool hasEnrollments in [false, true]) {
           expect(state.isTotpExpanded || state.isExpanded(hasEnrollments: hasEnrollments), isTrue, reason: '$state, hasEnrollments: $hasEnrollments');
         }
       }
@@ -366,7 +366,7 @@ void main() {
     late CryptoStore cryptoStore;
     late _MemorySplit split;
 
-    setUpAll(() => cryptoStore = CryptoStore.fromPassword('password', Salt.generate()));
+    setUpAll(() async => cryptoStore = await CryptoStore.fromPasswordInIsolate('password', Salt.generate()));
 
     /// Shows both zones with [enrollments], [toReenroll] enrollments to re-enroll, [totpCount] TOTPs, the
     /// zone [state] and [totpZone].
@@ -379,8 +379,8 @@ void main() {
       double share = 0,
       int toReenroll = 0,
     }) async {
-      InMemorySecureValues values = await valuesToReenroll(toReenroll);
-      List<Totp> totps = [
+      final InMemorySecureValues values = await valuesToReenroll(toReenroll);
+      final List<Totp> totps = [
         for (int i = 0; i < totpCount; i++) DecryptedTotp.create(cryptoStore: cryptoStore, uuid: 'uuid-$i', secret: 'JBSWY3DPEHPK3PXP', label: 'totp-$i')!,
       ];
       await tester.pumpWidget(
@@ -503,7 +503,7 @@ void main() {
     testWidgets('a full-height EzKey zone lets its list grow past the usual cap', (tester) async {
       await pumpZones(tester, [for (int i = 1; i <= 12; i++) testEnrollment(i)], state: .totpCollapsed);
 
-      Finder list = find.descendant(of: find.byType(EzkeyHomeZone), matching: find.byType(SingleChildScrollView));
+      final Finder list = find.descendant(of: find.byType(EzkeyHomeZone), matching: find.byType(SingleChildScrollView));
 
       expect(tester.getSize(list).height, greaterThan(200));
     });
@@ -574,7 +574,7 @@ void main() {
 
     testWidgets('dragging the divider up gives EzKey more height, and remembers it', (tester) async {
       await pumpZones(tester, [testEnrollment(1)]);
-      double before = ezkeyHeight(tester);
+      final double before = ezkeyHeight(tester);
 
       await tester.drag(divider(), const Offset(0, -150));
       await tester.pumpAndSettle();
@@ -604,7 +604,7 @@ void main() {
 
     testWidgets('a remembered share sizes the zones', (tester) async {
       await pumpZones(tester, [testEnrollment(1)], share: 0.45);
-      double small = ezkeyHeight(tester);
+      final double small = ezkeyHeight(tester);
       await tester.pumpWidget(const SizedBox.shrink());
       await pumpZones(tester, [testEnrollment(1)], share: 0.7);
 
@@ -672,7 +672,7 @@ void main() {
       currentPlatform = .android;
       const Widget totpZone = SizedBox();
 
-      List<Widget> children = ezkeyHomeZones([totpZone]);
+      final List<Widget> children = ezkeyHomeZones([totpZone]);
 
       expect(children.single, isA<EzkeyHomeZones>());
       expect((children.single as EzkeyHomeZones).totpZone, same(totpZone));
@@ -680,7 +680,7 @@ void main() {
 
     test('keeps the upstream content unchanged off Android', () {
       currentPlatform = .windows;
-      List<Widget> totpChildren = [const SizedBox()];
+      final List<Widget> totpChildren = [const SizedBox()];
 
       expect(ezkeyHomeZones(totpChildren), same(totpChildren));
     });

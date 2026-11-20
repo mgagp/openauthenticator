@@ -1,13 +1,14 @@
 import 'dart:async';
+
 import 'package:ezkey_dart/ezkey_dart.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
+import 'package:open_authenticator/core/secure_storage.dart';
 import 'package:open_authenticator/ezkey/device_key_store.dart';
 import 'package:open_authenticator/ezkey/enrollment_store.dart';
 import 'package:open_authenticator/ezkey/identity.dart';
 import 'package:open_authenticator/ezkey/orphan_keys.dart';
-import 'package:open_authenticator/model/secure_storage.dart';
 
 /// The EzKey server addresses accepted in a build: HTTPS only, except in debug builds, which also
 /// accept plain HTTP to the development hosts (`localhost`, `127.0.0.1`, `10.0.2.2`) that the local
@@ -28,15 +29,15 @@ final ezkeyEnrollmentStoreProvider = FutureProvider<SecureEzkeyEnrollmentStore>(
 /// Kept alive: it holds the per-attempt decision locks and the Auth API clients. Before handing it
 /// out, it deletes orphan device keys once, so the cleanup never runs during an enrollment.
 final ezkeyAuthenticatorProvider = FutureProvider<EzkeyAuthenticator>((ref) async {
-  NativeEzkeyDeviceKeyStore keyStore = ref.watch(ezkeyDeviceKeyStoreProvider);
-  SecureEzkeyEnrollmentStore enrollmentStore = await ref.watch(ezkeyEnrollmentStoreProvider.future);
+  final NativeEzkeyDeviceKeyStore keyStore = ref.watch(ezkeyDeviceKeyStoreProvider);
+  final SecureEzkeyEnrollmentStore enrollmentStore = await ref.watch(ezkeyEnrollmentStoreProvider.future);
   try {
     await deleteOrphanEzkeyDeviceKeys(keyStore: keyStore, enrollmentStore: enrollmentStore);
   } on EzkeyException catch (ex) {
     // Fail open: a leftover key is harmless, and the cleanup runs again on the next start.
     debugPrint('EzKey orphan key cleanup failed: $ex');
   }
-  http.Client client = http.Client();
+  final http.Client client = http.Client();
   ref.onDispose(client.close);
   return EzkeyAuthenticator(
     keyStore: keyStore,
@@ -54,14 +55,14 @@ final ezkeyEnrollmentsProvider = AsyncNotifierProvider<EzkeyEnrollmentsNotifier,
 class EzkeyEnrollmentsNotifier extends AsyncNotifier<List<EzkeyEnrollment>> {
   @override
   FutureOr<List<EzkeyEnrollment>> build() async {
-    EzkeyAuthenticator authenticator = await ref.watch(ezkeyAuthenticatorProvider.future);
-    List<EzkeyEnrollment> enrollments = await authenticator.listEnrollments();
+    final EzkeyAuthenticator authenticator = await ref.watch(ezkeyAuthenticatorProvider.future);
+    final List<EzkeyEnrollment> enrollments = await authenticator.listEnrollments();
     return enrollments..sort((a, b) => EzkeyIdentity.of(a).purpose.toLowerCase().compareTo(EzkeyIdentity.of(b).purpose.toLowerCase()));
   }
 
   /// Finishes [bound] with the [enrollmentChallenge] typed by the user, then refreshes the list.
   Future<EzkeyEnrollment> complete(EzkeyBoundEnrollment bound, int enrollmentChallenge) async {
-    EzkeyAuthenticator authenticator = await ref.read(ezkeyAuthenticatorProvider.future);
+    final EzkeyAuthenticator authenticator = await ref.read(ezkeyAuthenticatorProvider.future);
     try {
       return await authenticator.completeEnrollment(bound, enrollmentChallenge: enrollmentChallenge);
     } finally {
@@ -73,7 +74,7 @@ class EzkeyEnrollmentsNotifier extends AsyncNotifier<List<EzkeyEnrollment>> {
   ///
   /// The server keeps the enrollment: an administrator has to revoke it there.
   Future<void> forget(EzkeyEnrollment enrollment) async {
-    EzkeyAuthenticator authenticator = await ref.read(ezkeyAuthenticatorProvider.future);
+    final EzkeyAuthenticator authenticator = await ref.read(ezkeyAuthenticatorProvider.future);
     try {
       await authenticator.forget(enrollment);
     } finally {

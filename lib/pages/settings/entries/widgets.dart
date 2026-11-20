@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:open_authenticator/core/settings/entry.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
-import 'package:open_authenticator/model/settings/entry.dart';
 import 'package:open_authenticator/widgets/clickable.dart';
 import 'package:open_authenticator/widgets/toast.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -51,7 +51,7 @@ abstract class CheckboxSettingsEntryWidget<T extends SettingsEntry<U>, U> extend
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    AsyncValue<U> value = ref.watch(provider);
+    final AsyncValue<U> value = ref.watch(provider);
     return switch (value) {
       AsyncData(:final value) => createTile(context, ref, value: value),
       AsyncError() => const SizedBox.shrink(),

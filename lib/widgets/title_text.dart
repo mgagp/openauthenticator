@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/app.dart';
 
 /// The title widget with a nice green color.
@@ -22,7 +22,7 @@ class TitleText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    List<String> parts = text.split(' ');
+    final List<String> parts = text.split(' ');
     if (parts.length == 1) {
       return _createGradientText(parts.first).child;
     }

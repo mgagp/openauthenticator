@@ -16,7 +16,7 @@
     "empty": "Ce champ est requis",
     "email": "Adresse mail invalide",
     "secret": "Secret invalide",
-    "totpDigits": "Le nombre entré doit être supérieur ou égal à 6",
+    "totpDigits": "Entrez un nombre de chiffres compris entre 6 et 15",
     "masterPassword": "Mot de passe invalide",
     "confirmation": "La confirmation ne correspond pas",
     "url": "URL invalide"
@@ -65,6 +65,7 @@
     "backupError": "Une erreur est survenue durant la sauvegarde. Veuillez réessayer.",
     "anotherDeletedTotpPolicyShouldBeUsed": "Une autre politique de suppression de TOTP devrait être utilisée.",
     "currentStoragePasswordMismatch": "Mot de passe invalide.",
+    "remoteStoragePasswordMismatch": "Vos TOTPs en ligne ont été chiffrés avec un autre mot de passe maître. Veuillez modifier le mot de passe maître de cet appareil pour qu'il corresponde à celui utilisé sur vos autres appareils, puis réessayez.",
     "generic": "Une erreur est survenue pendant la migration de vos données. Veuillez réessayer plus tard."
   },
   "revenueCat": {
@@ -74,6 +75,7 @@
   "totp": {
     "create": "Ce TOTP ne peut pas être créé.",
     "decrypt": "Impossible de déchiffrer ce TOTP. Assurez-vous d'avoir entré le bon mot de passe.",
+    "undecryptable": "Impossible de déchiffrer $count TOTP(s) avec votre mot de passe maître actuel. Touchez-les dans la liste pour les déchiffrer avec le mot de passe utilisé pour les chiffrer, ou supprimez-les, puis réessayez.",
     "changeCryptoStore": {
       "noCryptoStore": "Impossible de récupérer le magasin de chiffrement actuel. Veuillez fermer et rouvrir l'application.",
       "generic": "Impossible de chiffrer le TOTP avec le magasin de chiffrement actuel."

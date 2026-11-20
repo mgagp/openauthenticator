@@ -1,14 +1,14 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/app.dart';
+import 'package:open_authenticator/core/backend/authentication/providers/provider.dart';
+import 'package:open_authenticator/core/backend/backend.dart';
+import 'package:open_authenticator/core/backend/request/request.dart';
+import 'package:open_authenticator/core/backend/request/response.dart';
+import 'package:open_authenticator/core/settings/backend_url.dart';
 import 'package:open_authenticator/flows/storage_migration.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
-import 'package:open_authenticator/model/backend/authentication/providers/provider.dart';
-import 'package:open_authenticator/model/backend/backend.dart';
-import 'package:open_authenticator/model/backend/request/request.dart';
-import 'package:open_authenticator/model/backend/request/response.dart';
-import 'package:open_authenticator/model/settings/backend_url.dart';
 import 'package:open_authenticator/pages/settings/entries/widgets.dart';
 import 'package:open_authenticator/utils/result/handler.dart';
 import 'package:open_authenticator/utils/result/result.dart';
@@ -31,7 +31,7 @@ class ChangeBackendUrlSettingsEntryWidget extends ConsumerWidget with FTileMixin
     title: Text(translations.settings.dangerZone.changeBackendUrl.title),
     subtitle: Text(translations.settings.dangerZone.changeBackendUrl.subtitle),
     onPress: () async {
-      Result result = await ref
+      final Result result = await ref
           .read(storageMigrationFlowProvider)
           .changeStorageType(
             context,
@@ -42,14 +42,14 @@ class ChangeBackendUrlSettingsEntryWidget extends ConsumerWidget with FTileMixin
       if (!context.mounted || result is! ResultSuccess) {
         return;
       }
-      String currentUrl = await showWaitingOverlay(
+      final String currentUrl = await showWaitingOverlay(
         context,
         future: ref.read(backendUrlSettingsEntryProvider.future),
       );
       if (!context.mounted) {
         return;
       }
-      String? url = await TextInputDialog.prompt(
+      final String? url = await TextInputDialog.prompt(
         context,
         title: translations.settings.dangerZone.changeBackendUrl.inputDialog.title,
         message: translations.settings.dangerZone.changeBackendUrl.inputDialog.message(defaultBackendUrl: App.defaultBackendUrl),
@@ -60,7 +60,7 @@ class ChangeBackendUrlSettingsEntryWidget extends ConsumerWidget with FTileMixin
       if (url == null || !context.mounted) {
         return;
       }
-      Result<PingBackendResponse> pingBackendResponse = await showWaitingOverlay(
+      final Result<PingBackendResponse> pingBackendResponse = await showWaitingOverlay(
         context,
         future: ref
             .read(backendClientProvider.notifier)
@@ -84,7 +84,7 @@ class ChangeBackendUrlSettingsEntryWidget extends ConsumerWidget with FTileMixin
       if (!context.mounted) {
         return;
       }
-      Result cancelConfirmationResult = await showWaitingOverlay(
+      final Result cancelConfirmationResult = await showWaitingOverlay(
         context,
         future: ref.read(authenticationProviders).email.cancelConfirmation(),
       );

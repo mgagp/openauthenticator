@@ -1,12 +1,12 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/app.dart';
+import 'package:open_authenticator/core/backend/authentication/providers/provider.dart';
+import 'package:open_authenticator/core/backend/user.dart';
 import 'package:open_authenticator/flows/account.dart';
 import 'package:open_authenticator/flows/email_confirmation.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
-import 'package:open_authenticator/model/backend/authentication/providers/provider.dart';
-import 'package:open_authenticator/model/backend/user.dart';
 import 'package:open_authenticator/pages/intro/slides/slide.dart';
 import 'package:open_authenticator/pages/settings/entries/synchronize.dart';
 import 'package:open_authenticator/spacing.dart';
@@ -39,7 +39,7 @@ class LogInIntroPageSlide extends StatelessWidget {
       ),
       Consumer(
         builder: (context, ref, child) {
-          EmailConfirmationData? emailToConfirm = ref.watch(emailConfirmationStateProvider).value;
+          final EmailConfirmationData? emailToConfirm = ref.watch(emailConfirmationStateProvider).value;
           return Padding(
             padding: EdgeInsets.only(bottom: emailToConfirm == null ? kSpace : kBigSpace),
             child: child,
@@ -66,7 +66,7 @@ class LogInIntroPageSlide extends StatelessWidget {
 class _LogInButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    User? user = ref.watch(userProvider).value;
+    final User? user = ref.watch(userProvider).value;
     return user == null
         ? ClickableButton(
             onPress: () => ref.read(accountFlowProvider).tryRequestSignIn(context),
@@ -85,7 +85,7 @@ class _LogInButton extends ConsumerWidget {
 class _ConfirmEmailButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    AsyncValue<EmailConfirmationData?> emailToConfirm = ref.watch(emailConfirmationStateProvider);
+    final AsyncValue<EmailConfirmationData?> emailToConfirm = ref.watch(emailConfirmationStateProvider);
     return emailToConfirm.value == null
         ? const SizedBox.shrink()
         : ClickableButton(

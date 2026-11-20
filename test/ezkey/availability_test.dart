@@ -17,7 +17,7 @@ void main() {
     });
 
     test('is false on every platform without a checked key store yet', () {
-      for (Platform other in Platform.values.where((value) => value != .android)) {
+      for (final Platform other in Platform.values.where((value) => value != .android)) {
         currentPlatform = other;
 
         expect(ezkeyAvailable, isFalse, reason: other.name);

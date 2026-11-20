@@ -19,7 +19,7 @@ List<String> ezkeyClearDataServices({
   required List<EzkeyEnrollment> enrollments,
   required int unreadableCount,
 }) => [
-  ...({for (EzkeyEnrollment enrollment in enrollments) EzkeyIdentity.of(enrollment).purpose}.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()))),
+  ...({for (final EzkeyEnrollment enrollment in enrollments) EzkeyIdentity.of(enrollment).purpose}.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()))),
   for (int i = 0; i < unreadableCount; i++) translations.ezkey.clearData.unreadable,
 ];
 
@@ -32,8 +32,8 @@ Future<bool> confirmEzkeyClearData(BuildContext context, WidgetRef ref) async {
   if (!ezkeyAvailable) {
     return true;
   }
-  SecureEzkeyEnrollmentStore store = await ref.read(ezkeyEnrollmentStoreProvider.future);
-  List<String> services = ezkeyClearDataServices(
+  final SecureEzkeyEnrollmentStore store = await ref.read(ezkeyEnrollmentStoreProvider.future);
+  final List<String> services = ezkeyClearDataServices(
     enrollments: await store.list(),
     unreadableCount: store.unreadableLocalIds().length,
   );

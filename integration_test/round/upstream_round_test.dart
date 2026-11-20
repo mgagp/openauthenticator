@@ -32,7 +32,7 @@ void main() {
     report('U3', 'manual TOTP saved');
 
     // U5: the code shown is the RFC 6238 SHA-1 code of the current period.
-    String shown = await expectReferenceCode(tester);
+    final String shown = await expectReferenceCode(tester);
     report('U5', 'shown $shown matches the reference');
 
     // U7: edit through the desktop menu, then delete.
