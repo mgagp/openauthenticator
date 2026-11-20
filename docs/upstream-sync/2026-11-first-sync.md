@@ -63,3 +63,15 @@ Journal of the fork's first upstream sync, kept as the work goes. It is the inpu
 - `docs/test-plan.md`, `docs/ezkey/harmonization.md`, ADR-0002 and ADR-0005: paths only (`model/` → `core/`); the two backup quirks in the test plan are marked fixed upstream. The ADRs' decisions are unchanged; only their file references moved.
 - `docs/upstream-activity.md`: snapshot refreshed. The per-area table was kept from 2026-11-02, because `git log -- <directory>` does not follow upstream's rename and the new paths would undercount. **Lesson?** Refresh commands need `--follow` (files) or both paths (directories) after an upstream rename.
 - New: `docs/upstream-sync.md` (the method, ending with the retrospective) and this journal, both in the docs index.
+
+## Step 5: checks on devices (2026-11-20)
+
+- **Android emulator:**
+  - key store contract test: 3/3 (tier `none`, as always on the emulator);
+  - automated round (`upstream_round_test.dart`): intro, manual TOTP and its code pass, then it stops at the edit step, which goes through the desktop "…" menu. The test was written for desktop (#132); Android's full round was manual (#131). **Lesson?** A platform-aware round test (the mobile menu on Android) would make the Android round re-runnable at each sync instead of manual.
+- **Windows:**
+  - the build works with VS 2022 as before; the Firebase SDK now prints more `LNK4099` warnings (same cause, missing PDBs).
+  - round: the first run failed at "Clear data". Upstream replaced the dialog's OK/Cancel with "Delete them" / "Keep them". The test helper now picks "Keep them". Then everything passed: intro, manual add, code, edit, delete, backup and restore (wrong password refused), clear data.
+  - across a restart (setup, then restart): all pass. The copy check passed this time (session unlocked). The search for "Manual" now finds "ManualCo": **#145 is fixed in the real app**. Deleting a backup still leaves it listed until the dialog is reopened: **#141 is still there**.
+  - The maintainer's debug data was set aside before and restored after (`scripts/windows_round_data.ps1`, verified byte for byte). It is still at database schema 2; its first launch with this build will run upstream's migration to schema 3.
+- **Not run:** the key store contract test on Windows (the Windows plugin lives on the TPM spike, #147, not on `main`).

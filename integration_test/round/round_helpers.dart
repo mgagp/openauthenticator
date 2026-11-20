@@ -148,7 +148,8 @@ Future<void> clearDataKeepingBackups(WidgetTester tester, String masterPassword)
   await tapLast(tester, find.text(okLabel(tester)));
   await answerPasswordDialog(tester, masterPassword);
   await waitFor(tester, find.text(translations.settings.dangerZone.clearData.backupDeleteConfirmationDialog.title));
-  await tapLast(tester, find.text(materialLabels(tester).cancelButtonLabel));
+  // Since the 2026-11 sync, the dialog asks "Delete them" or "Keep them" instead of OK or Cancel.
+  await tapLast(tester, find.text(translations.storageMigration.deletedTotpPolicyPickerDialog.restore.title));
   await settle(tester, seconds: 3);
 }
 
