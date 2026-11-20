@@ -1,5 +1,5 @@
 // Writes the gitignored Firebase client files from the options in the upstream-tracked
-// lib/model/migrator/firebase_options.dart: android/app/google-services.json (the Google Services
+// lib/core/migrator/firebase_options.dart: android/app/google-services.json (the Google Services
 // Gradle plugin refuses to build without it) and ios/Runner/GoogleService-Info.plist and
 // macos/Runner/GoogleService-Info.plist (both Xcode projects list them as resources, so Xcode
 // refuses to build without them). Upstream keeps these files out of the repository.
@@ -12,7 +12,7 @@ import 'dart:io';
 const String packageName = 'app.openauthenticator';
 
 void main() {
-  final File optionsFile = File('lib/model/migrator/firebase_options.dart');
+  final File optionsFile = File('lib/core/migrator/firebase_options.dart');
   if (!optionsFile.existsSync()) {
     stderr.writeln('error: ${optionsFile.path} not found; run from the repository root.');
     exit(1);
