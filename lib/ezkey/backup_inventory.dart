@@ -3,10 +3,10 @@ import 'dart:convert';
 import 'package:ezkey_dart/ezkey_dart.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:open_authenticator/core/crypto/store.dart';
 import 'package:open_authenticator/ezkey/availability.dart';
 import 'package:open_authenticator/ezkey/enrollment_store.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
-import 'package:open_authenticator/model/crypto/store.dart';
 
 // The EzKey enrollment inventory in backups (docs/adr/0005-ezkey-enrollment-inventory-in-backups.md).
 // Upstream's lib/model/backup/backup.dart and store.dart call into this file; each hook is listed in
@@ -60,10 +60,10 @@ class EzkeyInventoryEntry {
     if (json is! Map<String, dynamic>) {
       return null;
     }
-    Object? enrollmentId = json['enrollmentId'];
-    Object? authApiHost = json['authApiHost'];
-    Object? enrolledAt = json['enrolledAt'];
-    DateTime? date = enrolledAt is String ? DateTime.tryParse(enrolledAt) : null;
+    final Object? enrollmentId = json['enrollmentId'];
+    final Object? authApiHost = json['authApiHost'];
+    final Object? enrolledAt = json['enrolledAt'];
+    final DateTime? date = enrolledAt is String ? DateTime.tryParse(enrolledAt) : null;
     if (enrollmentId is! int || authApiHost is! String || date == null) {
       return null;
     }
@@ -90,7 +90,7 @@ class EzkeyInventoryEntry {
   /// Returns the host of [baseUrl], with its port when not the default one, or [baseUrl] itself when
   /// it has none.
   static String _host(String baseUrl) {
-    String? authority = Uri.tryParse(baseUrl)?.authority;
+    final String? authority = Uri.tryParse(baseUrl)?.authority;
     return authority == null || authority.isEmpty ? baseUrl : authority;
   }
 
@@ -122,10 +122,7 @@ class EzkeyBackupInventory {
     if (entries.isEmpty) {
       return null;
     }
-    Uint8List? encrypted = cryptoStore.encrypt(jsonEncode([for (EzkeyInventoryEntry entry in entries) entry.toJson()]));
-    if (encrypted == null) {
-      return null;
-    }
+    final Uint8List encrypted = cryptoStore.encrypt(jsonEncode([for (final EzkeyInventoryEntry entry in entries) entry.toJson()]));
     return EzkeyBackupInventory._(
       entries: List.unmodifiable(entries),
       encrypted: base64.encode(encrypted),
@@ -137,18 +134,18 @@ class EzkeyBackupInventory {
   /// Returns `null` when there is none, or when it cannot be read: a bad inventory never blocks the
   /// TOTP restore. Entries that are not valid are skipped.
   static EzkeyBackupInventory? tryRead(Map<String, dynamic> backupJson, CryptoStore cryptoStore) {
-    Object? encrypted = backupJson[kJsonKey];
+    final Object? encrypted = backupJson[kJsonKey];
     if (encrypted is! String) {
       return null;
     }
     try {
-      String? decrypted = cryptoStore.decrypt(base64.decode(encrypted));
-      Object? json = decrypted == null ? null : jsonDecode(decrypted);
+      final String? decrypted = cryptoStore.decrypt(base64.decode(encrypted));
+      final Object? json = decrypted == null ? null : jsonDecode(decrypted);
       if (json is! List) {
         return null;
       }
-      List<EzkeyInventoryEntry> entries = [
-        for (Object? entry in json) ?EzkeyInventoryEntry.tryFromJson(entry),
+      final List<EzkeyInventoryEntry> entries = [
+        for (final Object? entry in json) ?EzkeyInventoryEntry.tryFromJson(entry),
       ];
       return entries.isEmpty
           ? null
@@ -176,8 +173,8 @@ Future<List<EzkeyInventoryEntry>> ezkeyInventoryEntries(Ref ref) async {
     return [];
   }
   try {
-    SecureEzkeyEnrollmentStore store = await ref.read(ezkeyEnrollmentStoreProvider.future);
-    return [for (EzkeyEnrollment enrollment in await store.list()) EzkeyInventoryEntry.fromEnrollment(enrollment)];
+    final SecureEzkeyEnrollmentStore store = await ref.read(ezkeyEnrollmentStoreProvider.future);
+    return [for (final EzkeyEnrollment enrollment in await store.list()) EzkeyInventoryEntry.fromEnrollment(enrollment)];
   } on Object catch (ex) {
     debugPrint('EzKey backup inventory skipped: $ex');
     return [];

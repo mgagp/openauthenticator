@@ -1,9 +1,9 @@
 import 'package:ezkey_keystore/ezkey_keystore.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/ezkey/clear_data.dart';
 import 'package:open_authenticator/ezkey/device_key_store.dart';
 import 'package:open_authenticator/ezkey/enrollment_store.dart';
@@ -59,7 +59,7 @@ void main() {
 
   group('ezkeyClearDataServices', () {
     test('lists each service once, sorted, then one line per unreadable record', () {
-      List<String> services = ezkeyClearDataServices(
+      final List<String> services = ezkeyClearDataServices(
         enrollments: [
           testEnrollment(1, integrationName: 'orbit Console'),
           testEnrollment(2, integrationName: 'Administration'),
@@ -138,7 +138,7 @@ void main() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(EzkeyKeystore.channel, (call) async {
         switch (call.method) {
           case 'aliases':
-            String prefix = (call.arguments as Map)['prefix'] as String;
+            final String prefix = (call.arguments as Map)['prefix'] as String;
             return aliases.where((alias) => alias.startsWith(prefix)).toList();
           case 'deleteKeyPair':
             if (failDeletes) {
@@ -153,7 +153,7 @@ void main() {
     }
 
     testWidgets('deletes this build\'s keys once the records are gone, and leaves the others', (tester) async {
-      Set<String> aliases = {'ezkey-device-debug-1-a', 'ezkey-device-debug-2-b', 'ezkey-device-main-3-c', 'ezkey-device-4-d'};
+      final Set<String> aliases = {'ezkey-device-debug-1-a', 'ezkey-device-debug-2-b', 'ezkey-device-main-3-c', 'ezkey-device-4-d'};
       mockKeystore(aliases);
       await pumpHost(tester, (context, ref) => deleteEzkeyKeysAfterClearData(ref));
 
@@ -164,7 +164,7 @@ void main() {
     });
 
     testWidgets('never fails the clear when the key store fails', (tester) async {
-      Set<String> aliases = {'ezkey-device-debug-1-a'};
+      final Set<String> aliases = {'ezkey-device-debug-1-a'};
       mockKeystore(aliases, failDeletes: true);
       Object? error;
       bool done = false;

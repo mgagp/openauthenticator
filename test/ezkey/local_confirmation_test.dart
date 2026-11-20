@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:open_authenticator/core/app_unlock/interaction.dart';
+import 'package:open_authenticator/core/app_unlock/methods/method.dart';
+import 'package:open_authenticator/core/app_unlock/reason.dart';
+import 'package:open_authenticator/core/settings/app_unlock_method.dart';
 import 'package:open_authenticator/ezkey/local_confirmation.dart';
-import 'package:open_authenticator/model/app_unlock/interaction.dart';
-import 'package:open_authenticator/model/app_unlock/methods/method.dart';
-import 'package:open_authenticator/model/app_unlock/reason.dart';
-import 'package:open_authenticator/model/settings/app_unlock_method.dart';
 import 'package:open_authenticator/utils/result/result.dart';
 
 import 'support.dart';
@@ -73,7 +73,7 @@ void main() {
     /// Returns a container whose protection starts at [initial] and whose downgrade prompt answers [confirmed].
     ProviderContainer createContainer(EzkeyApprovalSecurity initial, {required bool confirmed}) {
       downgradeConfirmations = 0;
-      ProviderContainer container = ProviderContainer(
+      final ProviderContainer container = ProviderContainer(
         overrides: [
           ezkeyApprovalSecurityProvider.overrideWith(() => _MemorySecurity(initial)),
           ezkeyDowngradeConfirmationProvider.overrideWithValue((_) async {
@@ -88,9 +88,9 @@ void main() {
     }
 
     test('raising the protection is immediate', () async {
-      ProviderContainer container = createContainer(.standard, confirmed: false);
+      final ProviderContainer container = createContainer(.standard, confirmed: false);
 
-      bool changed = await container.read(ezkeyApprovalSecurityProvider.notifier).change(.confirmBeforeApprovals, _NoInteraction());
+      final bool changed = await container.read(ezkeyApprovalSecurityProvider.notifier).change(.confirmBeforeApprovals, _NoInteraction());
 
       expect(changed, isTrue);
       expect(downgradeConfirmations, 0);
@@ -98,9 +98,9 @@ void main() {
     });
 
     test('lowering the protection asks for a confirmation first', () async {
-      ProviderContainer container = createContainer(.confirmBeforeApprovals, confirmed: true);
+      final ProviderContainer container = createContainer(.confirmBeforeApprovals, confirmed: true);
 
-      bool changed = await container.read(ezkeyApprovalSecurityProvider.notifier).change(.standard, _NoInteraction());
+      final bool changed = await container.read(ezkeyApprovalSecurityProvider.notifier).change(.standard, _NoInteraction());
 
       expect(changed, isTrue);
       expect(downgradeConfirmations, 1);
@@ -108,9 +108,9 @@ void main() {
     });
 
     test('a cancelled confirmation keeps the protection', () async {
-      ProviderContainer container = createContainer(.confirmBeforeApprovals, confirmed: false);
+      final ProviderContainer container = createContainer(.confirmBeforeApprovals, confirmed: false);
 
-      bool changed = await container.read(ezkeyApprovalSecurityProvider.notifier).change(.standard, _NoInteraction());
+      final bool changed = await container.read(ezkeyApprovalSecurityProvider.notifier).change(.standard, _NoInteraction());
 
       expect(changed, isFalse);
       expect(container.read(ezkeyApprovalSecurityProvider).value, EzkeyApprovalSecurity.confirmBeforeApprovals);
@@ -123,10 +123,10 @@ void main() {
     /// Returns a container whose app unlock method is [unlockMethod] and whose device prompt answers [deviceConfirmed].
     ProviderContainer createContainer(_FixedUnlockMethod unlockMethod, {bool deviceConfirmed = true}) {
       deviceConfirmations = 0;
-      ProviderContainer container = ProviderContainer(
+      final ProviderContainer container = ProviderContainer(
         overrides: [
           appUnlockMethodSettingsEntryProvider.overrideWith(() => unlockMethod),
-          ezkeyDeviceConfirmationProvider.overrideWithValue(({required String title, required String reason}) async {
+          ezkeyDeviceConfirmationProvider.overrideWithValue(({required title, required reason}) async {
             deviceConfirmations++;
             return deviceConfirmed;
           }),
@@ -138,10 +138,10 @@ void main() {
     }
 
     test('asks for the master password as a sensitive action when the app uses it', () async {
-      _FixedUnlockMethod unlockMethod = _FixedUnlockMethod(MasterPasswordAppUnlockMethod.kMethodId, const ResultSuccess(value: 'password'));
-      ProviderContainer container = createContainer(unlockMethod);
+      final _FixedUnlockMethod unlockMethod = _FixedUnlockMethod(MasterPasswordAppUnlockMethod.kMethodId, const ResultSuccess(value: 'password'));
+      final ProviderContainer container = createContainer(unlockMethod);
 
-      bool confirmed = await container.read(ezkeyApprovalConfirmationProvider)(_NoInteraction());
+      final bool confirmed = await container.read(ezkeyApprovalConfirmationProvider)(_NoInteraction());
 
       expect(confirmed, isTrue);
       expect(unlockMethod.reasons, [UnlockReason.sensibleAction]);
@@ -149,11 +149,11 @@ void main() {
     });
 
     test('a wrong or cancelled app unlock refuses the confirmation', () async {
-      _FixedUnlockMethod unlockMethod = _FixedUnlockMethod(LocalAuthenticationAppUnlockMethod.kMethodId, const ResultCancelled());
-      ProviderContainer container = createContainer(unlockMethod);
+      final _FixedUnlockMethod unlockMethod = _FixedUnlockMethod(LocalAuthenticationAppUnlockMethod.kMethodId, const ResultCancelled());
+      final ProviderContainer container = createContainer(unlockMethod);
 
-      bool approval = await container.read(ezkeyApprovalConfirmationProvider)(_NoInteraction());
-      bool downgrade = await container.read(ezkeyDowngradeConfirmationProvider)(_NoInteraction());
+      final bool approval = await container.read(ezkeyApprovalConfirmationProvider)(_NoInteraction());
+      final bool downgrade = await container.read(ezkeyDowngradeConfirmationProvider)(_NoInteraction());
 
       expect(approval, isFalse);
       expect(downgrade, isFalse);
@@ -161,10 +161,10 @@ void main() {
     });
 
     test('asks for the device credential when the app has no unlock method', () async {
-      _FixedUnlockMethod unlockMethod = _FixedUnlockMethod(NoneAppUnlockMethod.kMethodId, const ResultSuccess());
-      ProviderContainer container = createContainer(unlockMethod, deviceConfirmed: false);
+      final _FixedUnlockMethod unlockMethod = _FixedUnlockMethod(NoneAppUnlockMethod.kMethodId, const ResultSuccess());
+      final ProviderContainer container = createContainer(unlockMethod, deviceConfirmed: false);
 
-      bool confirmed = await container.read(ezkeyApprovalConfirmationProvider)(_NoInteraction());
+      final bool confirmed = await container.read(ezkeyApprovalConfirmationProvider)(_NoInteraction());
 
       expect(confirmed, isFalse);
       expect(deviceConfirmations, 1);

@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:ezkey_dart/ezkey_dart.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/ezkey/installations.dart';
 import 'package:open_authenticator/ezkey/local_confirmation.dart';
 import 'package:open_authenticator/ezkey/pages/approval_page.dart';
@@ -76,7 +76,7 @@ void main() {
   setUp(() async {
     api = _RecordingAuthApi();
     confirmations = 0;
-    SoftwareDeviceKeyStore keyStore = SoftwareDeviceKeyStore();
+    final SoftwareDeviceKeyStore keyStore = SoftwareDeviceKeyStore();
     await keyStore.generateKeyPair('test-key');
     enrollment = testEnrollment(5, deviceKeyAlias: 'test-key');
     attempt = testAttempt();
@@ -119,7 +119,7 @@ void main() {
 
   /// Makes the server answer the decision with [result], signed by the enrollment's integration.
   Future<void> answerSigned(WidgetTester tester, String result) async {
-    Ed25519TestKeyPair integrationKey = (await tester.runAsync(generateEd25519TestKeyPair))!;
+    final Ed25519TestKeyPair integrationKey = (await tester.runAsync(generateEd25519TestKeyPair))!;
     enrollment = EzkeyEnrollment.fromJson({
       ...enrollment.toJson(),
       'integrationPublicKey': integrationKey.publicKeyBase64Url,

@@ -5,18 +5,18 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:open_authenticator/core/backup/backup.dart';
+import 'package:open_authenticator/core/crypto/salt.dart';
+import 'package:open_authenticator/core/crypto/store.dart';
+import 'package:open_authenticator/core/totp/algorithm.dart';
+import 'package:open_authenticator/core/totp/decrypted.dart';
+import 'package:open_authenticator/core/totp/json.dart';
+import 'package:open_authenticator/core/totp/repository.dart';
+import 'package:open_authenticator/core/totp/totp.dart';
 import 'package:open_authenticator/ezkey/backup_inventory.dart';
 import 'package:open_authenticator/ezkey/enrollment_store.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
 import 'package:open_authenticator/ezkey/to_reenroll.dart';
-import 'package:open_authenticator/model/backup/backup.dart';
-import 'package:open_authenticator/model/crypto/salt.dart';
-import 'package:open_authenticator/model/crypto/store.dart';
-import 'package:open_authenticator/model/totp/algorithm.dart';
-import 'package:open_authenticator/model/totp/decrypted.dart';
-import 'package:open_authenticator/model/totp/json.dart';
-import 'package:open_authenticator/model/totp/repository.dart';
-import 'package:open_authenticator/model/totp/totp.dart';
 import 'package:open_authenticator/utils/platform.dart' as app;
 import 'package:open_authenticator/utils/result/result.dart';
 
@@ -71,7 +71,7 @@ class _FixedCryptoStore extends CryptoStoreNotifier {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  TestDefaultBinaryMessenger messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+  final TestDefaultBinaryMessenger messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
 
   late CryptoStore deviceStore;
   late Directory documents;
@@ -79,7 +79,7 @@ void main() {
   late List<List<Totp>> replacements;
   late ProviderContainer container;
 
-  setUpAll(() => deviceStore = CryptoStore.fromPassword('device-password', Salt.generate()));
+  setUpAll(() async => deviceStore = await CryptoStore.fromPasswordInIsolate('device-password', Salt.generate()));
 
   /// Returns a decrypted TOTP named [label], encrypted with the device store.
   Totp totp(String label) => DecryptedTotp.create(
@@ -107,7 +107,7 @@ void main() {
   }
 
   /// Returns the files in the backups directory.
-  List<String> backupFiles() => backups.existsSync() ? [for (FileSystemEntity entity in backups.listSync()) entity.uri.pathSegments.last] : [];
+  List<String> backupFiles() => backups.existsSync() ? [for (final FileSystemEntity entity in backups.listSync()) entity.uri.pathSegments.last] : [];
 
   setUp(() {
     documents = Directory.systemTemp.createTempSync('oa_backup_test');
@@ -123,9 +123,9 @@ void main() {
 
   group('BackupStore.doBackup', () {
     test('writes one timestamped .bak file in the app\'s backups directory and lists it', () async {
-      BackupStore store = backupStore(totps: [totp('alice')]);
+      final BackupStore store = backupStore(totps: [totp('alice')]);
 
-      Result<Backup> result = await store.doBackup('backup-password');
+      final Result<Backup> result = await store.doBackup('backup-password');
 
       expect(result, isA<ResultSuccess<Backup>>());
       expect(backupFiles(), [matches(RegExp(r'^\d{13}\.bak$'))]);
@@ -133,14 +133,14 @@ void main() {
     });
 
     test('holds exactly the password signature, the salt and the TOTPs, and nothing else', () async {
-      BackupStore store = backupStore(totps: [totp('alice'), totp('bob')]);
+      final BackupStore store = backupStore(totps: [totp('alice'), totp('bob')]);
 
-      Backup backup = ((await store.doBackup('backup-password')) as ResultSuccess<Backup>).value;
-      Map<String, dynamic> content = jsonDecode(backup.backupPath.file.readAsStringSync());
+      final Backup backup = ((await store.doBackup('backup-password')) as ResultSuccess<Backup>).value;
+      final Map<String, dynamic> content = jsonDecode(backup.backupPath.file.readAsStringSync());
 
       expect(content.keys, unorderedEquals([Backup.kPasswordSignatureKey, Backup.kSaltKey, Backup.kTotpsKey]));
       expect(content[Backup.kTotpsKey], hasLength(2));
-      for (Map<String, dynamic> entry in (content[Backup.kTotpsKey] as List).cast<Map<String, dynamic>>()) {
+      for (final Map<String, dynamic> entry in (content[Backup.kTotpsKey] as List).cast<Map<String, dynamic>>()) {
         expect(
           entry.keys,
           everyElement(
@@ -162,21 +162,21 @@ void main() {
     });
 
     test('encrypts the TOTPs with the backup password, not with the device key', () async {
-      BackupStore store = backupStore(totps: [totp('alice')]);
+      final BackupStore store = backupStore(totps: [totp('alice')]);
 
-      Backup backup = ((await store.doBackup('backup-password')) as ResultSuccess<Backup>).value;
-      Map<String, dynamic> content = jsonDecode(backup.backupPath.file.readAsStringSync());
-      Totp saved = JsonTotp.fromJson((content[Backup.kTotpsKey] as List).first);
-      CryptoStore backupKey = CryptoStore.fromPassword('backup-password', Salt.base64Decode(string: content[Backup.kSaltKey]));
+      final Backup backup = ((await store.doBackup('backup-password')) as ResultSuccess<Backup>).value;
+      final Map<String, dynamic> content = jsonDecode(backup.backupPath.file.readAsStringSync());
+      final Totp saved = JsonTotp.fromJson((content[Backup.kTotpsKey] as List).first);
+      final CryptoStore backupKey = await CryptoStore.fromPasswordInIsolate('backup-password', Salt.base64Decode(string: content[Backup.kSaltKey]));
 
       expect(saved.decrypt(deviceStore).isDecrypted, isFalse);
       expect((saved.decrypt(backupKey) as DecryptedTotp).secret, 'JBSWY3DPEHPK3PXP');
     });
 
     test('fails without a crypto store and writes nothing', () async {
-      BackupStore store = backupStore(totps: [totp('alice')], withCryptoStore: false);
+      final BackupStore store = backupStore(totps: [totp('alice')], withCryptoStore: false);
 
-      Result<Backup> result = await store.doBackup('backup-password');
+      final Result<Backup> result = await store.doBackup('backup-password');
 
       expect(result, isA<ResultError<Backup>>());
       expect(backupFiles(), isEmpty);
@@ -185,23 +185,23 @@ void main() {
 
   group('BackupStore.restoreBackup', () {
     test('replaces the TOTPs by the backup content, re-encrypted with the device key', () async {
-      BackupStore store = backupStore(totps: [totp('alice'), totp('bob')]);
-      Backup backup = ((await store.doBackup('backup-password')) as ResultSuccess<Backup>).value;
+      final BackupStore store = backupStore(totps: [totp('alice'), totp('bob')]);
+      final Backup backup = ((await store.doBackup('backup-password')) as ResultSuccess<Backup>).value;
 
-      Result<Backup> result = await store.restoreBackup(backup.backupPath, 'backup-password');
+      final Result<Backup> result = await store.restoreBackup(backup.backupPath, 'backup-password');
 
       expect(result, isA<ResultSuccess<Backup>>());
       expect(replacements, hasLength(1));
-      List<Totp> restored = replacements.single;
+      final List<Totp> restored = replacements.single;
       expect(restored.map((totp) => totp.uuid), unorderedEquals(['uuid-alice', 'uuid-bob']));
       expect(restored.map((totp) => (totp.decrypt(deviceStore) as DecryptedTotp).label), unorderedEquals(['alice', 'bob']));
     });
 
     test('rejects a wrong password and leaves the TOTPs alone', () async {
-      BackupStore store = backupStore(totps: [totp('alice')]);
-      Backup backup = ((await store.doBackup('backup-password')) as ResultSuccess<Backup>).value;
+      final BackupStore store = backupStore(totps: [totp('alice')]);
+      final Backup backup = ((await store.doBackup('backup-password')) as ResultSuccess<Backup>).value;
 
-      Result<Backup> result = await store.restoreBackup(backup.backupPath, 'wrong-password');
+      final Result<Backup> result = await store.restoreBackup(backup.backupPath, 'wrong-password');
 
       expect(result, isA<ResultError<Backup>>());
       expect((result as ResultError<Backup>).exception, isA<InvalidBackupPasswordException>());
@@ -211,18 +211,18 @@ void main() {
 
   group('BackupStore.import', () {
     test('copies the committed fixture, keeps its date, and restores both of its TOTPs', () async {
-      CryptoStore otherDevice = CryptoStore.fromPassword('another-device-password', Salt.generate());
-      BackupStore store = backupStore(store: otherDevice);
+      final CryptoStore otherDevice = await CryptoStore.fromPasswordInIsolate('another-device-password', Salt.generate());
+      final BackupStore store = backupStore(store: otherDevice);
       backups.createSync(recursive: true);
 
-      Result<BackupPath> imported = await store.import(File('test/model/backup/fixtures/1793500000000.bak'));
-      BackupPath path = (imported as ResultSuccess<BackupPath>).value;
-      Result<Backup> restored = await store.restoreBackup(path, _fixturePassword);
+      final Result<BackupPath> imported = await store.import(File('test/core/backup/fixtures/1793500000000.bak'));
+      final BackupPath path = (imported as ResultSuccess<BackupPath>).value;
+      final Result<Backup> restored = await store.restoreBackup(path, _fixturePassword);
 
       expect(path.timestamp, DateTime.fromMillisecondsSinceEpoch(1793500000000));
       expect(backupFiles(), ['1793500000000.bak']);
       expect(restored, isA<ResultSuccess<Backup>>());
-      Map<String, DecryptedTotp> totps = {for (Totp totp in replacements.single) totp.uuid: totp.decrypt(otherDevice) as DecryptedTotp};
+      final Map<String, DecryptedTotp> totps = {for (final Totp totp in replacements.single) totp.uuid: totp.decrypt(otherDevice) as DecryptedTotp};
       expect(totps.keys, unorderedEquals(['fixture-totp-1', 'fixture-totp-2']));
       expect([totps['fixture-totp-1']!.secret, totps['fixture-totp-1']!.label, totps['fixture-totp-1']!.issuer], ['JBSWY3DPEHPK3PXP', 'alice@example.com', 'Orbit']);
       expect([totps['fixture-totp-2']!.secret, totps['fixture-totp-2']!.label, totps['fixture-totp-2']!.issuer], ['GEZDGNBVGY3TQOJQ', 'bob', null]);
@@ -230,37 +230,37 @@ void main() {
     });
 
     test('ignores a key it does not know, such as the EzKey inventory, and still restores both TOTPs (ADR-0005)', () async {
-      CryptoStore otherDevice = CryptoStore.fromPassword('another-device-password', Salt.generate());
-      BackupStore store = backupStore(store: otherDevice);
+      final CryptoStore otherDevice = await CryptoStore.fromPasswordInIsolate('another-device-password', Salt.generate());
+      final BackupStore store = backupStore(store: otherDevice);
       backups.createSync(recursive: true);
-      Map<String, dynamic> content = jsonDecode(File('test/model/backup/fixtures/1793500000000.bak').readAsStringSync());
+      final Map<String, dynamic> content = jsonDecode(File('test/core/backup/fixtures/1793500000000.bak').readAsStringSync());
       content['ezkeyEnrollments'] = base64.encode(utf8.encode('opaque to upstream'));
-      File withInventory = File('${documents.path}${Platform.pathSeparator}1793500000000.bak')..writeAsStringSync(jsonEncode(content));
+      final File withInventory = File('${documents.path}${Platform.pathSeparator}1793500000000.bak')..writeAsStringSync(jsonEncode(content));
 
-      Result<BackupPath> imported = await store.import(withInventory);
-      Result<Backup> restored = await store.restoreBackup((imported as ResultSuccess<BackupPath>).value, _fixturePassword);
+      final Result<BackupPath> imported = await store.import(withInventory);
+      final Result<Backup> restored = await store.restoreBackup((imported as ResultSuccess<BackupPath>).value, _fixturePassword);
 
       expect(restored, isA<ResultSuccess<Backup>>());
-      expect([for (Totp totp in replacements.single) totp.uuid], unorderedEquals(['fixture-totp-1', 'fixture-totp-2']));
+      expect([for (final Totp totp in replacements.single) totp.uuid], unorderedEquals(['fixture-totp-1', 'fixture-totp-2']));
     });
 
-    test('fails while no backup was ever made, since the backups directory does not exist yet', () async {
-      BackupStore store = backupStore();
+    test('creates the backups directory when no backup was ever made', () async {
+      // Upstream fixed this quirk in the 2026-11 sync (#148): the import used to fail with a FileSystemException.
+      final BackupStore store = backupStore();
 
-      Result<BackupPath> result = await store.import(File('test/model/backup/fixtures/1793500000000.bak'));
+      final Result<BackupPath> result = await store.import(File('test/core/backup/fixtures/1793500000000.bak'));
 
-      expect(result, isA<ResultError<BackupPath>>());
-      expect((result as ResultError<BackupPath>).exception, isA<FileSystemException>());
-      expect(backups.existsSync(), isFalse);
+      expect(result, isA<ResultSuccess<BackupPath>>());
+      expect(backups.existsSync(), isTrue);
     });
 
     test('rejects a file that is not a backup and copies nothing', () async {
-      BackupStore store = backupStore();
-      File notJson = File('${documents.path}${Platform.pathSeparator}1793500000000.bak')..writeAsStringSync('not json');
-      File noSalt = File('${documents.path}${Platform.pathSeparator}other.bak')..writeAsStringSync(jsonEncode({Backup.kTotpsKey: [], Backup.kPasswordSignatureKey: 'x'}));
+      final BackupStore store = backupStore();
+      final File notJson = File('${documents.path}${Platform.pathSeparator}1793500000000.bak')..writeAsStringSync('not json');
+      final File noSalt = File('${documents.path}${Platform.pathSeparator}other.bak')..writeAsStringSync(jsonEncode({Backup.kTotpsKey: [], Backup.kPasswordSignatureKey: 'x'}));
 
-      Result<BackupPath> first = await store.import(notJson);
-      Result<BackupPath> second = await store.import(noSalt);
+      final Result<BackupPath> first = await store.import(notJson);
+      final Result<BackupPath> second = await store.import(noSalt);
 
       expect(first, isA<ResultError<BackupPath>>());
       expect(second, isA<ResultError<BackupPath>>());
@@ -271,12 +271,12 @@ void main() {
   group('BackupStore.build', () {
     test('lists only files named with 13 digits and .bak, newest first', () async {
       backups.createSync(recursive: true);
-      for (String name in ['1700000000000.bak', '1800000000000.bak', 'notes.txt', '123.bak', '17000000000000.json']) {
+      for (final String name in ['1700000000000.bak', '1800000000000.bak', 'notes.txt', '123.bak', '17000000000000.json']) {
         File('${backups.path}${Platform.pathSeparator}$name').writeAsStringSync('{}');
       }
       backupStore();
 
-      List<BackupPath> paths = await container.read(backupStoreProvider.future);
+      final List<BackupPath> paths = await container.read(backupStoreProvider.future);
 
       expect(paths.map((path) => path.filename), ['1800000000000.bak', '1700000000000.bak']);
     });
@@ -299,23 +299,23 @@ void main() {
     /// Imports [file] into a fresh container, then restores it with the fixture password. The EzKey
     /// enrollment store is [into], or an empty one.
     Future<Result<Backup>> importAndRestore(File file, {SecureEzkeyEnrollmentStore? into}) async {
-      BackupStore store = backupStore(store: CryptoStore.fromPassword('another-device-password', Salt.generate()), ezkeyStore: into);
+      final BackupStore store = backupStore(store: await CryptoStore.fromPasswordInIsolate('another-device-password', Salt.generate()), ezkeyStore: into);
       backups.createSync(recursive: true);
-      Result<BackupPath> imported = await store.import(file);
+      final Result<BackupPath> imported = await store.import(file);
       return store.restoreBackup((imported as ResultSuccess<BackupPath>).value, _fixturePassword);
     }
 
     test('a backup with enrollments has a 4th key, encrypted, that restores with the TOTPs', () async {
-      BackupStore store = backupStore(totps: [totp('alice')], ezkeyStore: ezkeyStore);
+      final BackupStore store = backupStore(totps: [totp('alice')], ezkeyStore: ezkeyStore);
 
-      Backup backup = ((await store.doBackup('backup-password')) as ResultSuccess<Backup>).value;
-      String raw = backup.backupPath.file.readAsStringSync();
-      Result<Backup> restored = await store.restoreBackup(backup.backupPath, 'backup-password');
+      final Backup backup = ((await store.doBackup('backup-password')) as ResultSuccess<Backup>).value;
+      final String raw = backup.backupPath.file.readAsStringSync();
+      final Result<Backup> restored = await store.restoreBackup(backup.backupPath, 'backup-password');
 
       expect((jsonDecode(raw) as Map<String, dynamic>).keys, unorderedEquals([Backup.kPasswordSignatureKey, Backup.kSaltKey, Backup.kTotpsKey, EzkeyBackupInventory.kJsonKey]));
       expect(raw, allOf(isNot(contains('Orbit Console')), isNot(contains('Alice Chen')), isNot(contains('proof-token'))));
-      expect([for (Totp totp in replacements.single) totp.uuid], ['uuid-alice']);
-      List<EzkeyInventoryEntry> entries = (restored as ResultSuccess<Backup>).value.ezkeyInventory!.entries;
+      expect([for (final Totp totp in replacements.single) totp.uuid], ['uuid-alice']);
+      final List<EzkeyInventoryEntry> entries = (restored as ResultSuccess<Backup>).value.ezkeyInventory!.entries;
       expect(
         entries.map((entry) => [entry.enrollmentId, entry.authApiHost, entry.integrationName]),
         unorderedEquals([
@@ -326,10 +326,10 @@ void main() {
     });
 
     test('a backup without enrollments keeps upstream\'s three keys', () async {
-      BackupStore store = backupStore(totps: [totp('alice')], ezkeyStore: SecureEzkeyEnrollmentStore(InMemorySecureValues()));
+      final BackupStore store = backupStore(totps: [totp('alice')], ezkeyStore: SecureEzkeyEnrollmentStore(InMemorySecureValues()));
 
-      Backup backup = ((await store.doBackup('backup-password')) as ResultSuccess<Backup>).value;
-      Map<String, dynamic> content = jsonDecode(backup.backupPath.file.readAsStringSync());
+      final Backup backup = ((await store.doBackup('backup-password')) as ResultSuccess<Backup>).value;
+      final Map<String, dynamic> content = jsonDecode(backup.backupPath.file.readAsStringSync());
 
       expect(content.keys, unorderedEquals([Backup.kPasswordSignatureKey, Backup.kSaltKey, Backup.kTotpsKey]));
       expect(backup.ezkeyInventory, isNull);
@@ -337,10 +337,10 @@ void main() {
 
     test('where EzKey is not available, the backup keeps upstream\'s three keys even with enrollments', () async {
       app.currentPlatform = .windows;
-      BackupStore store = backupStore(totps: [totp('alice')], ezkeyStore: ezkeyStore);
+      final BackupStore store = backupStore(totps: [totp('alice')], ezkeyStore: ezkeyStore);
 
-      Backup backup = ((await store.doBackup('backup-password')) as ResultSuccess<Backup>).value;
-      Map<String, dynamic> content = jsonDecode(backup.backupPath.file.readAsStringSync());
+      final Backup backup = ((await store.doBackup('backup-password')) as ResultSuccess<Backup>).value;
+      final Map<String, dynamic> content = jsonDecode(backup.backupPath.file.readAsStringSync());
 
       expect(content.keys, unorderedEquals([Backup.kPasswordSignatureKey, Backup.kSaltKey, Backup.kTotpsKey]));
     });
@@ -356,16 +356,16 @@ void main() {
       );
       container.listen(backupStoreProvider, (previous, next) {});
 
-      Result<Backup> result = await container.read(backupStoreProvider.notifier).doBackup('backup-password');
-      Map<String, dynamic> content = jsonDecode((result as ResultSuccess<Backup>).value.backupPath.file.readAsStringSync());
+      final Result<Backup> result = await container.read(backupStoreProvider.notifier).doBackup('backup-password');
+      final Map<String, dynamic> content = jsonDecode((result as ResultSuccess<Backup>).value.backupPath.file.readAsStringSync());
 
       expect(content.keys, unorderedEquals([Backup.kPasswordSignatureKey, Backup.kSaltKey, Backup.kTotpsKey]));
     });
 
     test('the committed fixture with an inventory restores both TOTPs and both entries', () async {
-      Result<Backup> restored = await importAndRestore(File('test/model/backup/fixtures/1793600000000.bak'));
+      final Result<Backup> restored = await importAndRestore(File('test/core/backup/fixtures/1793600000000.bak'));
 
-      expect([for (Totp totp in replacements.single) totp.uuid], unorderedEquals(['fixture-totp-1', 'fixture-totp-2']));
+      expect([for (final Totp totp in replacements.single) totp.uuid], unorderedEquals(['fixture-totp-1', 'fixture-totp-2']));
       expect((restored as ResultSuccess<Backup>).value.ezkeyInventory!.entries.map((entry) => entry.toJson()), [
         {'enrollmentId': 3, 'authApiHost': 'auth.orbit.example', 'enrolledAt': '2026-10-27T12:00:00.000Z', 'integrationName': 'Orbit Console', 'tenantName': 'Orbit', 'enrollmentName': 'Alice Chen'},
         {'enrollmentId': 7, 'authApiHost': 'localhost:8080', 'enrolledAt': '2026-11-02T09:30:00.000Z', 'integrationName': null, 'tenantName': null, 'enrollmentName': null},
@@ -373,20 +373,20 @@ void main() {
     });
 
     test('restoring the fixture lists both entries to re-enroll, once even when restored twice', () async {
-      SecureEzkeyEnrollmentStore empty = SecureEzkeyEnrollmentStore(InMemorySecureValues());
-      File fixture = File('test/model/backup/fixtures/1793600000000.bak');
+      final SecureEzkeyEnrollmentStore empty = SecureEzkeyEnrollmentStore(InMemorySecureValues());
+      final File fixture = File('test/core/backup/fixtures/1793600000000.bak');
 
       await importAndRestore(fixture, into: empty);
-      Result<BackupPath> again = await container.read(backupStoreProvider.notifier).import(fixture);
+      final Result<BackupPath> again = await container.read(backupStoreProvider.notifier).import(fixture);
       await container.read(backupStoreProvider.notifier).restoreBackup((again as ResultSuccess<BackupPath>).value, _fixturePassword);
 
       expect(EzkeyToReenrollStore(empty.values).read().map((entry) => entry.enrollmentId), [3, 7]);
     });
 
     test('restoring on the device that holds the enrollments lists nothing to re-enroll', () async {
-      BackupStore store = backupStore(totps: [totp('alice')], ezkeyStore: ezkeyStore);
+      final BackupStore store = backupStore(totps: [totp('alice')], ezkeyStore: ezkeyStore);
 
-      Backup backup = ((await store.doBackup('backup-password')) as ResultSuccess<Backup>).value;
+      final Backup backup = ((await store.doBackup('backup-password')) as ResultSuccess<Backup>).value;
       await store.restoreBackup(backup.backupPath, 'backup-password');
 
       expect(EzkeyToReenrollStore(ezkeyStore.values).read(), isEmpty);
@@ -394,9 +394,9 @@ void main() {
 
     test('where EzKey is not available, a restore lists nothing to re-enroll', () async {
       app.currentPlatform = .windows;
-      SecureEzkeyEnrollmentStore empty = SecureEzkeyEnrollmentStore(InMemorySecureValues());
+      final SecureEzkeyEnrollmentStore empty = SecureEzkeyEnrollmentStore(InMemorySecureValues());
 
-      Result<Backup> restored = await importAndRestore(File('test/model/backup/fixtures/1793600000000.bak'), into: empty);
+      final Result<Backup> restored = await importAndRestore(File('test/core/backup/fixtures/1793600000000.bak'), into: empty);
 
       expect(restored, isA<ResultSuccess<Backup>>());
       expect(EzkeyToReenrollStore(empty.values).read(), isEmpty);
@@ -412,26 +412,26 @@ void main() {
         ],
       );
       container.listen(backupStoreProvider, (previous, next) {});
-      BackupStore store = container.read(backupStoreProvider.notifier);
+      final BackupStore store = container.read(backupStoreProvider.notifier);
       backups.createSync(recursive: true);
 
-      Result<BackupPath> imported = await store.import(File('test/model/backup/fixtures/1793600000000.bak'));
-      Result<Backup> restored = await store.restoreBackup((imported as ResultSuccess<BackupPath>).value, _fixturePassword);
+      final Result<BackupPath> imported = await store.import(File('test/core/backup/fixtures/1793600000000.bak'));
+      final Result<Backup> restored = await store.restoreBackup((imported as ResultSuccess<BackupPath>).value, _fixturePassword);
 
       expect(restored, isA<ResultSuccess<Backup>>());
-      expect([for (Totp totp in replacements.single) totp.uuid], unorderedEquals(['fixture-totp-1', 'fixture-totp-2']));
+      expect([for (final Totp totp in replacements.single) totp.uuid], unorderedEquals(['fixture-totp-1', 'fixture-totp-2']));
     });
 
     test('a corrupted inventory is ignored and both TOTPs still restore', () async {
-      Map<String, dynamic> content = jsonDecode(File('test/model/backup/fixtures/1793600000000.bak').readAsStringSync());
-      String encrypted = content[EzkeyBackupInventory.kJsonKey];
+      final Map<String, dynamic> content = jsonDecode(File('test/core/backup/fixtures/1793600000000.bak').readAsStringSync());
+      final String encrypted = content[EzkeyBackupInventory.kJsonKey];
       content[EzkeyBackupInventory.kJsonKey] = '${encrypted.substring(0, 20)}${encrypted.substring(20, 24) == 'AAAA' ? 'BBBB' : 'AAAA'}${encrypted.substring(24)}';
-      File corrupted = File('${documents.path}${Platform.pathSeparator}1793600000000.bak')..writeAsStringSync(jsonEncode(content));
+      final File corrupted = File('${documents.path}${Platform.pathSeparator}1793600000000.bak')..writeAsStringSync(jsonEncode(content));
 
-      Result<Backup> restored = await importAndRestore(corrupted);
+      final Result<Backup> restored = await importAndRestore(corrupted);
 
       expect((restored as ResultSuccess<Backup>).value.ezkeyInventory, isNull);
-      expect([for (Totp totp in replacements.single) totp.uuid], unorderedEquals(['fixture-totp-1', 'fixture-totp-2']));
+      expect([for (final Totp totp in replacements.single) totp.uuid], unorderedEquals(['fixture-totp-1', 'fixture-totp-2']));
     });
   });
 }

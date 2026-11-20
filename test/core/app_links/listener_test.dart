@@ -1,7 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:open_authenticator/model/app_links/listener.dart';
+import 'package:open_authenticator/core/app_links/listener.dart';
 
 // Characterization tests (#55): they pin upstream's link listener as it is today, before EzKey links are
 // routed (harmonization H8). The listener does not filter: every link reaches its state, and the app's
@@ -16,7 +16,7 @@ const EventChannel _eventChannel = EventChannel('com.llfbandit.app_links/events'
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  TestDefaultBinaryMessenger messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+  final TestDefaultBinaryMessenger messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
 
   String? initialLink;
   MockStreamHandlerEventSink? events;
@@ -46,13 +46,13 @@ void main() {
     test('starts with the link that opened the app', () async {
       initialLink = 'otpauth://totp/alice?secret=JBSWY3DPEHPK3PXP';
 
-      Uri? uri = await container.read(appLinksListenerProvider.future);
+      final Uri? uri = await container.read(appLinksListenerProvider.future);
 
       expect(uri, Uri.parse('otpauth://totp/alice?secret=JBSWY3DPEHPK3PXP'));
     });
 
     test('starts with no link when the app was opened normally', () async {
-      Uri? uri = await container.read(appLinksListenerProvider.future);
+      final Uri? uri = await container.read(appLinksListenerProvider.future);
 
       expect(uri, isNull);
     });
@@ -87,11 +87,11 @@ void main() {
   group('AppLinksListener.consumeLink', () {
     test('returns true the first time a link is consumed, then false', () async {
       await container.read(appLinksListenerProvider.future);
-      AppLinksListener listener = container.read(appLinksListenerProvider.notifier);
-      Uri uri = Uri.parse('openauthenticator://purchases/success');
+      final AppLinksListener listener = container.read(appLinksListenerProvider.notifier);
+      final Uri uri = Uri.parse('openauthenticator://purchases/success');
 
-      bool first = listener.consumeLink(uri);
-      bool second = listener.consumeLink(Uri.parse('openauthenticator://purchases/success'));
+      final bool first = listener.consumeLink(uri);
+      final bool second = listener.consumeLink(Uri.parse('openauthenticator://purchases/success'));
 
       expect(first, isTrue);
       expect(second, isFalse);
@@ -99,7 +99,7 @@ void main() {
 
     test('compares links by their text, so a reordered query counts as another link', () async {
       await container.read(appLinksListenerProvider.future);
-      AppLinksListener listener = container.read(appLinksListenerProvider.notifier);
+      final AppLinksListener listener = container.read(appLinksListenerProvider.notifier);
 
       listener.consumeLink(Uri.parse('otpauth://totp/alice?secret=S&issuer=Orbit'));
 
@@ -108,11 +108,11 @@ void main() {
 
     test('remembers the consumed links when the listener is rebuilt, so the initial link is not handled twice', () async {
       initialLink = 'openauthenticator://purchases/success';
-      Uri uri = (await container.read(appLinksListenerProvider.future))!;
+      final Uri uri = (await container.read(appLinksListenerProvider.future))!;
       container.read(appLinksListenerProvider.notifier).consumeLink(uri);
 
       container.invalidate(appLinksListenerProvider);
-      Uri? rebuilt = await container.read(appLinksListenerProvider.future);
+      final Uri? rebuilt = await container.read(appLinksListenerProvider.future);
 
       expect(rebuilt, uri);
       expect(container.read(appLinksListenerProvider.notifier).consumeLink(uri), isFalse);

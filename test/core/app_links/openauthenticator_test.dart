@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:open_authenticator/model/app_links/app_auth.dart';
-import 'package:open_authenticator/model/app_links/app_purchases.dart';
-import 'package:open_authenticator/model/app_links/openauthenticator.dart';
+import 'package:open_authenticator/core/app_links/app_auth.dart';
+import 'package:open_authenticator/core/app_links/app_purchases.dart';
+import 'package:open_authenticator/core/app_links/openauthenticator.dart';
 
 // Characterization tests (#55): they pin upstream's `openauthenticator://` handling as it is today,
 // before EzKey links are routed (harmonization H8). The app routes a link to its handlers only when it
@@ -26,7 +26,7 @@ void main() {
     });
 
     test('an unknown host is valid but matches no handler, so the app consumes it and does nothing', () {
-      OpenAuthenticatorAppLink link = OpenAuthenticatorAppLink(Uri.parse('openauthenticator://ezkey/invitation?code=abc'));
+      final OpenAuthenticatorAppLink link = OpenAuthenticatorAppLink(Uri.parse('openauthenticator://ezkey/invitation?code=abc'));
 
       expect(link.isValid, isTrue);
       expect((link as AppAuthLink).isValid, isFalse);

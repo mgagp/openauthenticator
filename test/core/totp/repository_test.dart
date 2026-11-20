@@ -4,15 +4,16 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:open_authenticator/model/crypto/derived_key.dart';
-import 'package:open_authenticator/model/crypto/salt.dart';
-import 'package:open_authenticator/model/crypto/store.dart';
-import 'package:open_authenticator/model/database/database.dart';
-import 'package:open_authenticator/model/settings/storage_type.dart';
-import 'package:open_authenticator/model/totp/decrypted.dart';
-import 'package:open_authenticator/model/totp/image_cache.dart';
-import 'package:open_authenticator/model/totp/repository.dart';
-import 'package:open_authenticator/model/totp/totp.dart';
+import 'package:open_authenticator/core/crypto/derived_key.dart';
+import 'package:open_authenticator/core/crypto/salt.dart';
+import 'package:open_authenticator/core/crypto/store.dart';
+import 'package:open_authenticator/core/database/database.dart';
+import 'package:open_authenticator/core/settings/storage_type.dart';
+import 'package:open_authenticator/core/totp/decrypted.dart';
+import 'package:open_authenticator/core/totp/image_cache.dart';
+import 'package:open_authenticator/core/totp/repository.dart';
+import 'package:open_authenticator/core/totp/totp.dart';
+import 'package:open_authenticator/core/totp/undecryptable.dart';
 import 'package:open_authenticator/utils/result/result.dart';
 
 /// The plugin channel `getApplicationSupportDirectory` and `getTemporaryDirectory` (for SQLite's temporary files) go through.
@@ -48,8 +49,8 @@ class _MemoryDerivedKey extends DerivedKeyNotifier {
   FutureOr<DerivedKey?> build() => DerivedKey.fromPassword(_oldPassword, salt);
 
   @override
-  Future<DerivedKey?> updateFromPassword(String password, {bool? andWrite}) async {
-    DerivedKey key = DerivedKey.fromPassword(password, salt);
+  Future<DerivedKey?> updateFromPassword(String password, {bool? andWrite, CryptoStore? derivedStore}) async {
+    final DerivedKey key = DerivedKey.fromPassword(password, salt);
     state = AsyncData(key);
     return key;
   }
@@ -73,9 +74,16 @@ class _NoImageCache extends TotpImageCacheManager {
   Future<void> deleteCachedImages(Iterable<String> uuids) async {}
 }
 
+/// Reads back the stored TOTPs the way the tests check them (upstream removed `listUuids` and `getTotp`).
+extension on AppDatabase {
+  Future<List<String>> listUuids() async => [for (final Totp totp in await listTotps()) totp.uuid];
+
+  Future<Totp?> getTotp(String uuid) async => (await listTotps()).where((totp) => totp.uuid == uuid).firstOrNull;
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  TestDefaultBinaryMessenger messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+  final TestDefaultBinaryMessenger messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
   late Salt salt;
   late CryptoStore oldStore;
   late CryptoStore newStore;
@@ -83,10 +91,10 @@ void main() {
   late AppDatabase database;
   late ProviderContainer container;
 
-  setUpAll(() {
+  setUpAll(() async {
     salt = Salt.generate();
-    oldStore = CryptoStore.fromPassword(_oldPassword, salt);
-    newStore = CryptoStore.fromPassword(_newPassword, salt);
+    oldStore = await CryptoStore.fromPasswordInIsolate(_oldPassword, salt);
+    newStore = await CryptoStore.fromPasswordInIsolate(_newPassword, salt);
   });
 
   setUp(() {
@@ -129,12 +137,12 @@ void main() {
 
   group('TotpRepository', () {
     test('adds, updates and deletes TOTPs in the database', () async {
-      TotpRepository totps = repository();
+      final TotpRepository totps = repository();
       await container.read(totpRepositoryProvider.future);
 
       await totps.addTotps([totp('a'), totp('b')]);
       await totps.updateTotp(totp('a', updatedAt: DateTime.fromMillisecondsSinceEpoch(1762128000000)));
-      Result deleted = await totps.deleteTotp('b', dateTime: DateTime.fromMillisecondsSinceEpoch(1762128000000));
+      final Result deleted = await totps.deleteTotp('b', dateTime: DateTime.fromMillisecondsSinceEpoch(1762128000000));
 
       expect(deleted, isA<ResultSuccess>());
       expect(await database.listUuids(), ['a']);
@@ -144,9 +152,9 @@ void main() {
     });
 
     test('ignores a TOTP deleted after its last update, and restores one updated after its deletion', () async {
-      DateTime deletedAt = DateTime.fromMillisecondsSinceEpoch(1762128000000);
+      final DateTime deletedAt = DateTime.fromMillisecondsSinceEpoch(1762128000000);
       await database.markAsDeleted({'old': deletedAt, 'new': deletedAt});
-      TotpRepository totps = repository();
+      final TotpRepository totps = repository();
       await container.read(totpRepositoryProvider.future);
 
       await totps.addTotps([
@@ -160,16 +168,16 @@ void main() {
 
     test('changing the master password re-encrypts every TOTP with the new key', () async {
       await database.addTotps([totp('a'), totp('b')]);
-      TotpRepository totps = repository();
+      final TotpRepository totps = repository();
       await container.read(totpRepositoryProvider.future);
 
-      Result<String> result = await totps.changeMasterPassword(_newPassword);
-      List<Totp> stored = await database.listTotps();
+      final Result<String> result = await totps.changeMasterPassword(_newPassword);
+      final List<Totp> stored = await database.listTotps();
 
       expect(result, isA<ResultSuccess<String>>());
       expect(stored, hasLength(2));
-      for (Totp totp in stored) {
-        Totp withNewKey = totp.decrypt(newStore);
+      for (final Totp totp in stored) {
+        final Totp withNewKey = totp.decrypt(newStore);
         expect(withNewKey.isDecrypted, isTrue);
         expect((withNewKey as DecryptedTotp).secret, 'JBSWY3DPEHPK3PXP');
         expect(withNewKey.label, 'alice-${totp.uuid}');
@@ -179,19 +187,22 @@ void main() {
       expect((await container.read(totpRepositoryProvider.future)).every((totp) => totp.isDecrypted), isTrue);
     });
 
-    test('changing the master password keeps a TOTP that no key can decrypt as it is', () async {
-      CryptoStore foreignStore = CryptoStore.fromPassword('someone else', Salt.generate());
-      DecryptedTotp foreign = totp('foreign', store: foreignStore);
+    // Upstream changed this in the 2026-11 sync (#148): the change used to go through and leave the foreign
+    // TOTP as it was. It now aborts, reports the TOTP, and re-encrypts nothing.
+    test('changing the master password aborts when a TOTP cannot be decrypted, and re-encrypts nothing', () async {
+      final CryptoStore foreignStore = await CryptoStore.fromPasswordInIsolate('someone else', Salt.generate());
+      final DecryptedTotp foreign = totp('foreign', store: foreignStore);
       await database.addTotps([totp('a'), foreign]);
-      TotpRepository totps = repository();
+      final TotpRepository totps = repository();
       await container.read(totpRepositoryProvider.future);
 
-      await totps.changeMasterPassword(_newPassword);
+      final Result<String> result = await totps.changeMasterPassword(_newPassword);
 
-      Totp? kept = await database.getTotp('foreign');
+      expect(result, isA<ResultError<String>>());
+      expect((result as ResultError<String>).exception, isA<UndecryptableTotpsException>());
+      final Totp? kept = await database.getTotp('foreign');
       expect(kept!.encryptedData.encryptedSecret, foreign.encryptedData.encryptedSecret);
-      expect(kept.decrypt(foreignStore).isDecrypted, isTrue);
-      expect((await database.getTotp('a'))!.decrypt(newStore).isDecrypted, isTrue);
+      expect((await database.getTotp('a'))!.decrypt(oldStore).isDecrypted, isTrue);
     });
   });
 }

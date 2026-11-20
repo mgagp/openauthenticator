@@ -4,10 +4,10 @@ import 'package:drift/drift.dart' show OpeningDetails, QueryExecutor, QueryExecu
 import 'package:drift/native.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:open_authenticator/model/crypto/salt.dart';
-import 'package:open_authenticator/model/database/database.dart';
-import 'package:open_authenticator/model/totp/algorithm.dart';
-import 'package:open_authenticator/model/totp/totp.dart';
+import 'package:open_authenticator/core/crypto/salt.dart';
+import 'package:open_authenticator/core/database/database.dart';
+import 'package:open_authenticator/core/totp/algorithm.dart';
+import 'package:open_authenticator/core/totp/totp.dart';
 
 /// The plugin channel `getApplicationSupportDirectory` and `getTemporaryDirectory` (for SQLite's temporary files) go through.
 const MethodChannel _pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
@@ -49,7 +49,7 @@ Totp _totp(String uuid, {DateTime? updatedAt}) => Totp(
 
 /// Writes a schema version 1 database with one TOTP to [file].
 Future<void> _writeSchemaV1(File file) async {
-  NativeDatabase executor = NativeDatabase(
+  final NativeDatabase executor = NativeDatabase(
     file,
     setup: (database) {
       database.execute(_schemaV1Totps);
@@ -62,9 +62,16 @@ Future<void> _writeSchemaV1(File file) async {
   await executor.close();
 }
 
+/// Reads back the stored TOTPs the way the tests check them (upstream removed `listUuids` and `getTotp`).
+extension on AppDatabase {
+  Future<List<String>> listUuids() async => [for (final Totp totp in await listTotps()) totp.uuid];
+
+  Future<Totp?> getTotp(String uuid) async => (await listTotps()).where((totp) => totp.uuid == uuid).firstOrNull;
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  TestDefaultBinaryMessenger messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+  final TestDefaultBinaryMessenger messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
   late Directory support;
 
   /// The database file the app opens (debug suffix, since tests run in debug mode).
@@ -82,11 +89,11 @@ void main() {
 
   group('AppDatabase', () {
     test('stores, updates and deletes TOTPs', () async {
-      AppDatabase database = AppDatabase();
+      final AppDatabase database = AppDatabase();
 
       await database.addTotps([_totp('a'), _totp('b')]);
-      await database.updateTotp(_totp('a', updatedAt: DateTime.fromMillisecondsSinceEpoch(1762128000000)));
-      await database.deleteTotp('b');
+      await database.saveTotps([_totp('a', updatedAt: DateTime.fromMillisecondsSinceEpoch(1762128000000))]);
+      await database.deleteTotps({'b': DateTime.fromMillisecondsSinceEpoch(1762128000000)});
 
       expect(await database.listUuids(), ['a']);
       expect(await database.getTotp('a'), _totp('a', updatedAt: DateTime.fromMillisecondsSinceEpoch(1762128000000)));
@@ -95,11 +102,11 @@ void main() {
     });
 
     test('keeps the TOTPs in the file after it is closed', () async {
-      AppDatabase database = AppDatabase();
-      await database.addTotp(_totp('a'));
+      final AppDatabase database = AppDatabase();
+      await database.addTotps([_totp('a')]);
       await database.close();
 
-      AppDatabase reopened = AppDatabase();
+      final AppDatabase reopened = AppDatabase();
 
       expect(await reopened.listTotps(), [_totp('a')]);
       expect(appFile().existsSync(), isTrue);
@@ -107,8 +114,8 @@ void main() {
     });
 
     test('keeps deletion marks until they are removed, and replaces TOTPs with their tombstones', () async {
-      AppDatabase database = AppDatabase();
-      DateTime deletedAt = DateTime.fromMillisecondsSinceEpoch(1762041600000);
+      final AppDatabase database = AppDatabase();
+      final DateTime deletedAt = DateTime.fromMillisecondsSinceEpoch(1762041600000);
       await database.addTotps([_totp('a'), _totp('b')]);
 
       await database.replaceTotps([_totp('c')], {'a': deletedAt});
@@ -123,7 +130,7 @@ void main() {
     });
 
     test('clear removes every TOTP', () async {
-      AppDatabase database = AppDatabase();
+      final AppDatabase database = AppDatabase();
       await database.addTotps([_totp('a'), _totp('b')]);
 
       await database.clear();
@@ -135,8 +142,8 @@ void main() {
     test('migrates a schema version 1 database and keeps its TOTPs', () async {
       await _writeSchemaV1(appFile());
 
-      AppDatabase database = AppDatabase();
-      List<Totp> totps = await database.listTotps();
+      final AppDatabase database = AppDatabase();
+      final List<Totp> totps = await database.listTotps();
 
       expect(totps, hasLength(1));
       expect(totps.single.uuid, 'legacy-uuid');
@@ -152,17 +159,17 @@ void main() {
     });
 
     test('imports the legacy database file and renames it', () async {
-      File legacy = File('${support.path}${Platform.pathSeparator}totps_debug.sqlite');
+      final File legacy = File('${support.path}${Platform.pathSeparator}totps_debug.sqlite');
       await _writeSchemaV1(legacy);
 
-      AppDatabase database = AppDatabase();
-      List<String> uuids = await database.listUuids();
+      final AppDatabase database = AppDatabase();
+      final List<String> uuids = await database.listUuids();
       await database.close();
 
       expect(uuids, ['legacy-uuid']);
       expect(legacy.existsSync(), isFalse);
-      // Upstream quirk, pinned: the suffix already starts with a dash, so the renamed file gets two.
-      expect(File('${legacy.path}--migrated').existsSync(), isTrue);
+      // Upstream fixed this quirk in the 2026-11 sync (#148): the renamed file used to get two dashes.
+      expect(File('${legacy.path}-migrated').existsSync(), isTrue);
     });
   });
 }

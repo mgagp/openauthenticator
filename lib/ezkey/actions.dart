@@ -1,7 +1,7 @@
 import 'package:ezkey_dart/ezkey_dart.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/ezkey/messages.dart';
 import 'package:open_authenticator/ezkey/pages/approval_page.dart';
 import 'package:open_authenticator/ezkey/pages/enroll_page.dart';
@@ -30,7 +30,7 @@ class EzkeyActions {
 
   /// Scans an invitation QR code, then adds the enrollment.
   static Future<void> addFromScan(BuildContext context, WidgetRef ref) async {
-    String? code = await EzkeyScanPage.scan(context);
+    final String? code = await EzkeyScanPage.scan(context);
     if (code != null && context.mounted) {
       await addEnrollment(context, ref, code);
     }
@@ -38,7 +38,7 @@ class EzkeyActions {
 
   /// Asks for the invitation content, then adds the enrollment.
   static Future<void> addFromText(BuildContext context, WidgetRef ref) async {
-    String? code = await TextInputDialog.prompt(
+    final String? code = await TextInputDialog.prompt(
       context,
       title: translations.ezkey.page.paste.dialogTitle,
       message: translations.ezkey.page.paste.dialogMessage,
@@ -55,15 +55,15 @@ class EzkeyActions {
   /// Returns whether [EzkeyEnrollPage] was opened: `false` when the code is not an invitation, the user
   /// cancelled, or binding failed (the user was told).
   static Future<bool> addEnrollment(BuildContext context, WidgetRef ref, String rawCode, {bool replaceRoute = false}) async {
-    EnrollmentCode? code = _parse(context, rawCode);
+    final EnrollmentCode? code = _parse(context, rawCode);
     if (code == null) {
       return false;
     }
-    _ServerChoice? server = await _chooseServer(context, ref, code);
+    final _ServerChoice? server = await _chooseServer(context, ref, code);
     if (server == null || !context.mounted) {
       return false;
     }
-    EzkeyBoundEnrollment? bound = await _bind(context, ref, code, server.override);
+    final EzkeyBoundEnrollment? bound = await _bind(context, ref, code, server.override);
     if (bound == null || !context.mounted) {
       return false;
     }
@@ -86,9 +86,9 @@ class EzkeyActions {
   ///
   /// Returns `null` to stop: the address was refused (the user was told) or the user cancelled.
   static Future<_ServerChoice?> _chooseServer(BuildContext context, WidgetRef ref, EnrollmentCode code) async {
-    String? authUrl = code.authUrl;
+    final String? authUrl = code.authUrl;
     if (authUrl == null) {
-      String? serverUrl = await askServerUrl(context, ref);
+      final String? serverUrl = await askServerUrl(context, ref);
       return serverUrl == null ? null : (override: serverUrl);
     }
     if (await _acceptsServer(ref, authUrl)) {
@@ -107,7 +107,7 @@ class EzkeyActions {
   /// Returns `null` when binding failed (the user was told) or the screen is gone.
   static Future<EzkeyBoundEnrollment?> _bind(BuildContext context, WidgetRef ref, EnrollmentCode code, String? serverUrl) async {
     try {
-      EzkeyAuthenticator authenticator = await ref.read(ezkeyAuthenticatorProvider.future);
+      final EzkeyAuthenticator authenticator = await ref.read(ezkeyAuthenticatorProvider.future);
       if (!context.mounted) {
         return null;
       }
@@ -131,7 +131,7 @@ class EzkeyActions {
   /// the user chose. Runs on user action only: EzKey has no push and rejects automatic polling (EzKey
   /// ADR-0002).
   static Future<void> checkPending(BuildContext context, WidgetRef ref, EzkeyEnrollment enrollment) async {
-    EzkeyAuthenticator authenticator = await ref.read(ezkeyAuthenticatorProvider.future);
+    final EzkeyAuthenticator authenticator = await ref.read(ezkeyAuthenticatorProvider.future);
     if (!context.mounted) {
       return;
     }
@@ -162,17 +162,17 @@ class EzkeyActions {
 
   /// Whether this build's URL policy accepts [url] as the Auth API address (#109).
   static Future<bool> _acceptsServer(WidgetRef ref, String url) async {
-    EzkeyAuthenticator authenticator = await ref.read(ezkeyAuthenticatorProvider.future);
+    final EzkeyAuthenticator authenticator = await ref.read(ezkeyAuthenticatorProvider.future);
     return authenticator.urlPolicy.normalize(url) != null;
   }
 
   /// Asks for the Auth API address when the invitation does not carry one.
   static Future<String?> askServerUrl(BuildContext context, WidgetRef ref) async {
-    EzkeyAuthenticator authenticator = await ref.read(ezkeyAuthenticatorProvider.future);
+    final EzkeyAuthenticator authenticator = await ref.read(ezkeyAuthenticatorProvider.future);
     if (!context.mounted) {
       return null;
     }
-    String? url = await TextInputDialog.prompt(
+    final String? url = await TextInputDialog.prompt(
       context,
       title: translations.ezkey.server.title,
       message: translations.ezkey.server.message,

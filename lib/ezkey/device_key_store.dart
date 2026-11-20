@@ -12,7 +12,7 @@ const String ezkeyDeviceKeyAliasPrefix = 'ezkey-device-';
 /// (`lib/model/secure_storage.dart`), so debug and profile / release builds see different
 /// enrollment records, while the platform key store's keys are shared by both. Each key is marked with
 /// its namespace so that orphan cleanup never takes the other build's keys for orphans.
-final String ezkeyDeviceKeyNamespace = kDebugMode ? 'debug' : 'main';
+const String ezkeyDeviceKeyNamespace = kDebugMode ? 'debug' : 'main';
 
 /// Builds a fresh, unguessable device key alias for [enrollmentId], marked with [namespace]:
 /// `ezkey-device-<namespace>-<enrollmentId>-<random>`.
@@ -56,7 +56,7 @@ class NativeEzkeyDeviceKeyStore implements EzkeyDeviceKeyStore {
 
   @override
   Future<String> generateKeyPair(String alias) => _guard(() async {
-    EzkeyGeneratedKey key = await keystore.generateKeyPair(alias);
+    final EzkeyGeneratedKey key = await keystore.generateKeyPair(alias);
     _lastGeneratedTier = _tier(key.tier);
     return key.publicKey;
   });
@@ -64,7 +64,7 @@ class NativeEzkeyDeviceKeyStore implements EzkeyDeviceKeyStore {
   /// Returns where the key of [alias] lives, as the platform reports it now, or `null` when it does
   /// not exist.
   Future<DevicePrivateKeyStorageTier?> keyTier(String alias) => _guard(() async {
-    EzkeyKeyTier? tier = await keystore.keyTier(alias);
+    final EzkeyKeyTier? tier = await keystore.keyTier(alias);
     return tier == null ? null : _tier(tier);
   });
 

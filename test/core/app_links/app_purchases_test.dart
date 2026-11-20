@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:open_authenticator/model/app_links/app_purchases.dart';
-import 'package:open_authenticator/model/app_links/openauthenticator.dart';
+import 'package:open_authenticator/core/app_links/app_purchases.dart';
+import 'package:open_authenticator/core/app_links/openauthenticator.dart';
 
 // Characterization tests (#55): they pin upstream's `openauthenticator://purchases/` links as they are
 // today, before EzKey links are routed next to them (harmonization H8). Only the success form shows a

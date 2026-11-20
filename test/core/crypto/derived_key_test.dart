@@ -1,8 +1,8 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:open_authenticator/model/crypto/derived_key.dart';
-import 'package:open_authenticator/model/crypto/salt.dart';
+import 'package:open_authenticator/core/crypto/derived_key.dart';
+import 'package:open_authenticator/core/crypto/salt.dart';
 
 /// The password of the fixed vector.
 const String _password = 'correct horse';
@@ -17,13 +17,13 @@ final Salt _fixedSalt = Salt.fromRawValue(value: Uint8List.fromList(List<int>.ge
 void main() {
   group('DerivedKey', () {
     test('derives the same key as before from the same password and salt', () {
-      DerivedKey key = DerivedKey.fromPassword(_password, _fixedSalt);
+      final DerivedKey key = DerivedKey.fromPassword(_password, _fixedSalt);
 
       expect(key.toString(), _fixedDerivedKey);
     });
 
     test('derives a different key from another password or another salt', () {
-      DerivedKey key = DerivedKey.fromPassword(_password, _fixedSalt);
+      final DerivedKey key = DerivedKey.fromPassword(_password, _fixedSalt);
 
       expect(DerivedKey.fromPassword('correct horse!', _fixedSalt), isNot(key));
       expect(DerivedKey.fromPassword(_password, Salt.generate()), isNot(key));

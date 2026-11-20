@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:ezkey_dart/ezkey_dart.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/ezkey/identity.dart';
 import 'package:open_authenticator/ezkey/installations.dart';
 import 'package:open_authenticator/ezkey/local_confirmation.dart';
@@ -13,9 +13,9 @@ import 'package:open_authenticator/ezkey/providers.dart';
 import 'package:open_authenticator/ezkey/toast.dart';
 import 'package:open_authenticator/ezkey/widgets/information_tile.dart';
 import 'package:open_authenticator/ezkey/widgets/purpose_tile.dart';
+import 'package:open_authenticator/flows/app_unlock_interaction.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/spacing.dart';
-import 'package:open_authenticator/utils/app_unlock_interaction.dart';
 import 'package:open_authenticator/widgets/app_scaffold.dart';
 import 'package:open_authenticator/widgets/button_text.dart';
 import 'package:open_authenticator/widgets/clickable.dart';
@@ -68,8 +68,8 @@ class _EzkeyApprovalPageState extends ConsumerState<EzkeyApprovalPage> {
 
   @override
   Widget build(BuildContext context) {
-    PendingAuthAttempt attempt = widget.attempt;
-    bool canDecide = attempt.canDecide && !sending;
+    final PendingAuthAttempt attempt = widget.attempt;
+    final bool canDecide = attempt.canDecide && !sending;
     return PopScope(
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) {
@@ -119,7 +119,7 @@ class _EzkeyApprovalPageState extends ConsumerState<EzkeyApprovalPage> {
   /// Sends the decision, after the local confirmation when approving. The page stays open for another
   /// decision only while the attempt may still be decided.
   Future<void> decide({required bool approve}) async {
-    PendingAuthAttempt attempt = widget.attempt;
+    final PendingAuthAttempt attempt = widget.attempt;
     if (sending || !attempt.canDecide) {
       return;
     }
@@ -129,7 +129,7 @@ class _EzkeyApprovalPageState extends ConsumerState<EzkeyApprovalPage> {
       return;
     }
     setState(() => sending = true);
-    bool confirmed = !approve || await _confirmApproval();
+    final bool confirmed = !approve || await _confirmApproval();
     if (confirmed && mounted) {
       await _send(approve: approve);
     }
@@ -143,11 +143,11 @@ class _EzkeyApprovalPageState extends ConsumerState<EzkeyApprovalPage> {
   /// may still be decided.
   Future<void> _send({required bool approve}) async {
     try {
-      EzkeyAuthenticator authenticator = await ref.read(ezkeyAuthenticatorProvider.future);
+      final EzkeyAuthenticator authenticator = await ref.read(ezkeyAuthenticatorProvider.future);
       if (!mounted) {
         return;
       }
-      AuthAttemptOutcome outcome = await showWaitingOverlay(
+      final AuthAttemptOutcome outcome = await showWaitingOverlay(
         context,
         message: translations.ezkey.attempt.sending,
         future: _respond(authenticator, approve: approve),
@@ -172,7 +172,7 @@ class _EzkeyApprovalPageState extends ConsumerState<EzkeyApprovalPage> {
 
   /// Approves the attempt, with the typed code when it requires one, or denies it.
   Future<AuthAttemptOutcome> _respond(EzkeyAuthenticator authenticator, {required bool approve}) {
-    PendingAuthAttempt attempt = widget.attempt;
+    final PendingAuthAttempt attempt = widget.attempt;
     if (!approve) {
       return authenticator.deny(widget.enrollment, attempt);
     }
@@ -181,7 +181,7 @@ class _EzkeyApprovalPageState extends ConsumerState<EzkeyApprovalPage> {
 
   /// Shows the signed [result] of a decision: a success when the server did what the user decided.
   void _showResult(AuthAttemptResult result) {
-    String message = ezkeyAttemptResultMessage(result);
+    final String message = ezkeyAttemptResultMessage(result);
     if (result == AuthAttemptResult.approved || result == AuthAttemptResult.denied) {
       showEzkeySuccessToast(context, text: message);
     } else {
@@ -192,7 +192,7 @@ class _EzkeyApprovalPageState extends ConsumerState<EzkeyApprovalPage> {
   /// Returns whether the approval may go on: confirmed by the user, or no confirmation needed
   /// (contract §4: enrollment policy or user preference, see [ezkeyApprovalNeedsConfirmation]).
   Future<bool> _confirmApproval() async {
-    EzkeyApprovalSecurity security = await ref.read(ezkeyApprovalSecurityProvider.future);
+    final EzkeyApprovalSecurity security = await ref.read(ezkeyApprovalSecurityProvider.future);
     if (!ezkeyApprovalNeedsConfirmation(widget.enrollment, security)) {
       return true;
     }
@@ -205,13 +205,13 @@ class _EzkeyApprovalPageState extends ConsumerState<EzkeyApprovalPage> {
   /// Denies the attempt once when the user leaves it undecided (contract §3): no prompt, no retry,
   /// and navigation is never held back.
   void leaveAsDeny() {
-    PendingAuthAttempt attempt = widget.attempt;
+    final PendingAuthAttempt attempt = widget.attempt;
     if (!attempt.canDecide || attempt.isCertainlyExpired(DateTime.now().toUtc())) {
       return;
     }
-    EzkeyEnrollment enrollment = widget.enrollment;
-    Future<EzkeyAuthenticator> authenticator = ref.read(ezkeyAuthenticatorProvider.future);
-    BuildContext navigatorContext = Navigator.of(context).context;
+    final EzkeyEnrollment enrollment = widget.enrollment;
+    final Future<EzkeyAuthenticator> authenticator = ref.read(ezkeyAuthenticatorProvider.future);
+    final BuildContext navigatorContext = Navigator.of(context).context;
     unawaited(_denyOnLeave(authenticator, enrollment, attempt, navigatorContext));
   }
 
@@ -226,7 +226,7 @@ class _EzkeyApprovalPageState extends ConsumerState<EzkeyApprovalPage> {
 /// [navigatorContext], the navigator's own context.
 Future<void> _denyOnLeave(Future<EzkeyAuthenticator> authenticator, EzkeyEnrollment enrollment, PendingAuthAttempt attempt, BuildContext navigatorContext) async {
   try {
-    AuthAttemptOutcome outcome = await (await authenticator).deny(enrollment, attempt);
+    final AuthAttemptOutcome outcome = await (await authenticator).deny(enrollment, attempt);
     debugPrint('EzKey leave-as-deny sent: $outcome');
   } on EzkeyException catch (ex) {
     debugPrint('EzKey leave-as-deny failed: $ex');
@@ -252,7 +252,7 @@ class _AttemptDetails extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    EzkeyIdentity identity = EzkeyIdentity.of(enrollment);
+    final EzkeyIdentity identity = EzkeyIdentity.of(enrollment);
     return FTileGroup(
       children: [
         if (attempt.contextTitle != null || attempt.contextMessage != null)

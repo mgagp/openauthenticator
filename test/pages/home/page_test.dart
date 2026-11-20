@@ -1,28 +1,28 @@
 import 'dart:async';
 
 import 'package:ezkey_dart/ezkey_dart.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:open_authenticator/core/app_unlock/methods/method.dart';
+import 'package:open_authenticator/core/app_unlock/state.dart';
+import 'package:open_authenticator/core/backend/synchronization/queue.dart';
+import 'package:open_authenticator/core/backend/synchronization/status.dart';
+import 'package:open_authenticator/core/crypto/salt.dart';
+import 'package:open_authenticator/core/crypto/store.dart';
+import 'package:open_authenticator/core/settings/display_copy_button.dart';
+import 'package:open_authenticator/core/settings/display_search_button.dart';
+import 'package:open_authenticator/core/settings/storage_type.dart';
+import 'package:open_authenticator/core/totp/decrypted.dart';
+import 'package:open_authenticator/core/totp/image_cache.dart';
+import 'package:open_authenticator/core/totp/repository.dart';
+import 'package:open_authenticator/core/totp/totp.dart';
 import 'package:open_authenticator/ezkey/enrollment_store.dart';
 import 'package:open_authenticator/ezkey/home_zone.dart';
 import 'package:open_authenticator/ezkey/home_zone_state.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
-import 'package:open_authenticator/model/app_unlock/methods/method.dart';
-import 'package:open_authenticator/model/app_unlock/state.dart';
-import 'package:open_authenticator/model/backend/synchronization/queue.dart';
-import 'package:open_authenticator/model/backend/synchronization/status.dart';
-import 'package:open_authenticator/model/crypto/salt.dart';
-import 'package:open_authenticator/model/crypto/store.dart';
-import 'package:open_authenticator/model/settings/display_copy_button.dart';
-import 'package:open_authenticator/model/settings/display_search_button.dart';
-import 'package:open_authenticator/model/settings/storage_type.dart';
-import 'package:open_authenticator/model/totp/decrypted.dart';
-import 'package:open_authenticator/model/totp/image_cache.dart';
-import 'package:open_authenticator/model/totp/repository.dart';
-import 'package:open_authenticator/model/totp/totp.dart';
 import 'package:open_authenticator/pages/home/page.dart';
 import 'package:open_authenticator/pages/scan.dart';
 import 'package:open_authenticator/pages/totp.dart';
@@ -106,7 +106,7 @@ void main() {
   late CryptoStore cryptoStore;
   late List<String> pushedRoutes;
 
-  setUpAll(() => cryptoStore = CryptoStore.fromPassword('password', Salt.generate()));
+  setUpAll(() async => cryptoStore = await CryptoStore.fromPasswordInIsolate('password', Salt.generate()));
 
   setUp(() {
     platform = currentPlatform;
@@ -261,9 +261,9 @@ void main() {
       await unpump(tester);
     });
 
-    testWidgets('lowercases the query but not the TOTP: upper-case letters in a label are never matched', semanticsEnabled: false, (tester) async {
-      // Upstream behaviour as of 2026-10-31 (`_Search.search`), pinned on purpose. Noted for the
-      // harmonization dossier (H9); not changed here (upstream alignment).
+    testWidgets('matches the query whatever the case of the query and of the TOTP', semanticsEnabled: false, (tester) async {
+      // Upstream fixed the case-sensitive search in the 2026-11 sync (#148, `9b6d890`; was #145, harmonization H9).
+      // It used to lowercase the query only, so a query with the issuer's capitals found nothing.
       await pumpHome(tester, [totp('alice@example.com', issuer: 'GitHub'), totp('bob', issuer: 'atlas')]);
 
       await search(tester, 'ALICE');
@@ -273,13 +273,15 @@ void main() {
       await tester.enterText(find.byType(EditableText), 'GitHub');
       await tester.pump(const Duration(seconds: 1));
 
-      expect(find.text('alice@example.com'), findsNothing);
+      expect(find.text('alice@example.com'), findsWidgets);
+      expect(find.text('bob'), findsNothing);
 
-      // Control: the lower-case part of the same issuer is found.
-      await tester.enterText(find.byType(EditableText), 'it');
+      // A lower-case issuer is found with an upper-case query, and the other TOTP is filtered out.
+      await tester.enterText(find.byType(EditableText), 'ATLAS');
       await tester.pump(const Duration(seconds: 1));
 
-      expect(find.text('alice@example.com'), findsWidgets);
+      expect(find.text('bob'), findsWidgets);
+      expect(find.text('alice@example.com'), findsNothing);
 
       await unpump(tester);
     });

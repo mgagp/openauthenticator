@@ -1,9 +1,9 @@
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forui/forui.dart';
 import 'package:hashlib/hashlib.dart' as hashlib;
+import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 
 /// The master password the round sets during the intro.
@@ -43,7 +43,7 @@ Future<void> waitFor(WidgetTester tester, Finder finder, {int seconds = 20}) asy
 
 /// The texts on screen, to tell where the app is when a step fails.
 List<String> visibleTexts(WidgetTester tester) => [
-  for (Text text in tester.widgetList<Text>(find.byType(Text)))
+  for (final Text text in tester.widgetList<Text>(find.byType(Text)))
     if ((text.data ?? text.textSpan?.toPlainText() ?? '').trim().isNotEmpty) (text.data ?? text.textSpan!.toPlainText()).trim(),
 ];
 
@@ -87,7 +87,7 @@ Future<void> goBack(WidgetTester tester) async {
 
 /// Closes the open dialog if it has a Close button.
 Future<void> closeDialogIfAny(WidgetTester tester) async {
-  String close = materialLabels(tester).closeButtonLabel;
+  final String close = materialLabels(tester).closeButtonLabel;
   if (find.text(close).evaluate().isNotEmpty) {
     await tapLast(tester, find.text(close));
   }
@@ -155,9 +155,9 @@ Future<void> clearDataKeepingBackups(WidgetTester tester, String masterPassword)
 /// The only TOTP code with [digits] digits on screen, spaces removed.
 String shownCode(WidgetTester tester, int digits) {
   // The code is grouped with a (possibly non-breaking) space: keep the texts made of digits and spaces only.
-  RegExp grouped = RegExp(r'^[0-9\s]+$');
-  List<String> codes = [
-    for (Text text in tester.widgetList<Text>(find.byType(Text)))
+  final RegExp grouped = RegExp(r'^[0-9\s]+$');
+  final List<String> codes = [
+    for (final Text text in tester.widgetList<Text>(find.byType(Text)))
       if (grouped.hasMatch(text.data ?? '') && (text.data ?? '').replaceAll(RegExp(r'\s'), '').length == digits) (text.data ?? '').replaceAll(RegExp(r'\s'), ''),
   ];
   expect(codes, hasLength(1), reason: 'TOTP codes on screen: $codes');
@@ -167,7 +167,7 @@ String shownCode(WidgetTester tester, int digits) {
 /// Checks that the only 6-digit code on screen is the RFC 6238 SHA-1 code of the current period, reading
 /// it again once if a period boundary fell between the two reads (U5). Returns the code.
 Future<String> expectReferenceCode(WidgetTester tester) async {
-  hashlib.TOTP reference = hashlib.TOTP(utf8.encode(roundSha1SecretRaw));
+  final hashlib.TOTP reference = hashlib.TOTP(utf8.encode(roundSha1SecretRaw));
   String shown = shownCode(tester, 6);
   String expected = pad(reference.value(), 6);
   if (shown != expected) {

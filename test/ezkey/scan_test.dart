@@ -1,17 +1,17 @@
 import 'dart:async';
 
 import 'package:ezkey_dart/ezkey_dart.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:open_authenticator/core/crypto/salt.dart';
+import 'package:open_authenticator/core/crypto/store.dart';
 import 'package:open_authenticator/ezkey/pages/enroll_page.dart';
 import 'package:open_authenticator/ezkey/pages/scan_page.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
 import 'package:open_authenticator/ezkey/scan.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
-import 'package:open_authenticator/model/crypto/salt.dart';
-import 'package:open_authenticator/model/crypto/store.dart';
 import 'package:open_authenticator/pages/scan.dart';
 import 'package:open_authenticator/pages/totp.dart';
 import 'package:open_authenticator/themes.dart';
@@ -52,7 +52,7 @@ void main() {
 
   setUpAll(() async {
     integrationKey = await generateEd25519TestKeyPair();
-    cryptoStore = CryptoStore.fromPassword('password', Salt.generate());
+    cryptoStore = await CryptoStore.fromPasswordInIsolate('password', Salt.generate());
   });
 
   setUp(() {
@@ -107,7 +107,7 @@ void main() {
 
   /// Hands [content] to the open scanner as if the camera had read it, and returns whether it resumes.
   Future<bool> scan(WidgetTester tester, String content) async {
-    QrCodeScanner scanner = tester.widget<QrCodeScanner>(find.byType(QrCodeScanner));
+    final QrCodeScanner scanner = tester.widget<QrCodeScanner>(find.byType(QrCodeScanner));
     bool? resume;
     unawaited(scanner.onScan!(content).then((value) => resume = value));
     await settle(tester);
@@ -184,7 +184,7 @@ void main() {
       await enrollmentStore.save(testEnrollment(12, authApiBaseUrl: 'https://auth.example.com'));
       await pumpScanner(tester, ezkey: false);
 
-      bool resume = await scan(tester, _invitation);
+      final bool resume = await scan(tester, _invitation);
 
       expect(resume, isTrue);
       expect(find.text(translations.ezkey.error.alreadyEnrolled), findsOneWidget);
@@ -201,7 +201,7 @@ void main() {
       );
       await pumpScanner(tester, ezkey: false);
 
-      bool resume = await scan(tester, _localInvitation);
+      final bool resume = await scan(tester, _localInvitation);
 
       expect(resume, isTrue);
       expect(find.text(translations.ezkey.error.insecureServer), findsOneWidget);
@@ -226,7 +226,7 @@ void main() {
     testWidgets('a TOTP code still goes through upstream\'s flow', (tester) async {
       await pumpScanner(tester, ezkey: false);
 
-      bool resume = await scan(tester, _totpUri);
+      final bool resume = await scan(tester, _totpUri);
 
       expect(resume, isFalse);
       expect(pushedRouteNames, [TotpPage.name]);
@@ -237,7 +237,7 @@ void main() {
       currentPlatform = .windows;
       await pumpScanner(tester, ezkey: false);
 
-      bool resume = await scan(tester, _invitation);
+      final bool resume = await scan(tester, _invitation);
 
       expect(resume, isTrue);
       expect(find.text(translations.error.scan.noUri), findsOneWidget);
@@ -249,7 +249,7 @@ void main() {
     testWidgets('returns a scanned invitation', (tester) async {
       await pumpScanner(tester, ezkey: true);
 
-      bool resume = await scan(tester, _invitation);
+      final bool resume = await scan(tester, _invitation);
 
       expect(resume, isFalse);
       expect(await scanned, _invitation);
@@ -258,7 +258,7 @@ void main() {
     testWidgets('sends a TOTP code to upstream\'s TOTP page and returns nothing', (tester) async {
       await pumpScanner(tester, ezkey: true);
 
-      bool resume = await scan(tester, _totpUri);
+      final bool resume = await scan(tester, _totpUri);
 
       expect(resume, isFalse);
       expect(pushedRouteNames, [TotpPage.name]);
@@ -268,7 +268,7 @@ void main() {
     testWidgets('shows an error and resumes scanning on other content', (tester) async {
       await pumpScanner(tester, ezkey: true);
 
-      bool resume = await scan(tester, 'https://example.com');
+      final bool resume = await scan(tester, 'https://example.com');
 
       expect(resume, isTrue);
       expect(find.text(translations.ezkey.scan.notAnInvitation), findsOneWidget);

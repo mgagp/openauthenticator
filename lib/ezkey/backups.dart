@@ -28,8 +28,8 @@ Future<String> _withNote(WidgetRef ref, String message, String note) async {
     return message;
   }
   try {
-    SecureEzkeyEnrollmentStore store = await ref.read(ezkeyEnrollmentStoreProvider.future);
-    bool hasEnrollments = (await store.list()).isNotEmpty || store.unreadableLocalIds().isNotEmpty;
+    final SecureEzkeyEnrollmentStore store = await ref.read(ezkeyEnrollmentStoreProvider.future);
+    final bool hasEnrollments = (await store.list()).isNotEmpty || store.unreadableLocalIds().isNotEmpty;
     return hasEnrollments ? '$message\n\n$note' : message;
   } on Object catch (ex) {
     debugPrint('EzKey backup note skipped: $ex');

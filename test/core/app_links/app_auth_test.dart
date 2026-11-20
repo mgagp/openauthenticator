@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:open_authenticator/model/app_links/app_auth.dart';
-import 'package:open_authenticator/model/app_links/openauthenticator.dart';
+import 'package:open_authenticator/core/app_links/app_auth.dart';
+import 'package:open_authenticator/core/app_links/openauthenticator.dart';
 
 // Characterization tests (#55): they pin upstream's `openauthenticator://auth/` links as they are today,
 // before EzKey links are routed next to them (harmonization H8). The app sends an [AppAuthLink] to the
@@ -12,14 +12,14 @@ AppAuthLink auth(String text) => AppAuthLink(OpenAuthenticatorAppLink(Uri.parse(
 void main() {
   group('AppAuthLink', () {
     test('accepts openauthenticator://auth/provider/<id> and reads the provider id', () {
-      AppAuthLink link = auth('openauthenticator://auth/provider/google');
+      final AppAuthLink link = auth('openauthenticator://auth/provider/google');
 
       expect(link.isValid, isTrue);
       expect(link.providerId, 'google');
     });
 
     test('accepts extra path segments after the provider id', () {
-      AppAuthLink link = auth('openauthenticator://auth/provider/google/finish');
+      final AppAuthLink link = auth('openauthenticator://auth/provider/google/finish');
 
       expect(link.isValid, isTrue);
       expect(link.providerId, 'google');
@@ -47,7 +47,7 @@ void main() {
 
   group('FinishAuthAppLink', () {
     test('accepts .../finish with an authorization code and reads both parameters', () {
-      FinishAuthAppLink link = FinishAuthAppLink(auth('openauthenticator://auth/provider/google/finish?authorizationCode=abc&codeVerifier=xyz'));
+      final FinishAuthAppLink link = FinishAuthAppLink(auth('openauthenticator://auth/provider/google/finish?authorizationCode=abc&codeVerifier=xyz'));
 
       expect(link.isValid, isTrue);
       expect(link.providerId, 'google');
@@ -56,7 +56,7 @@ void main() {
     });
 
     test('has no code verifier when the parameter is missing', () {
-      FinishAuthAppLink link = FinishAuthAppLink(auth('openauthenticator://auth/provider/google/finish?authorizationCode=abc'));
+      final FinishAuthAppLink link = FinishAuthAppLink(auth('openauthenticator://auth/provider/google/finish?authorizationCode=abc'));
 
       expect(link.isValid, isTrue);
       expect(link.codeVerifier, isNull);
@@ -74,7 +74,7 @@ void main() {
 
   group('EmailSentAppLink', () {
     test('accepts /provider/email/sent with an email and reads every parameter', () {
-      EmailSentAppLink link = EmailSentAppLink(auth('openauthenticator://auth/provider/email/sent?email=alice%40example.com&cancelCode=k1&previously=true'));
+      final EmailSentAppLink link = EmailSentAppLink(auth('openauthenticator://auth/provider/email/sent?email=alice%40example.com&cancelCode=k1&previously=true'));
 
       expect(link.isValid, isTrue);
       expect(link.email, 'alice@example.com');

@@ -1,11 +1,11 @@
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forui/forui.dart';
 import 'package:hashlib/hashlib.dart' as hashlib;
 import 'package:integration_test/integration_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/main.dart' as app;
 import 'package:open_authenticator/widgets/dialog/text_input_dialog.dart';
@@ -59,11 +59,11 @@ Future<void> _setup(WidgetTester tester) async {
   // clipboard to every process while the session is locked, and the app does not catch that error:
   // probe the clipboard first, and record U6 as blocked rather than fail the round.
   // The code shown before the tap was checked against the reference; a period may roll over in between.
-  String before = await expectReferenceCode(tester);
+  final String before = await expectReferenceCode(tester);
   if (await _clipboardAvailable()) {
     await tapLast(tester, find.text('ManualCo'));
-    String? copied = (await Clipboard.getData(Clipboard.kTextPlain))?.text;
-    hashlib.TOTP reference = hashlib.TOTP(utf8.encode(roundSha1SecretRaw));
+    final String? copied = (await Clipboard.getData(Clipboard.kTextPlain))?.text;
+    final hashlib.TOTP reference = hashlib.TOTP(utf8.encode(roundSha1SecretRaw));
     expect([before, pad(reference.value(), 6)], contains(copied));
     report('U6', 'tap copied $copied');
   } else {
@@ -80,7 +80,7 @@ Future<void> _setup(WidgetTester tester) async {
   expect(find.text('ManualCo'), findsNothing);
   await tester.enterText(find.byType(EditableText).last, 'Manual');
   await settle(tester);
-  bool foundAsWritten = find.text('ManualCo').evaluate().isNotEmpty;
+  final bool foundAsWritten = find.text('ManualCo').evaluate().isNotEmpty;
   await tester.enterText(find.byType(EditableText).last, 'anual');
   await settle(tester);
   await tapLast(tester, find.text('ManualCo'));
@@ -93,7 +93,7 @@ Future<void> _setup(WidgetTester tester) async {
   await tapScrolled(tester, find.text(translations.settings.security.changeMasterPassword.title));
   await answerPasswordDialog(tester, roundMasterPassword);
   await waitFor(tester, find.text(translations.masterPassword.changeDialog.title));
-  Finder dialogFields = find.descendant(of: find.byType(Form), matching: find.byType(EditableText));
+  final Finder dialogFields = find.descendant(of: find.byType(Form), matching: find.byType(EditableText));
   await tester.enterText(dialogFields.at(0), roundNewMasterPassword);
   await tester.enterText(dialogFields.at(1), roundNewMasterPassword);
   await settle(tester);
@@ -125,17 +125,17 @@ Future<void> _setup(WidgetTester tester) async {
   await backupNow(tester);
   await tapScrolled(tester, find.text(translations.settings.backups.manageBackups.title));
   await waitFor(tester, find.byType(ExpandableTile));
-  int listed = find.byType(ExpandableTile).evaluate().length;
+  final int listed = find.byType(ExpandableTile).evaluate().length;
   await tapLast(tester, find.descendant(of: find.byType(ExpandableTile).first, matching: find.byIcon(FLucideIcons.chevronRight)));
   await tapLast(tester, find.text(translations.settings.backups.manageBackups.button.delete));
   await waitFor(tester, find.text(translations.settings.backups.manageBackups.deleteBackupConfirmationDialog.title));
   await tapLast(tester, find.text(okLabel(tester)));
   await settle(tester, seconds: 2);
-  int afterDelete = find.byType(ExpandableTile).evaluate().length;
+  final int afterDelete = find.byType(ExpandableTile).evaluate().length;
   await closeDialogIfAny(tester);
   await tapScrolled(tester, find.text(translations.settings.backups.manageBackups.title));
   await settle(tester, seconds: 2);
-  int afterReopen = find.byType(ExpandableTile).evaluate().length;
+  final int afterReopen = find.byType(ExpandableTile).evaluate().length;
   await closeDialogIfAny(tester);
   expect(listed, 1);
   expect(afterReopen, 0);
@@ -160,7 +160,7 @@ Future<void> _afterRestart(WidgetTester tester) async {
   report('U11', 'wrong password refused, new password unlocked');
 
   // U19, U10: the TOTP is still there, and decrypts with the changed master password.
-  String shown = await expectReferenceCode(tester);
+  final String shown = await expectReferenceCode(tester);
   report('U19', 'TOTP kept across the restart, code $shown matches');
 
   // U9: the settings are still there.
@@ -175,8 +175,8 @@ Future<void> _afterRestart(WidgetTester tester) async {
 
 /// Answers the master password prompt shown at start, opening it with the Unlock button if needed.
 Future<void> _unlockAtStart(WidgetTester tester, String password) async {
-  Finder unlock = find.text(translations.appUnlock.button.unlock);
-  Finder field = find.descendant(of: find.byType(MasterPasswordInputDialog), matching: find.byType(EditableText));
+  final Finder unlock = find.text(translations.appUnlock.button.unlock);
+  final Finder field = find.descendant(of: find.byType(MasterPasswordInputDialog), matching: find.byType(EditableText));
   for (int i = 0; i < 200 && field.evaluate().isEmpty; i++) {
     if (unlock.evaluate().isNotEmpty && i % 20 == 19) {
       await tester.tap(unlock.last);
@@ -204,7 +204,7 @@ Future<bool> _clipboardAvailable() async {
 
 /// Closes an error dialog left by a failed unlock, if any.
 Future<void> _closeErrorIfAny(WidgetTester tester) async {
-  for (String label in [okLabel(tester), materialLabels(tester).closeButtonLabel]) {
+  for (final String label in [okLabel(tester), materialLabels(tester).closeButtonLabel]) {
     if (find.text(label).evaluate().isNotEmpty && find.byType(EditableText).evaluate().isEmpty) {
       await tapLast(tester, find.text(label));
     }

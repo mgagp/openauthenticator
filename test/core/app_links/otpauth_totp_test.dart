@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:open_authenticator/model/app_links/otpauth_totp.dart';
-import 'package:open_authenticator/model/totp/algorithm.dart';
+import 'package:open_authenticator/core/app_links/otpauth_totp.dart';
+import 'package:open_authenticator/core/totp/algorithm.dart';
 
 // Characterization tests (#55): they pin upstream's `otpauth://totp/` handling as it is today,
 // before a unified scanner (harmonization H6) routes QR codes between TOTP and EzKey. The scanner and
@@ -8,7 +8,7 @@ import 'package:open_authenticator/model/totp/algorithm.dart';
 
 /// Parses [text] the way the scan page does, or returns `null`.
 OtpAuthTotpLink? scanned(String text) {
-  Uri? uri = Uri.tryParse(text);
+  final Uri? uri = Uri.tryParse(text);
   return uri == null ? null : OtpAuthTotpLink(uri);
 }
 
@@ -40,24 +40,27 @@ void main() {
     });
 
     test('rejects an EzKey invitation (JSON), so the TOTP scanner turns it away today', () {
-      OtpAuthTotpLink? link = scanned('{"enrollmentCode":"abc","authUrl":"https://ezkey.example"}');
+      final OtpAuthTotpLink? link = scanned('{"enrollmentCode":"abc","authUrl":"https://ezkey.example"}');
 
       expect(link?.isValid ?? false, isFalse);
     });
   });
 
   group('OtpAuthTotpLink fields', () {
-    test('reads the label from the path, decoded, without the leading slash', () {
-      OtpAuthTotpLink link = scanned('otpauth://totp/Orbit%20Console:alice%40example.com?secret=S')!;
+    test('reads the label from the path, decoded, and splits off its "issuer:" prefix', () {
+      final OtpAuthTotpLink link = scanned('otpauth://totp/Orbit%20Console:alice%40example.com?secret=S')!;
 
-      expect(link.label, 'Orbit Console:alice@example.com');
+      expect(link.label, 'alice@example.com');
+      expect(link.issuer, 'Orbit Console');
     });
 
-    test('keeps an "issuer:" prefix in the label and takes the issuer from the query only', () {
-      OtpAuthTotpLink link = scanned('otpauth://totp/Orbit:alice?secret=S')!;
+    test('takes the issuer from the label prefix when the query has none, and keeps the label whole when the query names another', () {
+      // Upstream changed this in the 2026-11 sync (#148, `ff1c9aa`): the prefix used to stay in the label.
+      final OtpAuthTotpLink prefixOnly = scanned('otpauth://totp/Orbit:alice?secret=S')!;
+      final OtpAuthTotpLink otherIssuer = scanned('otpauth://totp/Orbit:alice?secret=S&issuer=Nova')!;
 
-      expect(link.label, 'Orbit:alice');
-      expect(link.issuer, isNull);
+      expect((prefixOnly.label, prefixOnly.issuer), ('alice', 'Orbit'));
+      expect((otherIssuer.label, otherIssuer.issuer), ('Orbit:alice', 'Nova'));
     });
 
     test('decodes "+" in the query as a space', () {
@@ -76,7 +79,7 @@ void main() {
     });
 
     test('reads digits and period as integers, and anything else as null', () {
-      OtpAuthTotpLink link = scanned('otpauth://totp/a?secret=S&digits=8&period=60')!;
+      final OtpAuthTotpLink link = scanned('otpauth://totp/a?secret=S&digits=8&period=60')!;
 
       expect(link.digits, 8);
       expect(link.validity, const Duration(seconds: 60));
@@ -88,7 +91,7 @@ void main() {
 
   group('OtpAuthTotpLink.build', () {
     test('builds a link that reads back to the same fields', () {
-      OtpAuthTotpLink link = OtpAuthTotpLink.build(
+      final OtpAuthTotpLink link = OtpAuthTotpLink.build(
         secret: 'JBSWY3DPEHPK3PXP',
         label: 'Orbit Console:alice@example.com',
         issuer: 'Orbit & Co',
@@ -97,7 +100,7 @@ void main() {
         validity: const Duration(seconds: 60),
       );
 
-      OtpAuthTotpLink readBack = scanned(link.toString())!;
+      final OtpAuthTotpLink readBack = scanned(link.toString())!;
 
       expect(readBack.isValid, isTrue);
       expect(readBack.encodedSecret, 'JBSWY3DPEHPK3PXP');
