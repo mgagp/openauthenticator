@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:open_authenticator/widgets/clickable.dart';
 
@@ -22,7 +22,7 @@ class SwitchCameraButton extends StatelessWidget {
         return const SizedBox.shrink();
       }
 
-      int? availableCameras = state.availableCameras;
+      final int? availableCameras = state.availableCameras;
 
       if (availableCameras != null && availableCameras < 2) {
         return const SizedBox.shrink();

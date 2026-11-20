@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
-import 'package:open_authenticator/model/migrator/migrator.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:open_authenticator/core/migrator/migrator.dart';
 
 /// Allows to change the migration state for debugging purposes.
 class MigrationStateSettingsEntryWidget extends ConsumerWidget with FTileMixin {
@@ -12,11 +12,11 @@ class MigrationStateSettingsEntryWidget extends ConsumerWidget with FTileMixin {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    MigrationState? migrationState = ref.watch(migratorProvider).value;
+    final MigrationState? migrationState = ref.watch(migratorProvider).value;
     return migrationState == null
         ? const SizedBox.shrink()
         : FSelectMenuTile<MigrationState>.fromMap(
-            {
+            const {
               'Not needed': .notNeeded,
               'Needed': .needed,
               'Done': .done,

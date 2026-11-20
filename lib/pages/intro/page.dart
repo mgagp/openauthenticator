@@ -1,10 +1,10 @@
 import 'package:animations/animations.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:open_authenticator/core/settings/show_intro.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
-import 'package:open_authenticator/model/settings/show_intro.dart';
 import 'package:open_authenticator/pages/home/page.dart';
 import 'package:open_authenticator/pages/intro/slides/log_in.dart';
 import 'package:open_authenticator/pages/intro/slides/password.dart';
@@ -47,7 +47,7 @@ class _IntroPageState extends ConsumerState<IntroPage> with BrightnessListener {
 
   /// Allows to adapt system UI overlay to the current brightness.
   void _adaptSystemUiOverlayToBrightness() {
-    Brightness brightness = currentBrightness;
+    final Brightness brightness = currentBrightness;
     SystemChrome.setSystemUIOverlayStyle(
       SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -64,7 +64,7 @@ class _IntroPageState extends ConsumerState<IntroPage> with BrightnessListener {
       center: true,
       asyncValue: ref.watch(currentIntroPageSlideProvider),
       footerBuilder: (slideState) {
-        bool hasFinished = slideState.slideIndex == slideState.slideCount - 1;
+        final bool hasFinished = slideState.slideIndex == slideState.slideCount - 1;
         return Padding(
           padding: .only(
             top: kSpace,
@@ -86,7 +86,7 @@ class _IntroPageState extends ConsumerState<IntroPage> with BrightnessListener {
                   mainAxisSize: .min,
                   onPress: slideState.canGoToNextSlide
                       ? () async {
-                          bool shouldFinish = await ref.read(currentIntroPageSlideProvider.notifier).goToNextSlide(context);
+                          final bool shouldFinish = await ref.read(currentIntroPageSlideProvider.notifier).goToNextSlide(context);
                           if (shouldFinish) {
                             finish();
                           }

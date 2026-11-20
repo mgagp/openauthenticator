@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
-import 'package:open_authenticator/model/purchases/contributor_plan.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:open_authenticator/core/purchases/contributor_plan.dart';
 
 /// Allows to change the Contributor Plan state for debugging purposes.
 class ContributorPlanStateSettingsEntryWidget extends ConsumerWidget with FTileMixin {
@@ -12,10 +12,10 @@ class ContributorPlanStateSettingsEntryWidget extends ConsumerWidget with FTileM
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    AsyncValue<ContributorPlanState> state = ref.watch(contributorPlanStateProvider);
+    final AsyncValue<ContributorPlanState> state = ref.watch(contributorPlanStateProvider);
     return FSelectMenuTile<ContributorPlanState>.fromMap(
       {
-        for (ContributorPlanState state in ContributorPlanState.values) state.name: state,
+        for (final ContributorPlanState state in ContributorPlanState.values) state.name: state,
       },
       selectControl: FMultiValueControl.managedRadio(
         initial: state.value ?? ContributorPlanState.impossible,

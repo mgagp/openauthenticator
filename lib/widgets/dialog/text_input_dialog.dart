@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:open_authenticator/core/password_verification/password_verification.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
-import 'package:open_authenticator/model/password_verification/password_verification.dart';
 import 'package:open_authenticator/utils/result/result.dart';
 import 'package:open_authenticator/widgets/button_text.dart';
 import 'package:open_authenticator/widgets/clickable.dart';
@@ -114,7 +114,7 @@ class _TextInputDialogState extends State<TextInputDialog> {
   @override
   Widget build(BuildContext context) {
     void onSubmit(String value) {
-      bool valid = onChanged(value);
+      final bool valid = onChanged(value);
       if (valid) {
         Navigator.pop(context, value);
       }
@@ -171,7 +171,7 @@ class _TextInputDialogState extends State<TextInputDialog> {
   bool onChanged(String newValue) {
     value = newValue;
     if (widget.validator != null) {
-      bool result = widget.validator!(newValue) == null;
+      final bool result = widget.validator!(newValue) == null;
       setState(() => valid = result);
       return result;
     }

@@ -3,13 +3,13 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
 import 'package:intl/intl.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:open_authenticator/core/backup/backup.dart';
 import 'package:open_authenticator/ezkey/backups.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
-import 'package:open_authenticator/model/backup/backup.dart';
 import 'package:open_authenticator/pages/settings/entries/widgets.dart';
 import 'package:open_authenticator/utils/platform.dart';
 import 'package:open_authenticator/utils/result/handler.dart';
@@ -33,8 +33,8 @@ class ManageBackupSettingsEntryWidget extends ConsumerWidget with FTileMixin {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    AsyncValue<List<BackupPath>> backups = ref.watch(backupStoreProvider);
-    int backupCount = backups.value?.length ?? 0;
+    final AsyncValue<List<BackupPath>> backups = ref.watch(backupStoreProvider);
+    final int backupCount = backups.value?.length ?? 0;
     return ClickableTile(
       suffix: const RightChevronSuffix(),
       prefix: const Icon(FLucideIcons.clock),
@@ -75,7 +75,7 @@ class _RestoreBackupDialogState extends ConsumerState<_RestoreBackupDialog> {
 
   @override
   Widget build(BuildContext context) {
-    AsyncValue<List<BackupPath>> backups = ref.watch(backupStoreProvider);
+    final AsyncValue<List<BackupPath>> backups = ref.watch(backupStoreProvider);
     List<Widget> children;
     switch (backups) {
       case AsyncData(:final value):
@@ -87,7 +87,7 @@ class _RestoreBackupDialogState extends ConsumerState<_RestoreBackupDialog> {
               textAlign: TextAlign.center,
               style: const TextStyle(fontStyle: .italic),
             ),
-          for (BackupPath backup in value)
+          for (final BackupPath backup in value)
             ExpandableTile(
               title: Text(
                 '${DateFormat.yMd(translations.$meta.locale.underscoreTag).format(backup.timestamp)} ${DateFormat.Hms(translations.$meta.locale.underscoreTag).format(backup.timestamp)}',
@@ -160,10 +160,10 @@ class _RestoreBackupDialogState extends ConsumerState<_RestoreBackupDialog> {
   Future<void> importBackup() async {
     Result result = const ResultCancelled();
     try {
-      List<PlatformFile>? files = await showWaitingOverlay(
+      final List<PlatformFile>? files = await showWaitingOverlay(
         context,
         future: (() async {
-          Directory directory = await BackupPath.getBackupsDirectory(create: true);
+          final Directory directory = await BackupPath.getBackupsDirectory(create: true);
           return FilePicker.pickFiles(
             dialogTitle: translations.settings.backups.manageBackups.importBackupDialogTitle,
             initialDirectory: directory.path,
@@ -174,7 +174,7 @@ class _RestoreBackupDialogState extends ConsumerState<_RestoreBackupDialog> {
           );
         })(),
       );
-      String? backupFilePath = files?.firstOrNull?.path;
+      final String? backupFilePath = files?.firstOrNull?.path;
       if (backupFilePath == null || !mounted) {
         return;
       }
@@ -193,11 +193,11 @@ class _RestoreBackupDialogState extends ConsumerState<_RestoreBackupDialog> {
 
   /// Asks the user for the given [backup] restoring.
   Future<void> restoreBackup(BackupPath backup) async {
-    String message = await withEzkeyRestoreNote(ref, translations.settings.backups.manageBackups.restoreBackupPasswordDialog.message);
+    final String message = await withEzkeyRestoreNote(ref, translations.settings.backups.manageBackups.restoreBackupPasswordDialog.message);
     if (!mounted) {
       return;
     }
-    String? password = await TextInputDialog.prompt(
+    final String? password = await TextInputDialog.prompt(
       context,
       title: translations.settings.backups.manageBackups.restoreBackupPasswordDialog.title,
       message: message,
@@ -206,7 +206,7 @@ class _RestoreBackupDialogState extends ConsumerState<_RestoreBackupDialog> {
     if (password == null || !mounted) {
       return;
     }
-    Result result = await showWaitingOverlay(
+    final Result result = await showWaitingOverlay(
       context,
       future: ref.read(backupStoreProvider.notifier).restoreBackup(backup, password),
     );
@@ -224,7 +224,7 @@ class _RestoreBackupDialogState extends ConsumerState<_RestoreBackupDialog> {
 
   /// Asks the user for the given [backup] share.
   Future<ShareResult> shareBackup(BackupPath backup) async {
-    RenderBox? box = shareActionKey.currentContext?.findRenderObject() as RenderBox?;
+    final RenderBox? box = shareActionKey.currentContext?.findRenderObject() as RenderBox?;
     return await SharePlus.instance.share(
       ShareParams(
         subject: translations.settings.backups.manageBackups.shareBackupDialog.subject,
@@ -244,17 +244,15 @@ class _RestoreBackupDialogState extends ConsumerState<_RestoreBackupDialog> {
   Future<void> exportBackup(BackupPath backup) async {
     Result result = const ResultCancelled();
     try {
-      Uri? outputFilePath = await showWaitingOverlay(
+      final Uri? outputFilePath = await showWaitingOverlay(
         context,
         future: (() async {
-          Directory directory = await BackupPath.getBackupsDirectory(create: true);
+          final Directory directory = await BackupPath.getBackupsDirectory(create: true);
           return FilePicker.saveFile(
             dialogTitle: translations.settings.backups.manageBackups.exportBackupDialogTitle,
             initialDirectory: directory.path,
             fileName: backup.filename,
             bytes: Uint8List(0),
-            type: FileType.custom,
-            allowedExtensions: ['bak'],
             windowsOptions: const WindowsOptions(lockParentWindow: true),
             linuxOptions: const LinuxOptions(lockParentWindow: true),
           );
@@ -276,7 +274,7 @@ class _RestoreBackupDialogState extends ConsumerState<_RestoreBackupDialog> {
 
   /// Asks the user for the given [backup] deletion.
   Future<void> deleteBackup(BackupPath backup) async {
-    bool result = await ConfirmationDialog.ask(
+    final bool result = await ConfirmationDialog.ask(
       context,
       title: translations.settings.backups.manageBackups.deleteBackupConfirmationDialog.title,
       message: translations.settings.backups.manageBackups.deleteBackupConfirmationDialog.message,
@@ -285,7 +283,7 @@ class _RestoreBackupDialogState extends ConsumerState<_RestoreBackupDialog> {
     if (!result) {
       return;
     }
-    Result deleteResult = await ref.read(backupStoreProvider.notifier).deleteBackup(backup);
+    final Result deleteResult = await ref.read(backupStoreProvider.notifier).deleteBackup(backup);
     if (mounted) {
       handleResult(context, deleteResult);
     }
