@@ -100,22 +100,22 @@ One checklist for the whole app, run on each platform and deployment model upstr
 | U1 | First launch: intro slides, master password set, home empty | emu | pass 11-13 | pass 11-13 (auto) | — | — | — |
 | U2 | Add a TOTP by camera scan of an `otpauth://` QR | device | pass 11-13 (Pixel) | — | — | — | — |
 | U3 | Add a TOTP by hand (secret, issuer, label, algorithm, digits, period) | emu | pass 11-13 | pass 11-13 (auto) | — | — | — |
-| U4 | Add a TOTP from an `otpauth://` link opened from outside the app | emu (`adb shell am start -d`) | pass 11-13 | — | — | — | — |
+| U4 | Add a TOTP from an `otpauth://` link opened from outside the app | emu (`adb shell am start -d`) | pass 11-13 | blocked 11-17 (see notes) | — | — | — |
 | U5 | The code shown matches a reference generator, and the countdown rolls over | emu | pass 11-13 | pass 11-13 (auto) | — | — | — |
-| U6 | Copy a code (tap, copy button setting) | emu | pass 11-13 | — | — | — | — |
+| U6 | Copy a code (tap, copy button setting) | emu | pass 11-13 | blocked 11-17 (session locked) | — | — | — |
 | U7 | Edit a TOTP, then delete it | emu | pass 11-13 | pass 11-13 (auto) | — | — | — |
-| U8 | Search (button setting, filter) | emu | pass 11-13 | — | — | — | — |
-| U9 | Settings: theme, language, display options persist after a restart | emu | pass 11-13 | — | — | — | — |
-| U10 | Change the master password; the TOTPs still decrypt | emu | pass 11-13 | — | — | — | — |
-| U11 | App unlock: master password at start, wrong then right password | emu | pass 11-13 | — | — | — | — |
+| U8 | Search (button setting, filter) | emu | pass 11-13 | pass 11-17 (auto; #145) | — | — | — |
+| U9 | Settings: theme, language, display options persist after a restart | emu | pass 11-13 | pass 11-17 (auto) | — | — | — |
+| U10 | Change the master password; the TOTPs still decrypt | emu | pass 11-13 | pass 11-17 (auto) | — | — | — |
+| U11 | App unlock: master password at start, wrong then right password | emu | pass 11-13 | pass 11-17 (auto) | — | — | — |
 | U12 | App unlock: biometric / system authentication | device | pass 11-13 (Pixel) | — | — | — | — |
 | U13 | Backup now, then restore it after deleting a TOTP; wrong backup password refused | emu | pass 11-13 | pass 11-13 (auto) | — | — | — |
-| U14 | Manage backups: list, delete | emu | fail #141 | — | — | — | — |
+| U14 | Manage backups: list, delete | emu | fail #141 | fail #141 (11-17, auto) | — | — | — |
 | U15 | Clear data: everything gone, back to the intro | emu | fail #141 | pass 11-13 (auto) | — | — | — |
 | U16 | Account sign-in (email link or a provider) and synchronization with the official backend | device | blocked 11-17 (account) | — | — | — | — |
-| U17 | `openauthenticator://` link handling (debug "Input link" entry) | emu | blocked 11-17 (account) | — | — | — | — |
+| U17 | `openauthenticator://` link handling (debug "Input link" entry) | emu | blocked 11-17 (account) | blocked 11-17 (see notes) | — | — | — |
 | U18 | Contributor Plan screen opens (no purchase) | emu | n/a (no RevenueCat key) | — | — | — | — |
-| U19 | App restart keeps the TOTPs and settings | emu | pass 11-13 | — | — | — | — |
+| U19 | App restart keeps the TOTPs and settings | emu | pass 11-13 | pass 11-17 (auto) | — | — | — |
 
 ### EzKey (where `ezkeySupportedPlatforms` offers it)
 
@@ -180,4 +180,25 @@ Windows observations:
 - Backups go to `Documents\Open Authenticator Backups (Debug)`, and Documents is redirected to OneDrive on this PC: upstream's backups, encrypted, are synced to the cloud without the app saying so. Noted only (upstream behaviour).
 - On desktop, the TOTP actions are in a `...` menu on each tile, and a tap copies the code (no copy button).
 
-Not run yet on Windows: U9 to U12, U14, U19 (to add to the test or check by hand); U2, U4, U17 and the MSIX package with its link schemes (`protocol_activation`); U16 (account).
+**Windows 11, debug, 2026-11-17 (#132), second part.** Run while the maintainer was away and the session was locked.
+
+- `integration_test/round/upstream_restart_test.dart` covers the items that need a restart, in two runs of the app: `--dart-define=ROUND_PHASE=setup` on a fresh install (U6, U8, U10, U9, U11, U14), then `ROUND_PHASE=restart` (U11 at start, U19, U9, U10 again; it ends by clearing the data). The shared steps moved to `round_helpers.dart`. The chain `upstream_round_test`, `setup`, `restart` passed from a clean state, about 3 min after the build.
+- `scripts/windows_round_data.ps1` saves, clears and restores the PC's debug data around a run (`-Action list|save|clear|restore`; the restore is checked byte for byte). This run saved the maintainer's debug data first and put it back at the end.
+- U6 blocked: Windows refuses the clipboard to every process while the session is locked (`OpenClipboard` error 5), and the app does not catch that error. The test probes the clipboard first and records U6 as blocked instead of failing. To redo with the session unlocked.
+- U8: upstream's search lowercases the query but not the issuer or label, so `Manual` finds nothing for `ManualCo`, while `anual` finds it (#145, upstream code, all platforms). The filter itself works.
+- U14: same as Android, #141 (the deleted backup stays listed until the dialog is reopened).
+- Test tooling: after a refused password, `enterText` no longer replaces the text of the master password dialog's field, so the test sets it through the field's controller.
+
+MSIX (U4, U17). Links only reach the Windows app through the MSIX package: `protocol_activation` in `msix_config` declares `rc-653ef11675`, `otpauth` and `openauthenticator`, and nothing registers them at runtime, so a plain `.exe` gets no links (by upstream's design). Without a certificate or admin rights, the package can be tried in Developer Mode from the debug build, with no change to `msix_config`:
+
+```sh
+scripts/with-env.sh dart run msix:build --debug --build-windows false      # writes AppxManifest.xml and the assets into build/windows/x64/runner/Debug
+powershell -Command "Add-AppxPackage -Register build\windows\x64\runner\Debug\AppxManifest.xml"
+powershell -Command "Get-AppxPackage 32411Skyost.OpenAuthenticator | Remove-AppxPackage"   # to remove it
+```
+
+- Checked on 2026-11-17: once registered, `HKEY_CLASSES_ROOT` has both schemes; opening an `otpauth://` or an `openauthenticator://` link starts the packaged app with the link as its argument; a second link while it runs starts a short-lived process that hands the link to the running instance and exits (`windows/runner/main.cpp`, `SendAppLinkToInstance`), leaving one process.
+- Not seen: the result inside the app. Launched outside `flutter test` while the session was locked, the app's window stays hidden (the runner shows it after the first frame), packaged or not. U4 and U17 stay blocked until a run with the session unlocked.
+- The package uses upstream's identity (`32411Skyost.OpenAuthenticator`), with no official app installed on this PC. It stays registered for the next run; remove it before installing the Store app.
+
+Still to do on Windows, with the maintainer at the PC: U12 (Windows Hello), U6, the in-app result of U4 and U17. Not applicable or blocked: U2 (no camera scanner on desktop; to confirm), U16 (account), U18 (no RevenueCat key).
