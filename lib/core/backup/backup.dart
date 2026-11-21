@@ -18,6 +18,7 @@ import 'package:open_authenticator/ezkey/to_reenroll.dart';
 import 'package:open_authenticator/i18n/localizable_exception.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/utils/json.dart';
+import 'package:open_authenticator/utils/result/reporter.dart';
 import 'package:open_authenticator/utils/result/result.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
@@ -35,6 +36,9 @@ class Backup implements Comparable<Backup> {
 
   /// The password signature JSON key.
   static const String kPasswordSignatureKey = 'passwordSignature';
+
+  /// The length in bytes of an HMAC-SHA-256 backup password signature.
+  static const int _signatureLength = 256 ~/ 8;
 
   /// The backup path.
   final BackupPath backupPath;
@@ -64,23 +68,36 @@ class Backup implements Comparable<Backup> {
   DateTime get dateTime => backupPath.timestamp;
 
   /// Reads the backup envelope and checks its required fields.
-  static Future<JsonMap> _readContent(File file) async {
+  static Future<({List totps, Salt salt, Uint8List signature})> _readContent(File file) async {
     if (!await file.exists()) {
       throw _BackupFileDoesNotExistException(path: file.path);
     }
-    final Object? data = jsonDecode(await file.readAsString());
-    if (data is! JsonMap || data[kTotpsKey] is! List || data[kSaltKey] is! String || data[kPasswordSignatureKey] is! String) {
+    try {
+      final Object? data = jsonDecode(utf8.decode(await file.readAsBytes()));
+      if (data case {kTotpsKey: final List totps, kSaltKey: final String encodedSalt, kPasswordSignatureKey: final String encodedSignature}) {
+        final salt = Salt.base64Decode(string: encodedSalt);
+        final Uint8List signature = base64.decode(encodedSignature);
+        // Argon2 requires a salt of at least eight bytes.
+        if (salt.value.length >= 8 && signature.length == _signatureLength) {
+          return (totps: totps, salt: salt, signature: signature);
+        }
+      }
+    } on FormatException {
       throw _InvalidBackupContentException();
     }
-    return data;
+    throw _InvalidBackupContentException();
   }
 
-  static Future<Backup> _create(String password, CryptoStore currentCryptoStore, List<Totp> totps, {List<EzkeyInventoryEntry> ezkeyEntries = const []}) async {
+  /// Encrypts [totps] with a new backup key, including an empty vault during setup.
+  static Future<Backup> _create(String password, CryptoStore? currentCryptoStore, List<Totp> totps, {List<EzkeyInventoryEntry> ezkeyEntries = const []}) async {
+    if (currentCryptoStore == null && totps.isNotEmpty) {
+      throw _CryptoError();
+    }
     final CryptoStore newStore = await CryptoStore.fromPasswordInIsolate(password, Salt.generate());
     final List<Totp> toBackup = [];
     final List<String> undecryptable = [];
     for (final Totp totp in totps) {
-      final DecryptedTotp? decryptedTotp = totp.changeEncryptionKey(currentCryptoStore, newStore);
+      final DecryptedTotp? decryptedTotp = totp.changeEncryptionKey(currentCryptoStore!, newStore);
       if (decryptedTotp == null) {
         undecryptable.add(totp.uuid);
       } else {
@@ -102,17 +119,16 @@ class Backup implements Comparable<Backup> {
   /// Read the backup content from the given file.
   static Future<Backup> _read(BackupPath backupPath, CryptoStore currentCryptoStore, String password) async {
     final File file = backupPath.file;
-    final JsonMap jsonData = await _readContent(file);
-    final CryptoStore cryptoStore = await CryptoStore.fromPasswordInIsolate(password, Salt.base64Decode(string: jsonData[kSaltKey]));
-    if (!(cryptoStore.hmacSecretKey.verify(base64.decode(jsonData[kPasswordSignatureKey]), utf8.encode(password)))) {
+    final (totps: List entries, :Salt salt, :Uint8List signature) = await _readContent(file);
+    final CryptoStore cryptoStore = await CryptoStore.fromPasswordInIsolate(password, salt);
+    if (!cryptoStore.hmacSecretKey.verify(signature, utf8.encode(password))) {
       throw InvalidBackupPasswordException();
     }
 
-    final List jsonTotps = jsonData[kTotpsKey];
     final List<Totp> totps = [];
     final uuids = <String>{};
     final int defaultUpdatedAt = (await file.lastModified()).millisecondsSinceEpoch;
-    for (final dynamic jsonTotp in jsonTotps) {
+    for (final dynamic jsonTotp in entries) {
       if (jsonTotp is! JsonMap) {
         throw _InvalidBackupContentException();
       }
@@ -135,7 +151,7 @@ class Backup implements Comparable<Backup> {
     }
     return Backup._(
       backupPath: backupPath,
-      passwordSignature: jsonData[kPasswordSignatureKey],
+      passwordSignature: base64.encode(signature),
       salt: cryptoStore.salt,
       totps: totps,
       ezkeyInventory: EzkeyBackupInventory.tryRead(jsonData, cryptoStore),
@@ -181,7 +197,7 @@ class _BackupFileDoesNotExistException extends LocalizableException {
 }
 
 /// Thrown when an invalid password has been provided.
-class InvalidBackupPasswordException extends LocalizableException {
+class InvalidBackupPasswordException extends LocalizableException with UserError {
   /// Creates a new invalid password exception instance.
   InvalidBackupPasswordException()
     : super(
@@ -190,7 +206,7 @@ class InvalidBackupPasswordException extends LocalizableException {
 }
 
 /// Thrown when the backup content is invalid.
-class _InvalidBackupContentException extends LocalizableException {
+class _InvalidBackupContentException extends LocalizableException with UserError {
   /// Creates a new invalid backup content exception instance.
   _InvalidBackupContentException()
     : super(

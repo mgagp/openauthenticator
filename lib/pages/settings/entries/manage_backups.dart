@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -70,9 +69,7 @@ class _RestoreBackupDialog extends ConsumerStatefulWidget {
 
 /// The restore backup dialog state.
 class _RestoreBackupDialogState extends ConsumerState<_RestoreBackupDialog> {
-  /// The list global key.
-  late GlobalKey shareActionKey = GlobalKey();
-
+  /// Lists the available backups and the actions for each file.
   @override
   Widget build(BuildContext context) {
     final AsyncValue<List<BackupPath>> backups = ref.watch(backupStoreProvider);
@@ -82,13 +79,13 @@ class _RestoreBackupDialogState extends ConsumerState<_RestoreBackupDialog> {
         children = [
           if (value.isEmpty)
             Text(
-              key: shareActionKey,
               translations.settings.backups.manageBackups.subtitle.zero,
               textAlign: TextAlign.center,
               style: const TextStyle(fontStyle: .italic),
             ),
           for (final BackupPath backup in value)
             ExpandableTile(
+              key: ValueKey(backup.path),
               title: Text(
                 '${DateFormat.yMd(translations.$meta.locale.underscoreTag).format(backup.timestamp)} ${DateFormat.Hms(translations.$meta.locale.underscoreTag).format(backup.timestamp)}',
               ),
@@ -136,11 +133,13 @@ class _RestoreBackupDialogState extends ConsumerState<_RestoreBackupDialog> {
       child: ButtonText(translations.settings.backups.manageBackups.button.restore),
     ),
     if (currentPlatform != .linux)
-      ClickableButton(
-        variant: .secondary,
-        onPress: () => shareBackup(backup),
-        prefix: const Icon(FLucideIcons.share),
-        child: ButtonText(translations.settings.backups.manageBackups.button.share),
+      Builder(
+        builder: (buttonContext) => ClickableButton(
+          variant: .secondary,
+          onPress: () => shareBackup(buttonContext, backup),
+          prefix: const Icon(FLucideIcons.share),
+          child: ButtonText(translations.settings.backups.manageBackups.button.share),
+        ),
       ),
     ClickableButton(
       variant: .secondary,
@@ -163,10 +162,10 @@ class _RestoreBackupDialogState extends ConsumerState<_RestoreBackupDialog> {
       final List<PlatformFile>? files = await showWaitingOverlay(
         context,
         future: (() async {
-          final Directory directory = await BackupPath.getBackupsDirectory(create: true);
+          final Directory directory = await BackupPath.getBackupsDirectory();
           return FilePicker.pickFiles(
             dialogTitle: translations.settings.backups.manageBackups.importBackupDialogTitle,
-            initialDirectory: directory.path,
+            initialDirectory: await directory.exists() ? directory.path : null,
             type: FileType.custom,
             allowedExtensions: ['bak'],
             windowsOptions: const WindowsOptions(lockParentWindow: true),
@@ -223,21 +222,27 @@ class _RestoreBackupDialogState extends ConsumerState<_RestoreBackupDialog> {
   }
 
   /// Asks the user for the given [backup] share.
-  Future<ShareResult> shareBackup(BackupPath backup) async {
-    final RenderBox? box = shareActionKey.currentContext?.findRenderObject() as RenderBox?;
-    return await SharePlus.instance.share(
-      ShareParams(
-        subject: translations.settings.backups.manageBackups.shareBackupDialog.subject,
-        text: translations.settings.backups.manageBackups.shareBackupDialog.text,
-        sharePositionOrigin: box == null ? Rect.zero : (box.localToGlobal(Offset.zero) & box.size),
-        files: [
-          XFile(
-            backup.path,
-            mimeType: 'application/json',
-          ),
-        ],
-      ),
-    );
+  Future<void> shareBackup(BuildContext buttonContext, BackupPath backup) async {
+    final box = buttonContext.findRenderObject() as RenderBox;
+    try {
+      await SharePlus.instance.share(
+        ShareParams(
+          subject: translations.settings.backups.manageBackups.shareBackupDialog.subject,
+          text: translations.settings.backups.manageBackups.shareBackupDialog.text,
+          sharePositionOrigin: box.localToGlobal(Offset.zero) & box.size,
+          files: [
+            XFile(
+              backup.path,
+              mimeType: 'application/json',
+            ),
+          ],
+        ),
+      );
+    } catch (ex, stackTrace) {
+      if (mounted) {
+        handleResult(context, ResultError(exception: ex, stackTrace: stackTrace));
+      }
+    }
   }
 
   /// Asks the user for the given [backup] export.
@@ -246,22 +251,18 @@ class _RestoreBackupDialogState extends ConsumerState<_RestoreBackupDialog> {
     try {
       final Uri? outputFilePath = await showWaitingOverlay(
         context,
-        future: (() async {
-          final Directory directory = await BackupPath.getBackupsDirectory(create: true);
-          return FilePicker.saveFile(
-            dialogTitle: translations.settings.backups.manageBackups.exportBackupDialogTitle,
-            initialDirectory: directory.path,
-            fileName: backup.filename,
-            bytes: Uint8List(0),
-            windowsOptions: const WindowsOptions(lockParentWindow: true),
-            linuxOptions: const LinuxOptions(lockParentWindow: true),
-          );
-        })(),
+        future: (() async => FilePicker.saveFile(
+          dialogTitle: translations.settings.backups.manageBackups.exportBackupDialogTitle,
+          initialDirectory: backup.file.parent.path,
+          fileName: backup.filename,
+          bytes: await backup.file.readAsBytes(),
+          windowsOptions: const WindowsOptions(lockParentWindow: true),
+          linuxOptions: const LinuxOptions(lockParentWindow: true),
+        ))(),
       );
       if (outputFilePath == null) {
         return;
       }
-      backup.file.copySync(outputFilePath.toString());
       result = const ResultSuccess();
     } catch (ex, stackTrace) {
       result = ResultError(exception: ex, stackTrace: stackTrace);

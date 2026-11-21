@@ -27,6 +27,28 @@ class BackendUrlSettingsEntry extends SettingsEntry<BackendUrl> {
 
 /// An extension type to allow to check if the backend URL has changed.
 extension type const BackendUrl(String backendUrl) implements String {
+  /// Parses a base URL to which API routes can be appended.
+  static BackendUrl? tryParse(String? value) {
+    final String input = value?.trim() ?? '';
+    try {
+      final Uri uri = Uri.parse(input);
+      final int port = uri.port;
+      if (!(uri.isScheme('http') || uri.isScheme('https')) ||
+          uri.host.isEmpty ||
+          uri.userInfo.isNotEmpty ||
+          uri.hasQuery ||
+          uri.hasFragment ||
+          input.contains(RegExp(r'\s')) ||
+          port < 1 ||
+          port > 65535) {
+        return null;
+      }
+      return BackendUrl(uri.toString().replaceFirst(RegExp(r'/+$'), ''));
+    } on FormatException {
+      return null;
+    }
+  }
+
   /// Returns `true` if the value has changed.
   bool get hasBackendUrlChanged => backendUrl != App.defaultBackendUrl;
 }
