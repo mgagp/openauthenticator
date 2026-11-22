@@ -102,20 +102,20 @@ One checklist for the whole app, run on each platform and deployment model upstr
 | U3 | Add a TOTP by hand (secret, issuer, label, algorithm, digits, period) | emu | pass 11-13 | pass 11-13 (auto) | — | — | — |
 | U4 | Add a TOTP from an `otpauth://` link opened from outside the app | emu (`adb shell am start -d`) | pass 11-13 | blocked 11-17 (see notes) | — | — | — |
 | U5 | The code shown matches a reference generator, and the countdown rolls over | emu | pass 11-13 | pass 11-13 (auto) | — | — | — |
-| U6 | Copy a code (tap, copy button setting) | emu | pass 11-13 | blocked 11-17 (session locked) | — | — | — |
+| U6 | Copy a code (tap, copy button setting) | emu | pass 11-13 | pass 11-22 (auto) | — | — | — |
 | U7 | Edit a TOTP, then delete it | emu | pass 11-13 | pass 11-13 (auto) | — | — | — |
-| U8 | Search (button setting, filter) | emu | pass 11-13 | pass 11-17 (auto; #145) | — | — | — |
-| U9 | Settings: theme, language, display options persist after a restart | emu | pass 11-13 | pass 11-17 (auto) | — | — | — |
-| U10 | Change the master password; the TOTPs still decrypt | emu | pass 11-13 | pass 11-17 (auto) | — | — | — |
-| U11 | App unlock: master password at start, wrong then right password | emu | pass 11-13 | pass 11-17 (auto) | — | — | — |
-| U12 | App unlock: biometric / system authentication | device | pass 11-13 (Pixel) | — | — | — | — |
+| U8 | Search (button setting, filter) | emu | pass 11-13 | pass 11-22 (auto; #145 fixed upstream) | — | — | — |
+| U9 | Settings: theme, language, display options persist after a restart | emu | pass 11-13 | pass 11-22 (auto) | — | — | — |
+| U10 | Change the master password; the TOTPs still decrypt | emu | pass 11-13 | pass 11-22 (auto) | — | — | — |
+| U11 | App unlock: master password at start, wrong then right password | emu | pass 11-13 | pass 11-22 (auto) | — | — | — |
+| U12 | App unlock: biometric / system authentication | device | pass 11-22 (Pixel, also started behind the lock screen: #98 fixed upstream) | — | — | — | — |
 | U13 | Backup now, then restore it after deleting a TOTP; wrong backup password refused | emu | pass 11-13 | pass 11-13 (auto) | — | — | — |
-| U14 | Manage backups: list, delete | emu | fail #141 | fail #141 (11-17, auto) | — | — | — |
-| U15 | Clear data: everything gone, back to the intro | emu | fail #141 | pass 11-13 (auto) | — | — | — |
+| U14 | Manage backups: list, delete | emu | fail #141 | pass 11-22 (auto; #141 fixed upstream) | — | — | — |
+| U15 | Clear data: everything gone, back to the intro | emu | fail #141 | pass 11-22 (auto) | — | — | — |
 | U16 | Account sign-in (email link or a provider) and synchronization with the official backend | device | blocked 11-17 (account) | — | — | — | — |
 | U17 | `openauthenticator://` link handling (debug "Input link" entry) | emu | blocked 11-17 (account) | blocked 11-17 (see notes) | — | — | — |
 | U18 | Contributor Plan screen opens (no purchase) | emu | n/a (no RevenueCat key) | — | — | — | — |
-| U19 | App restart keeps the TOTPs and settings | emu | pass 11-13 | pass 11-17 (auto) | — | — | — |
+| U19 | App restart keeps the TOTPs and settings | emu | pass 11-13 | pass 11-22 (auto) | — | — | — |
 
 ### EzKey (where `ezkeySupportedPlatforms` offers it)
 
@@ -158,7 +158,7 @@ Pixel notes:
 - Lab leftovers: enrollment 12 (`round-131-pixel`) stays on the phone and active on the local stack.
 
 Failures:
-- U14, U15: #141 (upstream code). Deleting a backup leaves it listed until the dialog is reopened, and Clear data with "delete your backups" throws `Concurrent modification during iteration`: the restart dialog never shows, and with several backups only the first is deleted.
+- U14, U15: #141 (upstream code; fixed upstream in the 2026-11 sync, #148, confirmed on Windows on 2026-11-22; the Android round was not rerun). Deleting a backup leaves it listed until the dialog is reopened, and Clear data with "delete your backups" throws `Concurrent modification during iteration`: the restart dialog never shows, and with several backups only the first is deleted.
 
 Not run on the emulator: U2, U12, E4, E5's confirmation (camera, biometrics: Pixel, with the user's go-ahead); U16 and U17 (an account on the official backend); U18 shows the Contributor Plan entry disabled, since a build without upstream's RevenueCat key cannot reach the store. E10 in part: a profile build opens the scanner directly from the EzKey + (no manual entry outside debug, #38); refusing an `http://` server needs a scanned QR, so it is left for the Pixel (the rule itself is unit-tested, #109).
 
@@ -179,6 +179,8 @@ Windows observations:
 - No EzKey zone on the home screen (E11), as `ezkeySupportedPlatforms` decides.
 - Backups go to `Documents\Open Authenticator Backups (Debug)`, and Documents is redirected to OneDrive on this PC: upstream's backups, encrypted, are synced to the cloud without the app saying so. Noted only (upstream behaviour).
 - On desktop, the TOTP actions are in a `...` menu on each tile, and a tap copies the code (no copy button).
+
+**Windows 11, debug, 2026-11-22, after the first upstream sync (#148).** The three automated tests (round, then setup and restart) pass on upstream `db19409` with the session unlocked: U6 copy passes, `Manual` finds `ManualCo` (#145 fixed upstream), and a deleted backup leaves the list at once (#141 fixed upstream). The Windows column shows these results; the notes below are from the earlier runs.
 
 **Windows 11, debug, 2026-11-17 (#132), second part.** Run while the maintainer was away and the session was locked.
 
