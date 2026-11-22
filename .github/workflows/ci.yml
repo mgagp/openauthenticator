@@ -25,17 +25,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
+        with:
+          # The format check needs the history to find the last upstream commit merged into the fork.
+          fetch-depth: 0
 
       - uses: ./.github/actions/setup
 
       - name: Analyze
         run: flutter analyze
 
+      # Compared with the merge base (the last upstream commit synced), not with upstream's latest commit:
+      # otherwise any new upstream commit shows up as a fork change and turns main red (first sync, #149).
       - name: Check the format of the files that differ from upstream
         run: |
           git remote add upstream https://github.com/openauthenticator-app/openauthenticator.git
-          git fetch --quiet --depth=1 upstream main
-          files=$( (git diff --name-only --diff-filter=d FETCH_HEAD -- '*.dart'; git ls-files --others --exclude-standard -- '*.dart') | sort -u)
+          git fetch --quiet upstream main
+          base=$(git merge-base HEAD FETCH_HEAD)
+          files=$( (git diff --name-only --diff-filter=d "$base" -- '*.dart'; git ls-files --others --exclude-standard -- '*.dart') | sort -u)
           [ -z "$files" ] || dart format --output=none --set-exit-if-changed $files
 
       - name: Test

@@ -2,8 +2,8 @@
 
 Journal of the fork's first upstream sync, kept as the work goes. It is the input of the retrospective (#149). Each entry says what was done, what it cost, and what went wrong. Lesson candidates are marked **Lesson?** so the retrospective can find them.
 
-- **Range:** `upstream/main` from `272d67e` (2026-08-15) to `57b4fca` (2026-11-19), 39 commits.
-- **Branch:** `chore/148-upstream-sync`, to be merged with a merge commit.
+- **Range:** `upstream/main` from `272d67e` (2026-08-15) to `db19409` (2026-11-20), in two merges: 39 commits up to `57b4fca` (2026-11-19), then 26 fixes.
+- **Branch:** `chore/148-upstream-sync`, merged with a merge commit (PR #150, `09a15a9`, 2026-11-22).
 - **Toolchain before:** Flutter 3.47.8 / Dart 3.13.7. **After:** Flutter 3.50.1 / Dart 3.14.0.
 
 ## Before starting (2026-11-20)
@@ -106,3 +106,60 @@ Journal of the fork's first upstream sync, kept as the work goes. It is the inpu
 - **Pixel, on `db19409`:** installed over the previous build (then force-stopped at once, per the lesson above), opened normally: works. Then #98 reproduced on purpose with the maintainer: phone locked, app started through adb, phone unlocked: the biometric prompt shows and unlocks; no `onSaveInstanceState` error in the log. **#98 is fixed upstream.** `CLAUDE.md`, the integrator guide and the test plan no longer describe it as a known limit.
 - **Findings closed by this sync:** #145 (search), #141 (backup list), #98 (biometric prompt behind the lock screen), each confirmed in the real app. Still to recheck: #118 (secure storage recovery) and #86 (Google sign-in with DuckDuckGo as default browser), which need conditions not reproduced here.
 - **CI green on all six jobs** (run `45044393594`) once the Apple builds resolve the Swift packages from scratch: the stale `Package.resolved` hypothesis holds.
+
+## Step 9: merged (2026-11-22)
+
+- The maintainer merged PR #150 with "Create a merge commit": `09a15a9` has two parents (`main` and the sync branch), so `db19409` is in `main`'s history and the next sync starts there. #148, #145 and #141 closed with it. CI on `main` is green on all six jobs.
+- **`main` had been red since 2026-11-20 without any fork change.** The push run of #146 (`3c1157c`) failed twice:
+  - the scoped format check compared the fork with upstream's *latest* commit, so the first upstream file changed after our last sync (`bin/generate_polkit_policy.dart`) counted as a fork change;
+  - the Windows build failed on the old `firebase_auth` plugin (warning C4238 treated as an error) on the runner. The sync's Firebase update removed it; we did not dig further.
+  - **Lesson?** The format check should compare with the merge base; the "upstream moved" alarm belongs in a job of its own.
+
+## Retrospective (2026-11-22, #149)
+
+Held with the maintainer from this journal. The maintainer adopted every recommendation.
+
+### What worked
+
+- **The ledger.** Every conflict fell in a ledgered file, and every hook was re-applied from its entry without reading the old diff, twice. The trial merge predicted the conflicts exactly.
+- **The pinned-quirk tests.** Each upstream behavior change showed up as a named failure, quick to classify; three of our upstream findings (#145, #141, #98) were confirmed fixed this way and in the real app.
+- **Scripted and analyzer-driven adaptation:** the import rewrite from upstream's rename list and `dart fix` turned 1442 findings into about 40 real ones in minutes.
+- **The moratorium:** nothing else moved while the sync was open, so every problem had one cause to look for.
+- **The Mac over SSH:** it turned an opaque CI crash into a cause (upstream's stale `Package.resolved` files) in one session.
+
+### What cost more than expected
+
+- **Upstream moved during the sync** (26 fixes on 2026-11-20): a second merge, and one hook lost its input (`tryReadFile`).
+- **The Apple CI:** three attempts (Swift Package Manager off, CocoaPods, then removing the stale `Package.resolved`), because the Apple side was looked at only after CI failed.
+- **CI-only failures:** the `cnativeapi` build hook and a script path were invisible locally.
+- **The PC's memory:** the emulator and the Windows round together were killed, and the maintainer's debug data had to be restored.
+- **Not measured:** the journal was meant to record the effort of each step and mostly did not. The method now asks for a rough time when each step ends.
+
+### What changes (each lesson and where it went)
+
+| Lesson | Outcome |
+|---|---|
+| Nothing watches upstream | Applied: `.github/workflows/upstream-watch.yml` (Mondays, red when upstream is ahead); method principle "Notice early". |
+| The format check turns `main` red when upstream moves | Applied: CI and `CLAUDE.md` compare with the merge base. |
+| Keep the trial merge first | Already in the method (step 1). |
+| Decide the merge method before the first sync; the button remembers | Applied during the sync (method principles, `CLAUDE.md` § Merge). |
+| git dependencies without a `ref` | Applied: step 1 checklist; step 5 already has the fix. |
+| New dependencies with build hooks break CI | Applied: step 1 checklist; the Linux packages are in the setup action. |
+| A sync → async change can compile silently | Applied: step 1 checklist (step 6 already said it). |
+| The Apple side needs the Mac during the sync | Applied: step 1 checklist and step 8 (Mac builds). |
+| Grep old paths as plain text; run generators from a clean state | Applied: step 6. |
+| CRLF in rewriting scripts | Applied: step 6. |
+| `flutter test --timeout 60s` | Applied: step 6. |
+| Prefer `dart fix` to home-made scripts; derive imports from the rename list | Already in the method (step 6). |
+| Two places hold the Android toolchain | Already in the method (step 5) and `CLAUDE.md`. |
+| Refresh commands need `--follow` after a rename | Already applied in `upstream-activity.md` § Refresh. |
+| The activity map cannot predict a burst | Already applied in `upstream-activity.md` (reading kept, no forecast). |
+| One heavy device run at a time | Applied: `CLAUDE.md` § On-device tests and step 8. |
+| Rebuild the APK before installing; force-stop after install | Applied: `CLAUDE.md` § Android device build and step 8. |
+| A platform-aware round test | Follow-up issue #151. |
+| Built-in Kotlin for `ezkey_keystore` | Set aside: the fork follows upstream's `android.builtInKotlin=false`; the step 1 checklist migrates our plugin in the sync where upstream switches. |
+| Upstream's Apple files lag its dependency updates (`Package.resolved`, `MACOSX_DEPLOYMENT_TARGET`) | Set aside: an upstream finding, not reported (the fork does not open issues upstream). CI tolerates it without touching upstream's files. |
+| The fork's test lint rules reach upstream's tests | Set aside: noted in `test/analysis_options.yaml`; drop a rule when it flags upstream's tests. |
+| Record the effort of each step | Applied: method principle "Keep a journal as you go". |
+
+The post-merge items (the manual Windows checks left in #132, the TPM draft #147 brought onto the new `main`, rechecking #118 and #86) resume with the end of the moratorium; they are not part of the sync.
