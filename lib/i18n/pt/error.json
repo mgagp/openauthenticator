@@ -16,7 +16,7 @@
     "empty": "Este campo é obrigatório",
     "email": "E-mail inválido",
     "secret": "Segredo inválido inserido",
-    "totpDigits": "Este número deve ser maior ou igual a 6",
+    "totpDigits": "Insira um número de dígitos entre 6 e 15",
     "masterPassword": "Senha inválida inserida",
     "confirmation": "A confirmação não corresponde",
     "url": "URL inválida"
@@ -61,10 +61,9 @@
     "unsupported": "A digitalização não é suportada neste dispositivo (código: $exception)."
   },
   "storageMigration": {
-    "getTotps": "Ocorreu um erro ao obter seus TOTPs remotos. Tente novamente mais tarde.",
-    "backupError": "Ocorreu um erro ao fazer o backup. Tente novamente.",
     "anotherDeletedTotpPolicyShouldBeUsed": "Outra política de TOTP excluída deve ser usada.",
     "currentStoragePasswordMismatch": "Senha mestra inválida inserida.",
+    "remoteStoragePasswordMismatch": "Seus TOTPs online foram criptografados com outra senha mestra. Altere a senha mestra deste dispositivo para que corresponda à usada nos seus outros dispositivos e tente novamente.",
     "generic": "Ocorreu um erro ao migrar seus dados. Tente novamente mais tarde."
   },
   "revenueCat": {
@@ -74,6 +73,7 @@
   "totp": {
     "create": "Este TOTP não pode ser criado.",
     "decrypt": "Falha ao descriptografar este TOTP. Certifique-se de que você tenha inserido a senha correta.",
+    "undecryptable": "Não é possível descriptografar $count TOTP(s) com sua senha mestra atual. Toque neles na lista para descriptografá-los com a senha usada para criptografá-los, ou exclua-os, e tente novamente.",
     "changeCryptoStore": {
       "noCryptoStore": "Não foi possível obter o armazenamento de criptografia atual. Feche e abra novamente a aplicação.",
       "generic": "Falha ao criptografar este TOTP com o armazenamento de criptografia atual."

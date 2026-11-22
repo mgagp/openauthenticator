@@ -1,13 +1,13 @@
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:open_authenticator/core/migrator/migrator.dart';
+import 'package:open_authenticator/core/settings/storage_type.dart';
 import 'package:open_authenticator/flows/account.dart';
 import 'package:open_authenticator/i18n/localizable_exception.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
-import 'package:open_authenticator/model/migrator/migrator.dart';
-import 'package:open_authenticator/model/settings/storage_type.dart';
 import 'package:open_authenticator/pages/settings/page.dart';
 import 'package:open_authenticator/spacing.dart';
 import 'package:open_authenticator/utils/result/handler.dart';
@@ -32,7 +32,7 @@ class Migrator extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    AsyncValue<MigrationState> migrationState = ref.watch(migratorProvider);
+    final AsyncValue<MigrationState> migrationState = ref.watch(migratorProvider);
     return switch (migrationState) {
       AsyncData(:final value) => switch (value) {
         .needed => AppScaffold(
@@ -103,7 +103,7 @@ class Migrator extends ConsumerWidget {
 
   /// Migrates the data.
   Future<void> _migrate(BuildContext context, WidgetRef ref) async {
-    Result<StorageType> result = await showWaitingOverlay(
+    final Result<StorageType> result = await showWaitingOverlay(
       context,
       future: ref.read(migratorProvider.notifier).migrate(),
     );
@@ -119,7 +119,7 @@ class Migrator extends ConsumerWidget {
         }
         break;
       case ResultError(:final exception, :final stackTrace):
-        ErrorDialogResult? errorResult = await ErrorDialog.openDialog(
+        final ErrorDialogResult? errorResult = await ErrorDialog.openDialog(
           context,
           message: exception is LocalizableException ? exception.localizedErrorMessage : translations.error.migrator.message,
           error: exception,

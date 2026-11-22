@@ -1,8 +1,8 @@
 import 'package:ezkey_dart/ezkey_dart.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/ezkey/identity.dart';
 import 'package:open_authenticator/ezkey/messages.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
@@ -31,7 +31,7 @@ class EzkeyEnrollPage extends ConsumerStatefulWidget {
 
   /// Opens the page for [bound], in place of the current route when [replace] is `true`.
   static Future<EzkeyEnrollment?> open(BuildContext context, EzkeyBoundEnrollment bound, {bool replace = false}) {
-    MaterialPageRoute<EzkeyEnrollment> route = MaterialPageRoute(builder: (context) => EzkeyEnrollPage(bound: bound));
+    final MaterialPageRoute<EzkeyEnrollment> route = MaterialPageRoute(builder: (context) => EzkeyEnrollPage(bound: bound));
     return replace ? Navigator.pushReplacement<EzkeyEnrollment, void>(context, route) : Navigator.push<EzkeyEnrollment>(context, route);
   }
 
@@ -54,7 +54,7 @@ class _EzkeyEnrollPageState extends ConsumerState<EzkeyEnrollPage> {
   void initState() {
     super.initState();
     codeController.addListener(() {
-      bool complete = RegExp(r'^\d{6}$').hasMatch(codeController.text);
+      final bool complete = RegExp(r'^\d{6}$').hasMatch(codeController.text);
       if (complete != codeComplete) {
         setState(() => codeComplete = complete);
       }
@@ -63,7 +63,7 @@ class _EzkeyEnrollPageState extends ConsumerState<EzkeyEnrollPage> {
 
   @override
   Widget build(BuildContext context) {
-    EzkeyBoundEnrollment bound = widget.bound;
+    final EzkeyBoundEnrollment bound = widget.bound;
     return AppScaffold.scrollable(
       header: FHeader.nested(
         prefixes: [
@@ -102,7 +102,7 @@ class _EzkeyEnrollPageState extends ConsumerState<EzkeyEnrollPage> {
     }
     setState(() => submitting = true);
     try {
-      EzkeyEnrollment enrollment = await showWaitingOverlay(
+      final EzkeyEnrollment enrollment = await showWaitingOverlay(
         context,
         message: translations.ezkey.enroll.verifying,
         future: ref.read(ezkeyEnrollmentsProvider.notifier).complete(widget.bound, parseChallengeCode(codeController.text)),
@@ -144,7 +144,7 @@ class _WhoIsAsking extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    EzkeyIdentity identity = EzkeyIdentity.ofBound(bound);
+    final EzkeyIdentity identity = EzkeyIdentity.ofBound(bound);
     return FTileGroup(
       children: [
         EzkeyPurposeTile(identity: identity, details: bound.integrationDescription),

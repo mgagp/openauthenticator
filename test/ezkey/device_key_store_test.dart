@@ -24,7 +24,7 @@ void main() {
     });
 
     test('reports the tier of the last generated key', () async {
-      NativeEzkeyDeviceKeyStore store = NativeEzkeyDeviceKeyStore();
+      final NativeEzkeyDeviceKeyStore store = NativeEzkeyDeviceKeyStore();
       answer = (call) => {'publicKey': 'SPKI-strong', 'tier': 'strong'};
       expect(await store.generateKeyPair('ezkey-device-1-a'), 'SPKI-strong');
       expect(store.storageTier, DevicePrivateKeyStorageTier.strong);
@@ -39,7 +39,7 @@ void main() {
     });
 
     test('reports a key outside secure hardware as it is, and keeps it', () async {
-      NativeEzkeyDeviceKeyStore store = NativeEzkeyDeviceKeyStore();
+      final NativeEzkeyDeviceKeyStore store = NativeEzkeyDeviceKeyStore();
       answer = (call) => {'publicKey': 'SPKI-soft', 'tier': 'none'};
 
       expect(await store.generateKeyPair('ezkey-device-1-a'), 'SPKI-soft');
@@ -49,8 +49,8 @@ void main() {
     });
 
     test('reads the tier of an existing key from the platform', () async {
-      NativeEzkeyDeviceKeyStore store = NativeEzkeyDeviceKeyStore();
-      Map<String, String?> tiers = {'strong-key': 'strong', 'tee-key': 'standard', 'soft-key': 'none', 'missing': null};
+      final NativeEzkeyDeviceKeyStore store = NativeEzkeyDeviceKeyStore();
+      final Map<String, String?> tiers = {'strong-key': 'strong', 'tee-key': 'standard', 'soft-key': 'none', 'missing': null};
       answer = (call) => tiers[(call.arguments as Map<Object?, Object?>)['alias']];
 
       expect(await store.keyTier('strong-key'), DevicePrivateKeyStorageTier.strong);
@@ -61,7 +61,7 @@ void main() {
     });
 
     test('passes alias and payload through to the platform', () async {
-      NativeEzkeyDeviceKeyStore store = NativeEzkeyDeviceKeyStore();
+      final NativeEzkeyDeviceKeyStore store = NativeEzkeyDeviceKeyStore();
       answer = (call) => switch (call.method) {
         'sign' => 'DER-signature',
         'aliases' => ['ezkey-device-1-a'],
@@ -81,7 +81,7 @@ void main() {
     });
 
     test('platform failures become local-state errors without leaking the payload', () async {
-      NativeEzkeyDeviceKeyStore store = NativeEzkeyDeviceKeyStore();
+      final NativeEzkeyDeviceKeyStore store = NativeEzkeyDeviceKeyStore();
       answer = (call) => throw PlatformException(code: 'key_not_found', message: 'No key for alias ezkey-device-1-a');
       await expectLater(
         store.sign('ezkey-device-1-a', 'secret-payload'),
@@ -91,8 +91,8 @@ void main() {
   });
 
   test('device key aliases carry the app prefix and the namespace, and are unguessable', () {
-    String first = ezkeyDeviceKeyAlias(42, namespace: 'main');
-    String second = ezkeyDeviceKeyAlias(42, namespace: 'main');
+    final String first = ezkeyDeviceKeyAlias(42, namespace: 'main');
+    final String second = ezkeyDeviceKeyAlias(42, namespace: 'main');
     expect(first, startsWith('${ezkeyDeviceKeyAliasPrefix}main-42-'));
     expect(first, isNot(second));
   });

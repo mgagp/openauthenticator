@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/spacing.dart';
 import 'package:open_authenticator/utils/platform.dart';
 import 'package:open_authenticator/widgets/clickable.dart';
@@ -45,12 +45,14 @@ class AppDialog extends StatelessWidget {
     this.scrollable = true,
   });
 
+  /// Lays out the dialog while preserving the identity of keyed children.
   @override
   Widget build(BuildContext context) {
-    EdgeInsets? listViewPadding = contentPadding ?? kDefaultContentPadding;
-    List<Widget> children = [
+    final EdgeInsets listViewPadding = contentPadding ?? kDefaultContentPadding;
+    final List<Widget> children = [
       for (int i = 0; i < this.children.length; i++)
         Padding(
+          key: this.children[i].key == null ? null : ValueKey(this.children[i].key),
           padding: listViewPadding.copyWith(
             top: i == 0 ? null : kSpace / 2,
             bottom: i == this.children.length - 1 ? null : kSpace / 2,

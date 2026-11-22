@@ -1,11 +1,11 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:open_authenticator/core/app_links/otpauth_totp.dart';
 import 'package:open_authenticator/ezkey/scan.dart';
 import 'package:open_authenticator/ezkey/toast.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
-import 'package:open_authenticator/model/app_links/otpauth_totp.dart';
 import 'package:open_authenticator/pages/totp.dart';
 import 'package:open_authenticator/widgets/app_scaffold.dart';
 import 'package:open_authenticator/widgets/clickable.dart';
@@ -63,7 +63,7 @@ class _EzkeyScanPageState extends ConsumerState<EzkeyScanPage> {
             Navigator.pop(context, barcode);
             return false;
           }
-          Uri? uri = Uri.tryParse(barcode);
+          final Uri? uri = Uri.tryParse(barcode);
           if (uri != null && (uri as OtpAuthTotpLink).isValid) {
             // Same as upstream's scanner (lib/pages/scan.dart): the TOTP page replaces the routes above home.
             await showWaitingOverlay(

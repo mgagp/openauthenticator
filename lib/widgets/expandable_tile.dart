@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/spacing.dart';
 import 'package:open_authenticator/widgets/clickable.dart';
 
@@ -115,7 +115,7 @@ class _ExpandableTileState extends ConsumerState<ExpandableTile> with SingleTick
 
   /// Toggles the expand state.
   void _toggle() {
-    bool willExpand = !expand;
+    final bool willExpand = !expand;
     setState(() => expand = willExpand);
     if (willExpand) {
       expandController.forward();

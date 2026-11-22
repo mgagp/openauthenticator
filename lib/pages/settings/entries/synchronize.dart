@@ -1,14 +1,14 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:open_authenticator/core/backend/user.dart';
+import 'package:open_authenticator/core/purchases/contributor_plan.dart';
+import 'package:open_authenticator/core/settings/storage_type.dart';
+import 'package:open_authenticator/core/totp/limit.dart';
+import 'package:open_authenticator/core/totp/repository.dart';
+import 'package:open_authenticator/core/totp/totp.dart';
 import 'package:open_authenticator/flows/storage_migration.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
-import 'package:open_authenticator/model/backend/user.dart';
-import 'package:open_authenticator/model/purchases/contributor_plan.dart';
-import 'package:open_authenticator/model/settings/storage_type.dart';
-import 'package:open_authenticator/model/totp/limit.dart';
-import 'package:open_authenticator/model/totp/repository.dart';
-import 'package:open_authenticator/model/totp/totp.dart';
 import 'package:open_authenticator/pages/settings/entries/widgets.dart';
 
 /// Allows the user to choose its storage type.
@@ -33,52 +33,21 @@ class SynchronizeSettingsEntryWidget extends CheckboxSettingsEntryWidget<Storage
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    User? user = ref.watch(userProvider).value;
+    final User? user = ref.watch(userProvider).value;
     return user == null ? const SizedBox.shrink() : super.build(context, ref);
   }
 
   @override
   Widget createTile(BuildContext context, WidgetRef ref, {StorageType? value, bool enabled = true}) {
-    if (value == null) {
-      return super.createTile(
-        context,
-        ref,
-        enabled: false,
-      );
-    }
-    AsyncValue<ContributorPlanState> state = ref.watch(contributorPlanStateProvider);
-    return switch (state) {
-      AsyncData() =>
-        state.value == .inactive
-            ? FutureBuilder(
-                future: ref.watch(totpLimitProvider.future),
-                builder: (context, snapshot) => super.createTile(
-                  context,
-                  ref,
-                  value: value,
-                  enabled: snapshot.data?.isExceeded != true,
-                ),
-              )
-            : super.createTile(
-                context,
-                ref,
-                value: value,
-                enabled: enabled,
-              ),
-      _ => super.createTile(
-        context,
-        ref,
-        value: value,
-        enabled: value == .shared,
-      ),
-    };
+    final bool canChange = value == StorageType.shared || (value == StorageType.localOnly && ref.watch(totpLimitProvider).asData?.value.canEnableSynchronization == true);
+    return super.createTile(context, ref, value: value, enabled: enabled && canChange);
   }
 
   @override
-  Widget? buildSubtitle(BuildContext context, WidgetRef ref, StorageType? storageType) {
-    ContributorPlanState? contributorPlanState = ref.watch(contributorPlanStateProvider).value;
-    User user = ref.watch(userProvider).value!;
-    AsyncValue<List<Totp>> totps = ref.watch(totpRepositoryProvider);
+  Widget? buildSubtitle(BuildContext context, WidgetRef ref, StorageType? value) {
+    final ContributorPlanState? contributorPlanState = ref.watch(contributorPlanStateProvider).value;
+    final User user = ref.watch(userProvider).value!;
+    final AsyncValue<List<Totp>> totps = ref.watch(totpRepositoryProvider);
     if (totps is! AsyncData<List<Totp>>) {
       return Text(translations.settings.synchronization.synchronizeTotps.subtitle.description);
     }
@@ -97,11 +66,11 @@ class SynchronizeSettingsEntryWidget extends CheckboxSettingsEntryWidget<Storage
               style: const TextStyle(fontStyle: .italic),
             ),
           ),
-          if (storageType == .localOnly && totps.value.length > user.totpsLimit)
+          if (value == .localOnly && totps.value.length > user.totpsLimit)
             TextSpan(
               text: '\n${translations.settings.synchronization.synchronizeTotps.subtitle.totpLimit.notEnabled}',
             ),
-          if (storageType == .shared && contributorPlanState == .inactive)
+          if (value == .shared && contributorPlanState == .inactive)
             TextSpan(
               text: '\n${translations.settings.synchronization.synchronizeTotps.subtitle.totpLimit.enabled}',
             ),

@@ -1,10 +1,10 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:open_authenticator/core/purchases/clients/client.dart';
+import 'package:open_authenticator/core/purchases/contributor_plan.dart';
 import 'package:open_authenticator/flows/contributor_plan.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
-import 'package:open_authenticator/model/purchases/clients/client.dart';
-import 'package:open_authenticator/model/purchases/contributor_plan.dart';
 import 'package:open_authenticator/widgets/button_text.dart';
 import 'package:open_authenticator/widgets/clickable.dart';
 import 'package:open_authenticator/widgets/dialog/app_dialog.dart';
@@ -21,7 +21,7 @@ class ContributorPlanEntryWidget extends ConsumerWidget with FTileMixin {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    AsyncValue<ContributorPlanState> state = ref.watch(contributorPlanStateProvider);
+    final AsyncValue<ContributorPlanState> state = ref.watch(contributorPlanStateProvider);
     switch (state) {
       case AsyncData(:final value):
         switch (value) {
@@ -52,10 +52,10 @@ class ContributorPlanEntryWidget extends ConsumerWidget with FTileMixin {
                     ClickableButton(
                       variant: .secondary,
                       onPress: () async {
-                        String? url = await showWaitingOverlay(
+                        final String? url = await showWaitingOverlay(
                           context,
                           future: (() async {
-                            RevenueCatClient? client = await ref.read(revenueCatClientProvider.future);
+                            final RevenueCatClient? client = await ref.read(revenueCatClientProvider.future);
                             return client?.getManagementUrl();
                           })(),
                         );

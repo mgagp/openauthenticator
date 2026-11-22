@@ -22,12 +22,12 @@ class EzkeyInstallation {
 
   /// Groups [enrollments] by installation, in order of first appearance.
   static List<EzkeyInstallation> group(List<EzkeyEnrollment> enrollments) {
-    Map<String, List<EzkeyEnrollment>> groups = {};
-    for (EzkeyEnrollment enrollment in enrollments) {
+    final Map<String, List<EzkeyEnrollment>> groups = {};
+    for (final EzkeyEnrollment enrollment in enrollments) {
       groups.putIfAbsent(enrollment.authApiBaseUrl, () => []).add(enrollment);
     }
     return [
-      for (MapEntry<String, List<EzkeyEnrollment>> entry in groups.entries) EzkeyInstallation(authApiBaseUrl: entry.key, enrollments: entry.value),
+      for (final MapEntry<String, List<EzkeyEnrollment>> entry in groups.entries) EzkeyInstallation(authApiBaseUrl: entry.key, enrollments: entry.value),
     ];
   }
 }
@@ -38,6 +38,6 @@ final ezkeyInstallationsProvider = FutureProvider<List<EzkeyInstallation>>((ref)
 /// Whether the screens must name the server, because this device has several installations. Also
 /// `true` while the number is unknown: showing it is the side that leaves no ambiguity.
 final ezkeySeveralInstallationsProvider = Provider<bool>((ref) {
-  List<EzkeyInstallation>? installations = ref.watch(ezkeyInstallationsProvider).value;
+  final List<EzkeyInstallation>? installations = ref.watch(ezkeyInstallationsProvider).value;
   return installations == null || installations.length > 1;
 });

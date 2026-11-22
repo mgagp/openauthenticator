@@ -24,7 +24,7 @@ class SharedPreferencesWithPrefix {
   static Future<SharedPreferencesWithPrefix> create({
     String prefix = kDebugMode ? 'flutterDebug.' : 'flutter.',
   }) async {
-    SharedPreferencesWithPrefix sharedPreferencesWithPrefix = await _createSharedPreferencesWithPrefix(prefix);
+    final SharedPreferencesWithPrefix sharedPreferencesWithPrefix = await _createSharedPreferencesWithPrefix(prefix);
     return sharedPreferencesWithPrefix;
   }
 
@@ -51,7 +51,7 @@ class SharedPreferencesWithPrefix {
 
   /// Returns all keys in the cache.
   Set<String> get keys => {
-    for (String key in _sharedPreferences.keys)
+    for (final String key in _sharedPreferences.keys)
       if (key.startsWith(prefix)) key.substring(prefix.length),
   };
 
@@ -129,5 +129,5 @@ class SharedPreferencesWithPrefix {
   Future<void> remove(String key) async => await _sharedPreferences.remove(prefix + key);
 
   /// Clears cache and platform preferences that match filter options.
-  Future<void> clear() async => Future.forEach(keys, remove);
+  Future<void> clear() => Future.forEach(keys, remove);
 }

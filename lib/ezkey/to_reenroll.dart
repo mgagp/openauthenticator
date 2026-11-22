@@ -18,7 +18,7 @@ import 'package:open_authenticator/ezkey/providers.dart';
 /// A missing or empty name never matches, so an entry that cannot be identified is kept. The enrollment id
 /// cannot serve, since a re-enrollment gets a new one.
 bool isSameEzkeyAccount(EzkeyInventoryEntry a, EzkeyInventoryEntry b) {
-  List<String?> parts = [a.authApiHost, a.tenantName, a.integrationName, a.enrollmentName];
+  final List<String?> parts = [a.authApiHost, a.tenantName, a.integrationName, a.enrollmentName];
   return !parts.any((part) => part == null || part.isEmpty) &&
       a.authApiHost == b.authApiHost &&
       a.tenantName == b.tenantName &&
@@ -28,9 +28,9 @@ bool isSameEzkeyAccount(EzkeyInventoryEntry a, EzkeyInventoryEntry b) {
 
 /// Returns [entries] without those whose account has an enrollment in [enrollments].
 List<EzkeyInventoryEntry> withoutEnrolledEzkeyAccounts(List<EzkeyInventoryEntry> entries, List<EzkeyEnrollment> enrollments) {
-  List<EzkeyInventoryEntry> enrolled = [for (EzkeyEnrollment enrollment in enrollments) EzkeyInventoryEntry.fromEnrollment(enrollment)];
+  final List<EzkeyInventoryEntry> enrolled = [for (final EzkeyEnrollment enrollment in enrollments) EzkeyInventoryEntry.fromEnrollment(enrollment)];
   return [
-    for (EzkeyInventoryEntry entry in entries)
+    for (final EzkeyInventoryEntry entry in entries)
       if (!enrolled.any((other) => isSameEzkeyAccount(entry, other))) entry,
   ];
 }
@@ -38,8 +38,8 @@ List<EzkeyInventoryEntry> withoutEnrolledEzkeyAccounts(List<EzkeyInventoryEntry>
 /// Returns [existing] plus the [restored] entries that are not already in the list and whose account has no
 /// enrollment in [enrollments].
 List<EzkeyInventoryEntry> mergeEzkeyToReenroll(List<EzkeyInventoryEntry> existing, List<EzkeyInventoryEntry> restored, List<EzkeyEnrollment> enrollments) {
-  List<EzkeyInventoryEntry> result = [...existing];
-  for (EzkeyInventoryEntry entry in withoutEnrolledEzkeyAccounts(restored, enrollments)) {
+  final List<EzkeyInventoryEntry> result = [...existing];
+  for (final EzkeyInventoryEntry entry in withoutEnrolledEzkeyAccounts(restored, enrollments)) {
     if (!result.any((other) => _isSameEnrollment(entry, other) || isSameEzkeyAccount(entry, other))) {
       result.add(entry);
     }
@@ -63,13 +63,13 @@ class EzkeyToReenrollStore {
 
   /// Returns the stored entries. An unreadable list counts as empty, and invalid entries are skipped.
   List<EzkeyInventoryEntry> read() {
-    String? stored = values.read(key);
+    final String? stored = values.read(key);
     if (stored == null) {
       return [];
     }
     try {
-      Object? json = jsonDecode(stored);
-      return json is List ? [for (Object? entry in json) ?EzkeyInventoryEntry.tryFromJson(entry)] : [];
+      final Object? json = jsonDecode(stored);
+      return json is List ? [for (final Object? entry in json) ?EzkeyInventoryEntry.tryFromJson(entry)] : [];
     } on FormatException catch (ex) {
       debugPrint('EzKey list to re-enroll ignored: $ex');
       return [];
@@ -77,7 +77,7 @@ class EzkeyToReenrollStore {
   }
 
   /// Replaces the stored entries by [entries].
-  Future<void> write(List<EzkeyInventoryEntry> entries) => entries.isEmpty ? values.delete(key) : values.write(key, jsonEncode([for (EzkeyInventoryEntry entry in entries) entry.toJson()]));
+  Future<void> write(List<EzkeyInventoryEntry> entries) => entries.isEmpty ? values.delete(key) : values.write(key, jsonEncode([for (final EzkeyInventoryEntry entry in entries) entry.toJson()]));
 }
 
 /// The enrollments to re-enroll, sorted by integration name.
@@ -87,10 +87,10 @@ final ezkeyToReenrollProvider = AsyncNotifierProvider<EzkeyToReenrollNotifier, L
 class EzkeyToReenrollNotifier extends AsyncNotifier<List<EzkeyInventoryEntry>> {
   @override
   FutureOr<List<EzkeyInventoryEntry>> build() async {
-    EzkeyToReenrollStore store = EzkeyToReenrollStore((await ref.watch(ezkeyEnrollmentStoreProvider.future)).values);
-    List<EzkeyEnrollment> enrollments = await ref.watch(ezkeyEnrollmentsProvider.future);
-    List<EzkeyInventoryEntry> entries = store.read();
-    List<EzkeyInventoryEntry> kept = withoutEnrolledEzkeyAccounts(entries, enrollments);
+    final EzkeyToReenrollStore store = EzkeyToReenrollStore((await ref.watch(ezkeyEnrollmentStoreProvider.future)).values);
+    final List<EzkeyEnrollment> enrollments = await ref.watch(ezkeyEnrollmentsProvider.future);
+    final List<EzkeyInventoryEntry> entries = store.read();
+    final List<EzkeyInventoryEntry> kept = withoutEnrolledEzkeyAccounts(entries, enrollments);
     if (kept.length != entries.length) {
       await store.write(kept);
     }
@@ -99,10 +99,10 @@ class EzkeyToReenrollNotifier extends AsyncNotifier<List<EzkeyInventoryEntry>> {
 
   /// Removes [entry] from the list. The server is not affected.
   Future<void> remove(EzkeyInventoryEntry entry) async {
-    EzkeyToReenrollStore store = EzkeyToReenrollStore((await ref.read(ezkeyEnrollmentStoreProvider.future)).values);
+    final EzkeyToReenrollStore store = EzkeyToReenrollStore((await ref.read(ezkeyEnrollmentStoreProvider.future)).values);
     try {
       await store.write([
-        for (EzkeyInventoryEntry other in store.read())
+        for (final EzkeyInventoryEntry other in store.read())
           if (!_isSameEnrollment(entry, other)) other,
       ]);
     } finally {
@@ -121,8 +121,8 @@ Future<void> rememberEzkeyToReenroll(Ref ref, EzkeyBackupInventory? inventory) a
     return;
   }
   try {
-    SecureEzkeyEnrollmentStore enrollmentStore = await ref.read(ezkeyEnrollmentStoreProvider.future);
-    EzkeyToReenrollStore store = EzkeyToReenrollStore(enrollmentStore.values);
+    final SecureEzkeyEnrollmentStore enrollmentStore = await ref.read(ezkeyEnrollmentStoreProvider.future);
+    final EzkeyToReenrollStore store = EzkeyToReenrollStore(enrollmentStore.values);
     await store.write(mergeEzkeyToReenroll(store.read(), inventory.entries, await enrollmentStore.list()));
     ref.invalidate(ezkeyToReenrollProvider);
   } on Object catch (ex) {

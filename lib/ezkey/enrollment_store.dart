@@ -60,7 +60,7 @@ class SecureEzkeyEnrollmentStore implements EzkeyEnrollmentStore {
   /// cannot be read.
   @override
   Future<EzkeyEnrollment?> load(String localId) async {
-    String? json = values.read('$keyPrefix$localId');
+    final String? json = values.read('$keyPrefix$localId');
     return json == null ? null : _decode(json);
   }
 
@@ -68,8 +68,8 @@ class SecureEzkeyEnrollmentStore implements EzkeyEnrollmentStore {
   /// [unreadableLocalIds], so the UI can show them as unusable instead of hiding them.
   @override
   Future<List<EzkeyEnrollment>> list() async {
-    List<EzkeyEnrollment> result = [];
-    for (String json in _entries().values) {
+    final List<EzkeyEnrollment> result = [];
+    for (final String json in _entries().values) {
       try {
         result.add(_decode(json));
       } on EzkeyLocalStateException {
@@ -81,7 +81,7 @@ class SecureEzkeyEnrollmentStore implements EzkeyEnrollmentStore {
 
   /// Returns the local ids of the records that exist but cannot be read.
   List<String> unreadableLocalIds() => [
-    for (MapEntry<String, String> entry in _entries().entries)
+    for (final MapEntry<String, String> entry in _entries().entries)
       if (!_isReadable(entry.value)) entry.key.substring(keyPrefix.length),
   ];
 
@@ -90,7 +90,7 @@ class SecureEzkeyEnrollmentStore implements EzkeyEnrollmentStore {
 
   /// Returns the enrollment entries of the secure storage.
   Map<String, String> _entries() => {
-    for (MapEntry<String, String> entry in values.list().entries)
+    for (final MapEntry<String, String> entry in values.list().entries)
       if (entry.key.startsWith(keyPrefix)) entry.key: entry.value,
   };
 

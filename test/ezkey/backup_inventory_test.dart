@@ -1,23 +1,23 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:open_authenticator/core/crypto/salt.dart';
+import 'package:open_authenticator/core/crypto/store.dart';
 import 'package:open_authenticator/ezkey/backup_inventory.dart';
-import 'package:open_authenticator/model/crypto/salt.dart';
-import 'package:open_authenticator/model/crypto/store.dart';
 
 import 'support.dart';
 
 void main() {
   late CryptoStore backupKey;
 
-  setUpAll(() => backupKey = CryptoStore.fromPassword('backup-password', Salt.generate()));
+  setUpAll(() async => backupKey = await CryptoStore.fromPasswordInIsolate('backup-password', Salt.generate()));
 
   /// Returns a backup JSON whose inventory is [plain], encrypted with [backupKey].
-  Map<String, dynamic> backupWith(String plain) => {EzkeyBackupInventory.kJsonKey: base64.encode(backupKey.encrypt(plain)!)};
+  Map<String, dynamic> backupWith(String plain) => {EzkeyBackupInventory.kJsonKey: base64.encode(backupKey.encrypt(plain))};
 
   group('EzkeyInventoryEntry', () {
     test('holds display data only, never the key alias, a public key or the proof token', () {
-      EzkeyInventoryEntry entry = EzkeyInventoryEntry.fromEnrollment(testEnrollment(3, authApiBaseUrl: 'https://auth.orbit.example/'));
+      final EzkeyInventoryEntry entry = EzkeyInventoryEntry.fromEnrollment(testEnrollment(3, authApiBaseUrl: 'https://auth.orbit.example/'));
 
       expect(entry.toJson(), {
         'enrollmentId': 3,
@@ -30,13 +30,13 @@ void main() {
     });
 
     test('keeps a non-default port in the host', () {
-      EzkeyInventoryEntry entry = EzkeyInventoryEntry.fromEnrollment(testEnrollment(3, authApiBaseUrl: 'http://10.0.2.2:8080'));
+      final EzkeyInventoryEntry entry = EzkeyInventoryEntry.fromEnrollment(testEnrollment(3, authApiBaseUrl: 'http://10.0.2.2:8080'));
 
       expect(entry.authApiHost, '10.0.2.2:8080');
     });
 
     test('tryFromJson() rejects an entry without an id, a host or a valid date', () {
-      Map<String, dynamic> valid = EzkeyInventoryEntry.fromEnrollment(testEnrollment(3)).toJson();
+      final Map<String, dynamic> valid = EzkeyInventoryEntry.fromEnrollment(testEnrollment(3)).toJson();
 
       expect(EzkeyInventoryEntry.tryFromJson(valid)?.enrollmentId, 3);
       expect(EzkeyInventoryEntry.tryFromJson({...valid, 'enrollmentId': '3'}), isNull);
@@ -51,9 +51,9 @@ void main() {
       expect(EzkeyBackupInventory.encrypt([], backupKey), isNull);
     });
 
-    test('reads back what it encrypted, only with the same key', () {
-      EzkeyBackupInventory inventory = EzkeyBackupInventory.encrypt([EzkeyInventoryEntry.fromEnrollment(testEnrollment(3))], backupKey)!;
-      CryptoStore otherKey = CryptoStore.fromPassword('backup-password', Salt.generate());
+    test('reads back what it encrypted, only with the same key', () async {
+      final EzkeyBackupInventory inventory = EzkeyBackupInventory.encrypt([EzkeyInventoryEntry.fromEnrollment(testEnrollment(3))], backupKey)!;
+      final CryptoStore otherKey = await CryptoStore.fromPasswordInIsolate('backup-password', Salt.generate());
 
       expect(EzkeyBackupInventory.tryRead(inventory.toBackupJson(), backupKey)!.entries.single.enrollmentId, 3);
       expect(EzkeyBackupInventory.tryRead(inventory.toBackupJson(), otherKey), isNull);
@@ -69,9 +69,9 @@ void main() {
     });
 
     test('tryRead() skips invalid entries and keeps the valid ones', () {
-      String valid = jsonEncode(EzkeyInventoryEntry.fromEnrollment(testEnrollment(7)).toJson());
+      final String valid = jsonEncode(EzkeyInventoryEntry.fromEnrollment(testEnrollment(7)).toJson());
 
-      EzkeyBackupInventory? inventory = EzkeyBackupInventory.tryRead(backupWith('[{"enrollmentId": "x"}, $valid, 12]'), backupKey);
+      final EzkeyBackupInventory? inventory = EzkeyBackupInventory.tryRead(backupWith('[{"enrollmentId": "x"}, $valid, 12]'), backupKey);
 
       expect(inventory!.entries.map((entry) => entry.enrollmentId), [7]);
     });

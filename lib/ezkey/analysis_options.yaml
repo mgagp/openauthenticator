@@ -19,7 +19,6 @@ linter:
     - no_literal_bool_comparisons
     - prefer_null_aware_method_calls
     - avoid_redundant_argument_values
-    - unnecessary_await_in_return
     - literal_only_boolean_expressions
     - no_adjacent_strings_in_list
     - avoid_void_async

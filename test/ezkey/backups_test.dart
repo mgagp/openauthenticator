@@ -1,16 +1,16 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forui/forui.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:open_authenticator/core/backup/backup.dart';
 import 'package:open_authenticator/ezkey/backups.dart';
 import 'package:open_authenticator/ezkey/enrollment_store.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
-import 'package:open_authenticator/model/backup/backup.dart';
 import 'package:open_authenticator/pages/settings/entries/backup_now.dart';
 import 'package:open_authenticator/pages/settings/entries/manage_backups.dart';
 import 'package:open_authenticator/themes.dart';
@@ -89,7 +89,7 @@ void main() {
     testWidgets('adds the note when this device holds EzKey enrollments', (tester) async {
       await store.save(testEnrollment(1));
 
-      String? message = await run(tester, withEzkeyBackupNote, 'Upstream message.');
+      final String? message = await run(tester, withEzkeyBackupNote, 'Upstream message.');
 
       expect(message, 'Upstream message.\n\n${translations.ezkey.backups.backupNote}');
     });
@@ -97,13 +97,13 @@ void main() {
     testWidgets('adds the note for an unreadable record too', (tester) async {
       values.values['${SecureEzkeyEnrollmentStore.keyPrefix}http://localhost:8080#2'] = '{not json';
 
-      String? message = await run(tester, withEzkeyBackupNote, 'Upstream message.');
+      final String? message = await run(tester, withEzkeyBackupNote, 'Upstream message.');
 
       expect(message, 'Upstream message.\n\n${translations.ezkey.backups.backupNote}');
     });
 
     testWidgets('keeps upstream\'s message without enrollments', (tester) async {
-      String? message = await run(tester, withEzkeyBackupNote, 'Upstream message.');
+      final String? message = await run(tester, withEzkeyBackupNote, 'Upstream message.');
 
       expect(message, 'Upstream message.');
     });
@@ -112,7 +112,7 @@ void main() {
       currentPlatform = .windows;
       await store.save(testEnrollment(1));
 
-      String? message = await run(tester, withEzkeyBackupNote, 'Upstream message.');
+      final String? message = await run(tester, withEzkeyBackupNote, 'Upstream message.');
 
       expect(message, 'Upstream message.');
     });
@@ -120,7 +120,7 @@ void main() {
     testWidgets('keeps upstream\'s message when the enrollment store fails', (tester) async {
       storeFails = true;
 
-      String? message = await run(tester, withEzkeyBackupNote, 'Upstream message.');
+      final String? message = await run(tester, withEzkeyBackupNote, 'Upstream message.');
 
       expect(message, 'Upstream message.');
     });
@@ -130,13 +130,13 @@ void main() {
     testWidgets('adds the restore note when this device holds EzKey enrollments', (tester) async {
       await store.save(testEnrollment(1));
 
-      String? message = await run(tester, withEzkeyRestoreNote, 'Upstream message.');
+      final String? message = await run(tester, withEzkeyRestoreNote, 'Upstream message.');
 
       expect(message, 'Upstream message.\n\n${translations.ezkey.backups.restoreNote}');
     });
 
     testWidgets('keeps upstream\'s message without enrollments', (tester) async {
-      String? message = await run(tester, withEzkeyRestoreNote, 'Upstream message.');
+      final String? message = await run(tester, withEzkeyRestoreNote, 'Upstream message.');
 
       expect(message, 'Upstream message.');
     });
@@ -168,9 +168,9 @@ void main() {
 
     testWidgets('"Restore" shows the restore note in its password dialog', semanticsEnabled: false, (tester) async {
       await store.save(testEnrollment(1));
-      Directory directory = Directory.systemTemp.createTempSync('oa_ezkey_backups');
+      final Directory directory = Directory.systemTemp.createTempSync('oa_ezkey_backups');
       addTearDown(() => directory.deleteSync(recursive: true));
-      File file = File('${directory.path}/1793500000000.bak')..writeAsStringSync('{}');
+      final File file = File('${directory.path}/1793500000000.bak')..writeAsStringSync('{}');
       await pumpScope(
         tester,
         const ManageBackupSettingsEntryWidget(),

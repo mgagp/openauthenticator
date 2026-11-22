@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/flows/account.dart';
 import 'package:open_authenticator/flows/storage_migration.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
@@ -36,7 +36,7 @@ class InvalidSessionDialog extends ConsumerWidget {
 
   /// Opens the invalid session dialog.
   static Future<InvalidSessionDialogChoice?> openDialog(BuildContext context, WidgetRef ref, {bool handleResult = false}) async {
-    InvalidSessionDialogChoice? result = await showFDialog<InvalidSessionDialogChoice>(
+    final InvalidSessionDialogChoice? result = await showFDialog<InvalidSessionDialogChoice>(
       context: context,
       builder: (context, style, animation) => const InvalidSessionDialog._(),
     );

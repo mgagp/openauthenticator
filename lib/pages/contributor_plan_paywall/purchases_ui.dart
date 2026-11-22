@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:open_authenticator/core/purchases/clients/client.dart';
+import 'package:open_authenticator/core/purchases/contributor_plan.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
-import 'package:open_authenticator/model/purchases/clients/client.dart';
-import 'package:open_authenticator/model/purchases/contributor_plan.dart';
 import 'package:open_authenticator/utils/result/handler.dart';
 import 'package:open_authenticator/utils/result/result.dart';
 import 'package:open_authenticator/widgets/centered_circular_progress_indicator.dart';
@@ -27,7 +27,7 @@ class ContributorPlanPaywall extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    AsyncValue<RevenueCatClient?> revenueCatClient = ref.watch(revenueCatClientProvider);
+    final AsyncValue<RevenueCatClient?> revenueCatClient = ref.watch(revenueCatClientProvider);
     if (revenueCatClient.isLoading) {
       return const CenteredCircularProgressIndicator();
     }
@@ -49,7 +49,7 @@ class ContributorPlanPaywall extends ConsumerWidget {
         }
         if (snapshot.hasData) {
           Future<void> handleSuccess() async {
-            Result<ContributorPlanState> result = await ref.read(contributorPlanStateProvider.notifier).refresh();
+            final Result<ContributorPlanState> result = await ref.read(contributorPlanStateProvider.notifier).refresh();
             if (!context.mounted) {
               return;
             }

@@ -1,19 +1,19 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:open_authenticator/core/backend/authentication/providers/provider.dart';
+import 'package:open_authenticator/core/backend/user.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
-import 'package:open_authenticator/model/backend/authentication/providers/provider.dart';
-import 'package:open_authenticator/model/backend/user.dart';
 import 'package:open_authenticator/spacing.dart';
-import 'package:open_authenticator/utils/form_label.dart';
+import 'package:open_authenticator/utils/color.dart';
 import 'package:open_authenticator/utils/result/result.dart';
-import 'package:open_authenticator/utils/utils.dart';
 import 'package:open_authenticator/widgets/authentication_provider_image.dart';
 import 'package:open_authenticator/widgets/button_text.dart';
 import 'package:open_authenticator/widgets/clickable.dart';
 import 'package:open_authenticator/widgets/dialog/app_dialog.dart';
 import 'package:open_authenticator/widgets/dialog/text_input_dialog.dart';
 import 'package:open_authenticator/widgets/divider_text.dart';
+import 'package:open_authenticator/widgets/form/form_label.dart';
 
 /// Represents a sign-in dialog action.
 typedef SignInDialogAction = Future<Result> Function();
@@ -100,12 +100,12 @@ class _EmailFormState extends ConsumerState<_EmailForm> {
 
   @override
   Widget build(BuildContext context) {
-    User? user = ref.watch(userProvider).value;
-    EmailAuthenticationProvider provider = ref.watch(authenticationProviders.select((providers) => providers.email));
-    bool hasEmailProvider = user != null && user.hasAuthenticationProvider(provider.id);
+    final User? user = ref.watch(userProvider).value;
+    final EmailAuthenticationProvider provider = ref.watch(authenticationProviders.select((providers) => providers.email));
+    final bool hasEmailProvider = user != null && user.hasAuthenticationProvider(provider.id);
 
-    String? emailToConfirm = ref.watch(emailConfirmationStateProvider).value?.email;
-    bool canAuthenticateByEmail = emailToConfirm == null && !hasEmailProvider;
+    final String? emailToConfirm = ref.watch(emailConfirmationStateProvider).value?.email;
+    final bool canAuthenticateByEmail = emailToConfirm == null && !hasEmailProvider;
     Widget child = Text(translations.authentication.signInDialog.email.button);
     String description = canAuthenticateByEmail ? translations.authentication.signInDialog.email.description.signIn : translations.authentication.signInDialog.email.description.cannotUse;
     if (emailToConfirm != null) {
@@ -187,17 +187,17 @@ class _OAuthenticationProvidersWrap extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    Iterable<OAuthenticationProvider> providers = ref.watch(
+    final Iterable<OAuthenticationProvider> providers = ref.watch(
       authenticationProviders.select((providers) => providers.whereType<OAuthenticationProvider>()),
     );
-    double circleLineWidth = providers.length * (circleButtonSize + circleButtonSpace * 2 + circleButtonPadding * 2);
+    final double circleLineWidth = providers.length * (circleButtonSize + circleButtonSpace * 2 + circleButtonPadding * 2);
     return LayoutBuilder(
       builder: (context, constraints) => circleLineWidth <= constraints.maxWidth && providers.length >= 3
           ? Wrap(
               alignment: WrapAlignment.center,
               spacing: circleButtonSpace,
               children: [
-                for (OAuthenticationProvider provider in providers)
+                for (final OAuthenticationProvider provider in providers)
                   _ProviderCircleButton(
                     onTapIfLoggedOut: () => onProviderSelected(provider),
                     providerId: provider.id,
@@ -247,9 +247,9 @@ class _ProviderCircleButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    User? user = ref.watch(userProvider).value;
-    bool isLoggedIn = user != null && user.hasAuthenticationProvider(providerId);
-    Color? buttonColor = context.theme.buttonStyles.resolve({FButtonVariant.secondary}).base.decoration.base.color;
+    final User? user = ref.watch(userProvider).value;
+    final bool isLoggedIn = user != null && user.hasAuthenticationProvider(providerId);
+    final Color? buttonColor = context.theme.buttonStyles.resolve({FButtonVariant.secondary}).base.decoration.base.color;
     Widget button = Tooltip(
       message: translations.authentication.authenticationProvider[providerId].name,
       child: ClickableButton.raw(
@@ -309,8 +309,8 @@ class _ProviderButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    User? user = ref.watch(userProvider).value;
-    String? title = translations.authentication.authenticationProvider[providerId].name;
+    final User? user = ref.watch(userProvider).value;
+    final String? title = translations.authentication.authenticationProvider[providerId].name;
     Widget child = title == null ? const SizedBox.shrink() : Text(title);
     if (user != null && user.hasAuthenticationProvider(providerId)) {
       child = _ButtonChildWithAuthenticatedBadge(

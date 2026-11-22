@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart' hide AboutDialog;
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart' hide AboutDialog;
 import 'package:open_authenticator/app.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/pages/settings/entries/widgets.dart';
@@ -28,7 +28,7 @@ class AboutSettingsEntryWidget extends StatelessWidget with FTileMixin {
             style: TextStyle(fontStyle: .italic),
           ),
           appVersion: TextSpan(
-            text: snapshot.data ?? '1.0.0',
+            text: snapshot.data ?? '—',
             style: const TextStyle(fontStyle: .italic),
           ),
           appAuthor: const TextSpan(

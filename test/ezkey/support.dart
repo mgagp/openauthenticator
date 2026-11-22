@@ -64,7 +64,7 @@ class BindingAuthApi implements EzkeyAuthApi {
 
   @override
   Future<EnrollmentBindResponse> bind(EnrollmentBindRequest request) async {
-    String payload = buildEnrollmentBindPayload(
+    final String payload = buildEnrollmentBindPayload(
       enrollmentProofToken: request.enrollmentProofToken,
       enrollmentId: enrollmentId,
       integrationPublicKey: integrationKey.publicKeyBase64Url,

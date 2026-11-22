@@ -10,12 +10,12 @@ import 'package:local_auth_darwin/local_auth_darwin.dart';
 import 'package:local_auth_darwin/types/auth_messages_macos.dart';
 // ignore: depend_on_referenced_packages
 import 'package:local_auth_windows/local_auth_windows.dart';
+import 'package:open_authenticator/core/app_unlock/interaction.dart';
+import 'package:open_authenticator/core/app_unlock/methods/method.dart';
+import 'package:open_authenticator/core/app_unlock/reason.dart';
+import 'package:open_authenticator/core/settings/app_unlock_method.dart';
+import 'package:open_authenticator/core/settings/entry.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
-import 'package:open_authenticator/model/app_unlock/interaction.dart';
-import 'package:open_authenticator/model/app_unlock/methods/method.dart';
-import 'package:open_authenticator/model/app_unlock/reason.dart';
-import 'package:open_authenticator/model/settings/app_unlock_method.dart';
-import 'package:open_authenticator/model/settings/entry.dart';
 import 'package:open_authenticator/utils/result/result.dart';
 
 /// The approval protection the user chose, as in the EzKey reference app (#34).
@@ -28,7 +28,9 @@ enum EzkeyApprovalSecurity {
 }
 
 /// The approval protection setting provider, remembered across launches.
-final ezkeyApprovalSecurityProvider = AsyncNotifierProvider.autoDispose<EzkeyApprovalSecurityEntry, EzkeyApprovalSecurity>(EzkeyApprovalSecurityEntry.new);
+final AsyncNotifierProvider<EzkeyApprovalSecurityEntry, EzkeyApprovalSecurity> ezkeyApprovalSecurityProvider = AsyncNotifierProvider.autoDispose<EzkeyApprovalSecurityEntry, EzkeyApprovalSecurity>(
+  EzkeyApprovalSecurityEntry.new,
+);
 
 /// Remembers the user's approval protection. Lowering it is protected: see [EzkeyApprovalSecurityEntry.change].
 class EzkeyApprovalSecurityEntry extends EnumSettingsEntry<EzkeyApprovalSecurity> {
@@ -48,7 +50,7 @@ class EzkeyApprovalSecurityEntry extends EnumSettingsEntry<EzkeyApprovalSecurity
   /// [interaction], so a holder of an unlocked phone cannot turn the protection off just before
   /// approving (EzKey reference app, "settings downgrade" finding).
   Future<bool> change(EzkeyApprovalSecurity value, AppUnlockInteraction interaction) async {
-    EzkeyApprovalSecurity current = await future;
+    final EzkeyApprovalSecurity current = await future;
     if (value == current) {
       return false;
     }
@@ -104,11 +106,11 @@ final ezkeyDeviceConfirmationProvider = Provider<Future<bool> Function({required
 /// asked through [interaction]. Without an app unlock method, upstream would ask for the master
 /// password; the device credential is asked instead, with [title] and [reason], as before #83.
 Future<bool> confirmWithAppUnlockMethod(Ref ref, AppUnlockInteraction interaction, {required String title, required String reason}) async {
-  String unlockMethodId = await ref.read(appUnlockMethodSettingsEntryProvider.future);
+  final String unlockMethodId = await ref.read(appUnlockMethodSettingsEntryProvider.future);
   if (unlockMethodId == NoneAppUnlockMethod.kMethodId) {
     return ref.read(ezkeyDeviceConfirmationProvider)(title: title, reason: reason);
   }
-  Result result = await ref.read(appUnlockMethodSettingsEntryProvider.notifier).unlockWithCurrentMethod(interaction, UnlockReason.sensibleAction);
+  final Result result = await ref.read(appUnlockMethodSettingsEntryProvider.notifier).unlockWithCurrentMethod(interaction, UnlockReason.sensibleAction);
   return result is ResultSuccess;
 }
 
@@ -120,7 +122,7 @@ Future<bool> confirmWithAppUnlockMethod(Ref ref, AppUnlockInteraction interactio
 /// `LocalAuthenticationDefault`, so a port needs no change here (ADR-0004). Desktop window focus
 /// handling, which upstream adds around the prompt, comes with the first desktop port.
 Future<bool> confirmWithDevice({required String title, required String reason}) async {
-  LocalAuthentication localAuthentication = LocalAuthentication();
+  final LocalAuthentication localAuthentication = LocalAuthentication();
   try {
     if (!await localAuthentication.isDeviceSupported()) {
       return true;

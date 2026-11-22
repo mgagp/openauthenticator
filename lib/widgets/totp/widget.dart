@@ -1,10 +1,10 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:open_authenticator/core/totp/decrypted.dart';
+import 'package:open_authenticator/core/totp/totp.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
-import 'package:open_authenticator/model/totp/decrypted.dart';
-import 'package:open_authenticator/model/totp/totp.dart';
 import 'package:open_authenticator/utils/platform.dart';
 import 'package:open_authenticator/widgets/button_text.dart';
 import 'package:open_authenticator/widgets/clickable.dart';
@@ -34,6 +34,17 @@ class TotpTile extends StatelessWidget {
 
   /// the trailing widget builder.
   final WidgetBuilder? suffixBuilder;
+
+  /// Creates a new TOTP widget instance.
+  const TotpTile({
+    super.key,
+    required this.totp,
+    this.imageSize = kDefaultImageSize,
+    this.displayCode = true,
+    this.onTap,
+    this.onLongPress,
+    this.suffixBuilder,
+  });
 
   /// Creates a new TOTP widget instance that adapts itself to the current platform.
   TotpTile.adaptive({
@@ -65,17 +76,6 @@ class TotpTile extends StatelessWidget {
            onDeletePress: onDeletePress,
          ),
        );
-
-  /// Creates a new TOTP widget instance.
-  const TotpTile({
-    super.key,
-    required this.totp,
-    this.imageSize = kDefaultImageSize,
-    this.displayCode = true,
-    this.onTap,
-    this.onLongPress,
-    this.suffixBuilder,
-  });
 
   @override
   Widget build(BuildContext context) => ClickableTile(
@@ -178,7 +178,7 @@ class TotpTile extends StatelessWidget {
     VoidCallback? onDeletePress,
   }) async {
     HapticFeedback.heavyImpact();
-    _MobileActionsDialogResult? choice = await showFDialog<_MobileActionsDialogResult>(
+    final _MobileActionsDialogResult? choice = await showFDialog<_MobileActionsDialogResult>(
       context: context,
       builder: (context, style, animation) => _MobileActionsDialog(
         canEdit: totp.isDecrypted,
@@ -284,43 +284,44 @@ class _DesktopActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) => FPopoverMenu(
     autofocus: true,
-    menu: [
+    menuBuilder: (_, controller, _) => [
       FItemGroup(
         children: [
-          if (totp.isDecrypted) ...[
+          if (totp.isDecrypted)
             Clickable(
               child: FItem(
-                onPress: onEditPress,
+                onPress: _menuAction(context, controller, onEditPress),
                 prefix: const Icon(FLucideIcons.pencil),
                 title: Text(translations.totp.actions.desktopButtons.edit),
               ),
-            ),
+            )
+          else
             Clickable(
               child: FItem(
-                style: .delta(
-                  contentStyle: .delta(
-                    prefixIconStyle: .delta(
-                      [
-                        .all(
-                          .delta(color: context.theme.colors.destructive),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                onPress: onDeletePress,
-                prefix: const Icon(FLucideIcons.trash),
-                title: Text(translations.totp.actions.desktopButtons.delete),
-              ),
-            ),
-          ] else
-            Clickable(
-              child: FItem(
-                onPress: onDecryptPress,
+                onPress: _menuAction(context, controller, onDecryptPress),
                 prefix: const Icon(FLucideIcons.lock),
                 title: Text(translations.totp.actions.decrypt),
               ),
             ),
+          // Undecryptable TOTPs can be deleted too, otherwise they would prevent backups and master password changes forever.
+          Clickable(
+            child: FItem(
+              style: .delta(
+                contentStyle: .delta(
+                  prefixIconStyle: .delta(
+                    [
+                      .all(
+                        .delta(color: context.theme.colors.destructive),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              onPress: _menuAction(context, controller, onDeletePress),
+              prefix: const Icon(FLucideIcons.trash),
+              title: Text(translations.totp.actions.desktopButtons.delete),
+            ),
+          ),
         ],
       ),
     ],
@@ -328,7 +329,20 @@ class _DesktopActions extends StatelessWidget {
     builder: (_, controller, child) => ClickableButton.icon(
       variant: .ghost,
       onPress: controller.toggle,
-      child: child!,
+      child: child,
     ),
   );
+
+  /// Closes the menu before navigating or opening a dialog.
+  static VoidCallback? _menuAction(BuildContext context, FPopoverController controller, VoidCallback? action) {
+    if (action == null) {
+      return null;
+    }
+    return () async {
+      await controller.hide();
+      if (context.mounted) {
+        action();
+      }
+    };
+  }
 }

@@ -1,14 +1,14 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:open_authenticator/core/crypto/salt.dart';
+import 'package:open_authenticator/core/crypto/store.dart';
+import 'package:open_authenticator/core/totp/decrypted.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/main.dart';
-import 'package:open_authenticator/model/crypto/salt.dart';
-import 'package:open_authenticator/model/crypto/store.dart';
-import 'package:open_authenticator/model/totp/decrypted.dart';
 import 'package:open_authenticator/pages/scan.dart';
 import 'package:open_authenticator/pages/totp.dart';
 import 'package:open_authenticator/themes.dart';
@@ -37,7 +37,7 @@ void main() {
   late List<RouteSettings> pushedRoutes;
   late Platform platform;
 
-  setUpAll(() => cryptoStore = CryptoStore.fromPassword('password', Salt.generate()));
+  setUpAll(() async => cryptoStore = await CryptoStore.fromPasswordInIsolate('password', Salt.generate()));
 
   setUp(() {
     pushedRoutes = [];
@@ -74,8 +74,8 @@ void main() {
 
   /// Hands [content] to the scanner as if the camera had read it, and returns whether it resumes.
   Future<bool> scan(WidgetTester tester, String content) async {
-    QrCodeScanner scanner = tester.widget<QrCodeScanner>(find.byType(QrCodeScanner));
-    Future<bool> resume = scanner.onScan!(content);
+    final QrCodeScanner scanner = tester.widget<QrCodeScanner>(find.byType(QrCodeScanner));
+    final Future<bool> resume = scanner.onScan!(content);
     // No pumpAndSettle: without a camera, the scanner placeholder spins forever.
     for (int i = 0; i < 5; i++) {
       await tester.pump(const Duration(milliseconds: 100));
@@ -87,22 +87,22 @@ void main() {
     testWidgets('opens the TOTP page with the scanned TOTP to add', (tester) async {
       await pumpScan(tester);
 
-      bool resume = await scan(tester, 'otpauth://totp/Orbit:alice@example.com?secret=JBSWY3DPEHPK3PXP&issuer=Orbit');
+      final bool resume = await scan(tester, 'otpauth://totp/Orbit:alice@example.com?secret=JBSWY3DPEHPK3PXP&issuer=Orbit');
 
       expect(resume, isFalse);
       expect(pushedRoutes.map((route) => route.name), [TotpPage.name]);
-      Map arguments = pushedRoutes.single.arguments as Map;
+      final Map arguments = pushedRoutes.single.arguments as Map;
       expect(arguments[OpenAuthenticatorApp.kRouteParameterAddTotp], isTrue);
-      DecryptedTotp totp = arguments[OpenAuthenticatorApp.kRouteParameterTotp];
-      // Upstream keeps the "Issuer:" prefix of the URI path in the label.
-      expect(totp.label, 'Orbit:alice@example.com');
+      final DecryptedTotp totp = arguments[OpenAuthenticatorApp.kRouteParameterTotp];
+      // Upstream splits the "Issuer:" prefix off the label since the 2026-11 sync (#148, `ff1c9aa`).
+      expect(totp.label, 'alice@example.com');
       expect(totp.issuer, 'Orbit');
     });
 
     testWidgets('shows an error and resumes scanning on content that is not a URI', (tester) async {
       await pumpScan(tester);
 
-      bool resume = await scan(tester, 'not a URI at all: %%');
+      final bool resume = await scan(tester, 'not a URI at all: %%');
 
       expect(resume, isTrue);
       expect(find.text(translations.error.scan.noUri), findsOneWidget);
@@ -112,7 +112,7 @@ void main() {
     testWidgets('shows an error and resumes scanning on an otpauth URI without a secret', (tester) async {
       await pumpScan(tester);
 
-      bool resume = await scan(tester, 'otpauth://totp/alice@example.com?issuer=Orbit');
+      final bool resume = await scan(tester, 'otpauth://totp/alice@example.com?issuer=Orbit');
 
       expect(resume, isTrue);
       expect(find.text(translations.error.scan.noUri), findsOneWidget);
@@ -122,7 +122,7 @@ void main() {
     testWidgets('shows an error and resumes scanning on an EzKey invitation', (tester) async {
       await pumpScan(tester);
 
-      bool resume = await scan(tester, '{"enrollmentProofToken":"proof-token-12","authUrl":"https://auth.example.com"}');
+      final bool resume = await scan(tester, '{"enrollmentProofToken":"proof-token-12","authUrl":"https://auth.example.com"}');
 
       expect(resume, isTrue);
       expect(find.text(translations.error.scan.noUri), findsOneWidget);
@@ -132,7 +132,7 @@ void main() {
     testWidgets('shows an error without a crypto store, and stays on the scanner', (tester) async {
       await pumpScan(tester, withCryptoStore: false);
 
-      bool resume = await scan(tester, 'otpauth://totp/alice@example.com?secret=JBSWY3DPEHPK3PXP');
+      final bool resume = await scan(tester, 'otpauth://totp/alice@example.com?secret=JBSWY3DPEHPK3PXP');
 
       expect(resume, isFalse);
       expect(find.text(translations.error.generic.noException), findsOneWidget);

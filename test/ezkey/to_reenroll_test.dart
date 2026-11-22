@@ -62,13 +62,13 @@ void main() {
 
   group('mergeEzkeyToReenroll', () {
     test('adds the restored entries to the list', () {
-      List<EzkeyInventoryEntry> merged = mergeEzkeyToReenroll([entry(1, integrationName: 'First')], [entry(2, integrationName: 'Second')], []);
+      final List<EzkeyInventoryEntry> merged = mergeEzkeyToReenroll([entry(1, integrationName: 'First')], [entry(2, integrationName: 'Second')], []);
 
       expect(merged.map((entry) => entry.enrollmentId), [1, 2]);
     });
 
     test('does not add an entry already listed, by enrollment or by account', () {
-      List<EzkeyInventoryEntry> merged = mergeEzkeyToReenroll(
+      final List<EzkeyInventoryEntry> merged = mergeEzkeyToReenroll(
         [entry(1), entry(2, integrationName: null)],
         [entry(9), entry(2, integrationName: null)],
         [],
@@ -78,13 +78,13 @@ void main() {
     });
 
     test('does not add an entry whose account is enrolled on this device', () {
-      List<EzkeyInventoryEntry> merged = mergeEzkeyToReenroll([], [entry(3), entry(4, integrationName: 'Other')], [testEnrollment(9)]);
+      final List<EzkeyInventoryEntry> merged = mergeEzkeyToReenroll([], [entry(3), entry(4, integrationName: 'Other')], [testEnrollment(9)]);
 
       expect(merged.map((entry) => entry.enrollmentId), [4]);
     });
 
     test('adds an entry with a missing name, even when an enrollment could be the same', () {
-      List<EzkeyInventoryEntry> merged = mergeEzkeyToReenroll([], [entry(3, tenantName: null)], [testEnrollment(3)]);
+      final List<EzkeyInventoryEntry> merged = mergeEzkeyToReenroll([], [entry(3, tenantName: null)], [testEnrollment(3)]);
 
       expect(merged.map((entry) => entry.enrollmentId), [3]);
     });
@@ -122,7 +122,7 @@ void main() {
     test('is not mistaken for an enrollment record', () async {
       await store.write([entry(3)]);
 
-      SecureEzkeyEnrollmentStore enrollments = SecureEzkeyEnrollmentStore(values);
+      final SecureEzkeyEnrollmentStore enrollments = SecureEzkeyEnrollmentStore(values);
 
       expect(await enrollments.list(), isEmpty);
       expect(enrollments.unreadableLocalIds(), isEmpty);
@@ -164,7 +164,7 @@ void main() {
     test('survives a restart, since it reads the secure storage', () async {
       await store.write([entry(3)]);
 
-      List<EzkeyInventoryEntry> entries = await container.read(ezkeyToReenrollProvider.future);
+      final List<EzkeyInventoryEntry> entries = await container.read(ezkeyToReenrollProvider.future);
 
       expect(entries.single.enrollmentId, 3);
     });
@@ -172,7 +172,7 @@ void main() {
     test('sorts the entries by integration name', () async {
       await store.write([entry(1, integrationName: 'zulu'), entry(2, integrationName: 'Alpha')]);
 
-      List<EzkeyInventoryEntry> entries = await container.read(ezkeyToReenrollProvider.future);
+      final List<EzkeyInventoryEntry> entries = await container.read(ezkeyToReenrollProvider.future);
 
       expect(entries.map((entry) => entry.integrationName), ['Alpha', 'zulu']);
     });
@@ -183,7 +183,7 @@ void main() {
 
       enrollments = [testEnrollment(9)];
       container.invalidate(ezkeyEnrollmentsProvider);
-      List<EzkeyInventoryEntry> entries = await container.read(ezkeyToReenrollProvider.future);
+      final List<EzkeyInventoryEntry> entries = await container.read(ezkeyToReenrollProvider.future);
 
       expect(entries.map((entry) => entry.enrollmentId), [4]);
       expect(store.read().map((entry) => entry.enrollmentId), [4]);
@@ -193,7 +193,7 @@ void main() {
       await store.write([entry(3, enrollmentName: null)]);
       enrollments = [testEnrollment(3)];
 
-      List<EzkeyInventoryEntry> entries = await container.read(ezkeyToReenrollProvider.future);
+      final List<EzkeyInventoryEntry> entries = await container.read(ezkeyToReenrollProvider.future);
 
       expect(entries.map((entry) => entry.enrollmentId), [3]);
     });
@@ -203,7 +203,7 @@ void main() {
       await container.read(ezkeyToReenrollProvider.future);
 
       await container.read(ezkeyToReenrollProvider.notifier).remove(entry(3));
-      List<EzkeyInventoryEntry> entries = await container.read(ezkeyToReenrollProvider.future);
+      final List<EzkeyInventoryEntry> entries = await container.read(ezkeyToReenrollProvider.future);
 
       expect(entries.map((entry) => entry.enrollmentId), [4]);
       expect(store.read().map((entry) => entry.enrollmentId), [4]);

@@ -1,14 +1,14 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/app.dart';
+import 'package:open_authenticator/core/backend/authentication/providers/provider.dart';
+import 'package:open_authenticator/core/backend/backend.dart';
+import 'package:open_authenticator/core/backend/request/request.dart';
+import 'package:open_authenticator/core/backend/request/response.dart';
+import 'package:open_authenticator/core/settings/backend_url.dart';
 import 'package:open_authenticator/flows/storage_migration.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
-import 'package:open_authenticator/model/backend/authentication/providers/provider.dart';
-import 'package:open_authenticator/model/backend/backend.dart';
-import 'package:open_authenticator/model/backend/request/request.dart';
-import 'package:open_authenticator/model/backend/request/response.dart';
-import 'package:open_authenticator/model/settings/backend_url.dart';
 import 'package:open_authenticator/pages/settings/entries/widgets.dart';
 import 'package:open_authenticator/utils/result/handler.dart';
 import 'package:open_authenticator/utils/result/result.dart';
@@ -24,6 +24,7 @@ class ChangeBackendUrlSettingsEntryWidget extends ConsumerWidget with FTileMixin
     super.key,
   });
 
+  /// Builds the setting that verifies a backend before switching to it.
   @override
   Widget build(BuildContext context, WidgetRef ref) => ClickableTile(
     prefix: const Icon(FLucideIcons.globe),
@@ -31,36 +32,26 @@ class ChangeBackendUrlSettingsEntryWidget extends ConsumerWidget with FTileMixin
     title: Text(translations.settings.dangerZone.changeBackendUrl.title),
     subtitle: Text(translations.settings.dangerZone.changeBackendUrl.subtitle),
     onPress: () async {
-      Result result = await ref
-          .read(storageMigrationFlowProvider)
-          .changeStorageType(
-            context,
-            .localOnly,
-            logout: true,
-            presentation: .successAndErrorToast,
-          );
-      if (!context.mounted || result is! ResultSuccess) {
-        return;
-      }
-      String currentUrl = await showWaitingOverlay(
+      final String currentUrl = await showWaitingOverlay(
         context,
         future: ref.read(backendUrlSettingsEntryProvider.future),
       );
       if (!context.mounted) {
         return;
       }
-      String? url = await TextInputDialog.prompt(
+      final String? input = await TextInputDialog.prompt(
         context,
         title: translations.settings.dangerZone.changeBackendUrl.inputDialog.title,
         message: translations.settings.dangerZone.changeBackendUrl.inputDialog.message(defaultBackendUrl: App.defaultBackendUrl),
         keyboardType: .url,
         initialValue: currentUrl,
-        validator: (string) => Uri.tryParse(string ?? '') == null ? translations.error.validation.url : null,
+        validator: (string) => BackendUrl.tryParse(string) == null ? translations.error.validation.url : null,
       );
-      if (url == null || !context.mounted) {
+      final BackendUrl? url = BackendUrl.tryParse(input);
+      if (url == null || url == currentUrl || !context.mounted) {
         return;
       }
-      Result<PingBackendResponse> pingBackendResponse = await showWaitingOverlay(
+      final Result<PingBackendResponse> pingBackendResponse = await showWaitingOverlay(
         context,
         future: ref
             .read(backendClientProvider.notifier)
@@ -76,15 +67,24 @@ class ChangeBackendUrlSettingsEntryWidget extends ConsumerWidget with FTileMixin
         handleResult(
           context,
           pingBackendResponse,
+          reporting: pingBackendResponse is ResultError<PingBackendResponse> && pingBackendResponse.exception is InvalidJsonResponse ? .none : null,
           buildErrorToastMessage: (_) => translations.error.backend.invalidBackendUrl,
           presentation: .successAndErrorToast,
         );
         return;
       }
-      if (!context.mounted) {
+      final Result result = await ref
+          .read(storageMigrationFlowProvider)
+          .changeStorageType(
+            context,
+            .localOnly,
+            logout: true,
+            presentation: .successAndErrorToast,
+          );
+      if (!context.mounted || result is! ResultSuccess) {
         return;
       }
-      Result cancelConfirmationResult = await showWaitingOverlay(
+      final Result cancelConfirmationResult = await showWaitingOverlay(
         context,
         future: ref.read(authenticationProviders).email.cancelConfirmation(),
       );
@@ -101,7 +101,7 @@ class ChangeBackendUrlSettingsEntryWidget extends ConsumerWidget with FTileMixin
       }
       await showWaitingOverlay(
         context,
-        future: ref.read(backendUrlSettingsEntryProvider.notifier).changeValue(BackendUrl(url)),
+        future: ref.read(backendUrlSettingsEntryProvider.notifier).changeValue(url),
       );
       if (context.mounted) {
         showSuccessToast(

@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:open_authenticator/model/settings/entry.dart';
+import 'package:open_authenticator/core/settings/entry.dart';
 
 /// Which home zones are expanded (#36, #44). One state for both zones, so they are never both
 /// collapsed: collapsing one expands the other.
@@ -30,7 +30,9 @@ enum EzkeyHomeZoneState {
 }
 
 /// The EzKey home zone state provider, remembered across launches.
-final ezkeyHomeZoneStateProvider = AsyncNotifierProvider.autoDispose<EzkeyHomeZoneStateEntry, EzkeyHomeZoneState>(EzkeyHomeZoneStateEntry.new);
+final AsyncNotifierProvider<EzkeyHomeZoneStateEntry, EzkeyHomeZoneState> ezkeyHomeZoneStateProvider = AsyncNotifierProvider.autoDispose<EzkeyHomeZoneStateEntry, EzkeyHomeZoneState>(
+  EzkeyHomeZoneStateEntry.new,
+);
 
 /// Remembers the user's last choice for the home zones.
 class EzkeyHomeZoneStateEntry extends EnumSettingsEntry<EzkeyHomeZoneState> {
@@ -48,7 +50,7 @@ class EzkeyHomeZoneStateEntry extends EnumSettingsEntry<EzkeyHomeZoneState> {
 
 /// The EzKey zone's share of the home height while both zones are expanded (#32), remembered across
 /// launches. `0` (the default) lets the EzKey zone take the height it needs, up to a cap.
-final ezkeyHomeZoneSplitProvider = AsyncNotifierProvider.autoDispose<EzkeyHomeZoneSplitEntry, double>(EzkeyHomeZoneSplitEntry.new);
+final AsyncNotifierProvider<EzkeyHomeZoneSplitEntry, double> ezkeyHomeZoneSplitProvider = AsyncNotifierProvider.autoDispose<EzkeyHomeZoneSplitEntry, double>(EzkeyHomeZoneSplitEntry.new);
 
 /// Remembers where the user dragged the divider between the home zones.
 class EzkeyHomeZoneSplitEntry extends SettingsEntry<double> {

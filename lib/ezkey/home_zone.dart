@@ -1,9 +1,10 @@
 import 'dart:math' as math;
 
 import 'package:ezkey_dart/ezkey_dart.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:open_authenticator/core/totp/repository.dart';
 import 'package:open_authenticator/ezkey/about.dart';
 import 'package:open_authenticator/ezkey/actions.dart';
 import 'package:open_authenticator/ezkey/availability.dart';
@@ -15,7 +16,6 @@ import 'package:open_authenticator/ezkey/pages/ezkey_page.dart';
 import 'package:open_authenticator/ezkey/to_reenroll.dart';
 import 'package:open_authenticator/ezkey/widgets/enrollment_tile.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
-import 'package:open_authenticator/model/totp/repository.dart';
 import 'package:open_authenticator/spacing.dart';
 import 'package:open_authenticator/widgets/button_text.dart';
 import 'package:open_authenticator/widgets/clickable.dart';
@@ -76,14 +76,14 @@ class _EzkeyHomeZonesState extends ConsumerState<EzkeyHomeZones> {
 
   @override
   Widget build(BuildContext context) {
-    _ZonesState zones = _watchZones();
+    final _ZonesState zones = _watchZones();
     // The same widget types in every state, so the upstream content keeps its state.
     return SafeArea(
       top: false,
       child: LayoutBuilder(
         builder: (context, constraints) {
           _sharedHeight = constraints.maxHeight - _SplitHandle.height;
-          _ZonesLayout layout = _layout(zones);
+          final _ZonesLayout layout = _layout(zones);
           return Column(
             crossAxisAlignment: .stretch,
             children: [
@@ -123,10 +123,10 @@ class _EzkeyHomeZonesState extends ConsumerState<EzkeyHomeZones> {
 
   /// Reads the state of both zones and the remembered share, and rebuilds when they change.
   _ZonesState _watchZones() {
-    bool hasEnrollments = ref.watch(ezkeyInstallationsProvider).value?.isNotEmpty ?? false;
+    final bool hasEnrollments = ref.watch(ezkeyInstallationsProvider).value?.isNotEmpty ?? false;
     // After a restore on a new device, the list to re-enroll is all the zone has to show, and it must be seen.
-    bool hasToReenroll = ref.watch(ezkeyToReenrollProvider).value?.isNotEmpty ?? false;
-    EzkeyHomeZoneState state = ref.watch(ezkeyHomeZoneStateProvider).value ?? .auto;
+    final bool hasToReenroll = ref.watch(ezkeyToReenrollProvider).value?.isNotEmpty ?? false;
+    final EzkeyHomeZoneState state = ref.watch(ezkeyHomeZoneStateProvider).value ?? .auto;
     return (
       expanded: state.isExpanded(hasEnrollments: hasEnrollments || hasToReenroll),
       totpExpanded: state.isTotpExpanded,
@@ -137,10 +137,10 @@ class _EzkeyHomeZonesState extends ConsumerState<EzkeyHomeZones> {
   /// Decides the layout of this screen for [zones].
   _ZonesLayout _layout(_ZonesState zones) {
     // Too little height for both minimums (small window, landscape): no divider.
-    bool split = zones.expanded && zones.totpExpanded && _minShare <= _maxShare;
+    final bool split = zones.expanded && zones.totpExpanded && _minShare <= _maxShare;
     // A share of 0 means automatic: the EzKey zone takes the height it needs. A remembered share is
     // kept within this screen's limits.
-    double share = split ? (_dragShare ?? (zones.savedShare > 0 ? _clampShare(zones.savedShare) : 0)) : 0;
+    final double share = split ? (_dragShare ?? (zones.savedShare > 0 ? _clampShare(zones.savedShare) : 0)) : 0;
     return _ZonesLayout(
       expanded: zones.expanded,
       totpExpanded: zones.totpExpanded,
@@ -167,7 +167,7 @@ class _EzkeyHomeZonesState extends ConsumerState<EzkeyHomeZones> {
 
   /// The EzKey zone's share of the height in the last layout (automatic height included).
   double _measuredShare() {
-    RenderBox? box = _ezkeyZoneKey.currentContext?.findRenderObject() as RenderBox?;
+    final RenderBox? box = _ezkeyZoneKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null || !box.hasSize || _sharedHeight <= 0) {
       return _clampShare(0);
     }
@@ -185,7 +185,7 @@ class _EzkeyHomeZonesState extends ConsumerState<EzkeyHomeZones> {
 
   /// Starts a drag from the current share.
   void _startDrag() {
-    double saved = ref.read(ezkeyHomeZoneSplitProvider).value ?? 0;
+    final double saved = ref.read(ezkeyHomeZoneSplitProvider).value ?? 0;
     setState(() => _dragShare = saved > 0 ? saved : _measuredShare());
   }
 
@@ -194,7 +194,7 @@ class _EzkeyHomeZonesState extends ConsumerState<EzkeyHomeZones> {
 
   /// Ends a drag, and remembers where it ended.
   void _endDrag() {
-    double? share = _dragShare;
+    final double? share = _dragShare;
     if (share != null) {
       _saveShare(share);
     }
@@ -281,7 +281,7 @@ class _TotpZone extends StatelessWidget {
         child: Column(
           crossAxisAlignment: .stretch,
           children: [
-            layout.expanded ? const _TotpHeader() : const SizedBox.shrink(),
+            if (layout.expanded) const _TotpHeader() else const SizedBox.shrink(),
             Expanded(child: child),
           ],
         ),
@@ -419,7 +419,7 @@ class _TotpCollapsedBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    int? count = ref.watch(totpRepositoryProvider).value?.length;
+    final int? count = ref.watch(totpRepositoryProvider).value?.length;
     return _ZoneBar(
       tapKey: const ValueKey('ezkey-home-totp-expand'),
       label: translations.ezkey.home.totpExpand,
@@ -450,7 +450,7 @@ class _CollapsedBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    int toReenroll = ref.watch(ezkeyToReenrollProvider).value?.length ?? 0;
+    final int toReenroll = ref.watch(ezkeyToReenrollProvider).value?.length ?? 0;
     return _ZoneBar(
       tapKey: const ValueKey('ezkey-home-expand'),
       label: translations.ezkey.home.expand,
@@ -512,7 +512,7 @@ class _ZoneBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    BorderSide border = BorderSide(color: context.theme.colors.border, width: 2);
+    final BorderSide border = BorderSide(color: context.theme.colors.border, width: 2);
     return Semantics(
       button: true,
       label: label,
@@ -663,8 +663,8 @@ class EzkeyHomeZone extends ConsumerWidget {
 
   /// The zone's content under the header: an error, a progress indicator, or the enrollments.
   List<Widget> _content(BuildContext context, WidgetRef ref) {
-    AsyncValue<List<EzkeyInstallation>> installations = ref.watch(ezkeyInstallationsProvider);
-    ClickableTile? toReenrollTile = _toReenrollTile(context, ref);
+    final AsyncValue<List<EzkeyInstallation>> installations = ref.watch(ezkeyInstallationsProvider);
+    final ClickableTile? toReenrollTile = _toReenrollTile(context, ref);
     if (installations.hasError) {
       return [
         Text(
@@ -680,26 +680,27 @@ class EzkeyHomeZone extends ConsumerWidget {
         if (fill) const Spacer(),
       ];
     }
-    List<EzkeyEnrollment> enrollments = [
-      for (EzkeyInstallation installation in installations.value ?? []) ...installation.enrollments,
+    final List<EzkeyEnrollment> enrollments = [
+      for (final EzkeyInstallation installation in installations.value ?? []) ...installation.enrollments,
     ];
     return [
-      enrollments.isEmpty
-          ? _EmptyList(
-              fill: fill,
-              toReenrollTile: toReenrollTile,
-            )
-          : _EnrollmentList(
-              fill: fill,
-              enrollments: enrollments,
-              toReenrollTile: toReenrollTile,
-            ),
+      if (enrollments.isEmpty)
+        _EmptyList(
+          fill: fill,
+          toReenrollTile: toReenrollTile,
+        )
+      else
+        _EnrollmentList(
+          fill: fill,
+          enrollments: enrollments,
+          toReenrollTile: toReenrollTile,
+        ),
     ];
   }
 
   /// The row that says how many enrollments to re-enroll and leads to the EzKey page, or `null` when there is none.
   ClickableTile? _toReenrollTile(BuildContext context, WidgetRef ref) {
-    int toReenroll = ref.watch(ezkeyToReenrollProvider).value?.length ?? 0;
+    final int toReenroll = ref.watch(ezkeyToReenrollProvider).value?.length ?? 0;
     if (toReenroll == 0) {
       return null;
     }
@@ -719,7 +720,7 @@ class EzkeyHomeZone extends ConsumerWidget {
       await EzkeyActions.addFromScan(context, ref);
       return;
     }
-    _AddChoice? choice = await showFDialog<_AddChoice>(
+    final _AddChoice? choice = await showFDialog<_AddChoice>(
       context: context,
       builder: (context, style, animation) => AppDialog(
         title: Text(translations.ezkey.page.add),
@@ -829,7 +830,7 @@ class _EmptyList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    ClickableTile? toReenrollTile = this.toReenrollTile;
+    final ClickableTile? toReenrollTile = this.toReenrollTile;
     return Flexible(
       fit: fill ? .tight : .loose,
       child: SingleChildScrollView(
@@ -879,7 +880,7 @@ class _EnrollmentList extends ConsumerWidget {
           children: [
             ?toReenrollTile,
             // Flat, with the server when there are several installations (ADR-0007).
-            for (EzkeyEnrollment enrollment in enrollments)
+            for (final EzkeyEnrollment enrollment in enrollments)
               EzkeyEnrollmentTile(
                 enrollment: enrollment,
                 showServer: ref.watch(ezkeySeveralInstallationsProvider),

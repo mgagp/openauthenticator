@@ -37,11 +37,11 @@ The Flutter ↔ Kotlin bridge (platform channel) carries only public material fo
 ## Consequences
 
 - **Enrollments do not survive a phone change or reinstall**: the Keystore key never leaves the device and the records are excluded from backup. The user re-enrolls (the protocol has no key rotation or transfer).
-- **Storage recovery edge case.** When the encrypted preferences cannot be decrypted (e.g. restored from an old backup), upstream clears them (`_StorageRecovery` in `lib/model/secure_storage.dart`). EzKey records then disappear while their Keystore keys remain. Slice 1 handles both directions: orphan keys (an `ezkey-device-*` alias with no record, within the build's own storage namespace since #41) are deleted, and a record whose key is missing surfaces as `EzkeyLocalStateException` and is shown as unusable with a remove action (as in EzKey's MOB-015 behaviour).
+- **Storage recovery edge case.** When the encrypted preferences cannot be decrypted (e.g. restored from an old backup), upstream clears them (`_StorageRecovery` in `lib/core/secure_storage.dart`). EzKey records then disappear while their Keystore keys remain. Slice 1 handles both directions: orphan keys (an `ezkey-device-*` alias with no record, within the build's own storage namespace since #41) are deleted, and a record whose key is missing surfaces as `EzkeyLocalStateException` and is shown as unusable with a remove action (as in EzKey's MOB-015 behaviour).
 - **Testing split.** Dart tests use the SDK's `SoftwareDeviceKeyStore` and fake server; Keystore behaviour (StrongBox tier, fallback, signatures accepted by the server) is verified on the device and recorded in [`docs/ezkey/integration.md`](../ezkey/integration.md).
 - The enrollment proof token passes through Dart memory on every call; this is inherent to the protocol in any stack and is mitigated by never logging records (SDK redaction, app code review).
 
 ## References
 
 - EzKey repo: `ezkey_dart/README.md` §4.2–4.3 and §5; `ezkey_mobile/docs/MOBILE_CRYPTO_REFERENCE.md` (Secure storage vs Keystore, app-enforced guarantee boundary); `ezkey_mobile/docs/MOBILE_DATA_MODEL.md` (Cornerstone, enrollment rehydration outcomes); `docs/CLIENT_BEHAVIOUR_CONTRACT.md` §4.
-- This repo: `lib/model/secure_storage.dart`; `android/app/src/main/res/xml/data_extraction_rules.xml`, `backup_rules.xml`; ADR-0001.
+- This repo: `lib/core/secure_storage.dart`; `android/app/src/main/res/xml/data_extraction_rules.xml`, `backup_rules.xml`; ADR-0001.

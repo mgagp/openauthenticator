@@ -1,7 +1,7 @@
 import 'package:ezkey_dart/ezkey_dart.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/ezkey/actions.dart';
 import 'package:open_authenticator/ezkey/identity.dart';
 import 'package:open_authenticator/ezkey/messages.dart';
@@ -79,7 +79,7 @@ class EzkeyEnrollmentPage extends ConsumerWidget {
 
   /// Removes the enrollment from this device after confirmation, then leaves the page.
   Future<void> forget(BuildContext context, WidgetRef ref) async {
-    bool confirmed = await ConfirmationDialog.ask(
+    final bool confirmed = await ConfirmationDialog.ask(
       context,
       title: translations.ezkey.page.forget.confirmTitle,
       message: translations.ezkey.page.forget.confirmMessage(integration: identity.purpose),
@@ -114,7 +114,7 @@ class _EnrollmentDetails extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    EzkeyIdentity identity = EzkeyIdentity.of(enrollment);
+    final EzkeyIdentity identity = EzkeyIdentity.of(enrollment);
     return FTileGroup(
       children: [
         EzkeyPurposeTile(identity: identity, details: enrollment.integrationDescription),

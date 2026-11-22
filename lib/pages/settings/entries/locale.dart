@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 
 /// Allows to change the app locale for debugging purposes.
@@ -13,7 +13,7 @@ class LocaleSettingsEntryWidget extends ConsumerWidget with FTileMixin {
   @override
   Widget build(BuildContext context, WidgetRef ref) => FSelectMenuTile<AppLocale>.fromMap(
     {
-      for (AppLocale locale in AppLocale.values) locale.languageCode: locale,
+      for (final AppLocale locale in AppLocale.values) locale.languageCode: locale,
     },
     selectControl: FMultiValueControl.managedRadio(
       initial: TranslationProvider.of(context).locale,

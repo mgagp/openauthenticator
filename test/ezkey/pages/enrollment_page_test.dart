@@ -1,8 +1,8 @@
 import 'package:ezkey_dart/ezkey_dart.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/ezkey/messages.dart';
 import 'package:open_authenticator/ezkey/pages/enrollment_page.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
@@ -33,11 +33,11 @@ void main() {
 
   setUp(() async {
     api = _RecordingAuthApi();
-    SoftwareDeviceKeyStore keyStore = SoftwareDeviceKeyStore();
+    final SoftwareDeviceKeyStore keyStore = SoftwareDeviceKeyStore();
     await keyStore.generateKeyPair('key-5');
     await keyStore.generateKeyPair('key-6');
     enrollment = testEnrollment(5, deviceKeyAlias: 'key-5', integrationName: 'Internal Tools', authApiBaseUrl: 'https://ezkey.example');
-    InMemoryEnrollmentStore store = InMemoryEnrollmentStore();
+    final InMemoryEnrollmentStore store = InMemoryEnrollmentStore();
     await store.save(enrollment);
     await store.save(testEnrollment(6, deviceKeyAlias: 'key-6', integrationName: 'Administration'));
     authenticator = EzkeyAuthenticator(keyStore: keyStore, enrollmentStore: store, apiFactory: (uri) => api);

@@ -13,11 +13,11 @@ Future<List<String>> deleteOrphanEzkeyDeviceKeys({
   required NativeEzkeyDeviceKeyStore keyStore,
   required EzkeyEnrollmentStore enrollmentStore,
 }) async {
-  Set<String> referenced = {
-    for (EzkeyEnrollment enrollment in await enrollmentStore.list()) enrollment.deviceKeyAlias,
+  final Set<String> referenced = {
+    for (final EzkeyEnrollment enrollment in await enrollmentStore.list()) enrollment.deviceKeyAlias,
   };
-  List<String> deleted = [];
-  for (String alias in await keyStore.deviceKeyAliases()) {
+  final List<String> deleted = [];
+  for (final String alias in await keyStore.deviceKeyAliases()) {
     if (!referenced.contains(alias)) {
       await keyStore.deleteKeyPair(alias);
       deleted.add(alias);

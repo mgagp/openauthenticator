@@ -21,7 +21,7 @@ void main() {
     });
 
     test('never shows the server title or detail', () {
-      String message = ezkeyEnrollmentErrorMessage(apiError(500, 'internal-error'));
+      final String message = ezkeyEnrollmentErrorMessage(apiError(500, 'internal-error'));
 
       expect(message, translations.ezkey.error.server);
       expect(message, isNot(contains('Server')));
@@ -55,13 +55,13 @@ void main() {
     });
 
     test('an unknown respond outcome is uncertain, not a failure', () {
-      EzkeyRespondOutcomeUnknownException error = const EzkeyRespondOutcomeUnknownException(authAttemptId: 7, accepted: true, cause: EzkeyNetworkException('timeout'));
+      const EzkeyRespondOutcomeUnknownException error = EzkeyRespondOutcomeUnknownException(authAttemptId: 7, accepted: true, cause: EzkeyNetworkException('timeout'));
 
       expect(ezkeyAttemptErrorMessage(error), translations.ezkey.attempt.uncertain);
     });
 
     test('maps other failures by exception type and never shows server texts', () {
-      String message = ezkeyAttemptErrorMessage(apiError(500, 'internal-error'));
+      final String message = ezkeyAttemptErrorMessage(apiError(500, 'internal-error'));
 
       expect(message, translations.ezkey.error.server);
       expect(message, isNot(contains('Server')));
@@ -73,7 +73,7 @@ void main() {
 
   group('ezkeyAttemptResultMessage', () {
     test('gives each signed result its own message', () {
-      Set<String> messages = {for (AuthAttemptResult result in AuthAttemptResult.values) ezkeyAttemptResultMessage(result)};
+      final Set<String> messages = {for (final AuthAttemptResult result in AuthAttemptResult.values) ezkeyAttemptResultMessage(result)};
 
       expect(messages, hasLength(AuthAttemptResult.values.length));
       expect(ezkeyAttemptResultMessage(AuthAttemptResult.approved), translations.ezkey.attempt.result.approved);

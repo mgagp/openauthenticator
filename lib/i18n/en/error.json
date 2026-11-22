@@ -16,7 +16,7 @@
     "empty": "This field is required",
     "email": "Invalid email",
     "secret": "Invalid secret entered",
-    "totpDigits": "This number should be super or equal than 6",
+    "totpDigits": "Enter a number of digits between 6 and 15",
     "masterPassword": "Invalid password entered",
     "confirmation": "Confirmation doesn't match",
     "url": "Invalid URL entered"
@@ -61,10 +61,9 @@
     "unsupported": "Scanning is not supported on this device (code : $exception)."
   },
   "storageMigration": {
-    "getTotps": "An error occurred while getting your remote TOTPs. Please try again later.",
-    "backupError": "An error occurred while doing the backup. Please try again.",
     "anotherDeletedTotpPolicyShouldBeUsed": "Another deleted TOTP policy should be used.",
     "currentStoragePasswordMismatch": "Invalid master password entered.",
+    "remoteStoragePasswordMismatch": "Your online TOTPs have been encrypted using another master password. Please change your master password on this device so that it matches the one used on your other devices, then try again.",
     "generic": "An error occurred while migrating your data. Please try again later."
   },
   "revenueCat": {
@@ -74,6 +73,7 @@
   "totp": {
     "create": "This TOTP could not be created.",
     "decrypt": "Failed to decrypt this TOTP. Please ensure you have entered the correct password.",
+    "undecryptable": "$count TOTP(s) cannot be decrypted with your current master password. Tap them in the list to decrypt them using the password that was used to encrypt them, or delete them, then try again.",
     "changeCryptoStore": {
       "noCryptoStore": "Unable to get current crypto store. Please close and reopen the app.",
       "generic": "Failed to encrypt TOTP with current crypto store."

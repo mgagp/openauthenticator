@@ -16,7 +16,7 @@
     "empty": "Questo campo è obbligatorio",
     "email": "Email non valida",
     "secret": "Secret inserita non valido",
-    "totpDigits": "Il numero inserito deve essere uguale o maggiore di 6",
+    "totpDigits": "Inserisci un numero di cifre compreso tra 6 e 15",
     "masterPassword": "Password inserita non valida",
     "confirmation": "La conferma non corrisponde",
     "url": "URL non valido"
@@ -61,10 +61,9 @@
     "unsupported": "La scansione non è supportata su questo dispositivo (codice: $exception)."
   },
   "storageMigration": {
-    "getTotps": "Si è verificato un errore durante il recupero dei tuoi TOTPs. Riprova.",
-    "backupError": "Si è verificato un errore durante l'esecuzione del backup. Riprova.",
     "anotherDeletedTotpPolicyShouldBeUsed": "Una altra politica di eliminazione TOTP dovrebbe essere usata.",
     "currentStoragePasswordMismatch": "Password inserita non valida.",
+    "remoteStoragePasswordMismatch": "I tuoi TOTPs online sono stati cifrati con un'altra password principale. Modifica la password principale di questo dispositivo in modo che corrisponda a quella usata sugli altri dispositivi, poi riprova.",
     "generic": "Si è verificato un errore durante la migrazione dei tuoi dati. Riprova."
   },
   "revenueCat": {
@@ -74,6 +73,7 @@
   "totp": {
     "create": "Questo TOTP non può essere creato.",
     "decrypt": "Impossibile decifrare questo TOTP. Assicurati di aver inserito la password corretta.",
+    "undecryptable": "Impossibile decifrare $count TOTP con la tua password principale attuale. Toccali nell'elenco per decifrarli con la password usata per cifrarli, oppure eliminali, poi riprova.",
     "changeCryptoStore": {
       "noCryptoStore": "Impossibile ottenere lo store di crittografia corrente. Chiudi e riapri l'applicazione.",
       "generic": "Impossibile crittografare il TOTP con lo store di crittografia corrente."

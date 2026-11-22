@@ -10,10 +10,10 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   test('generates a P-256 key whose signatures verify and normalize to low-S', () async {
-    NativeEzkeyDeviceKeyStore store = NativeEzkeyDeviceKeyStore();
-    String alias = ezkeyDeviceKeyAlias(1);
+    final NativeEzkeyDeviceKeyStore store = NativeEzkeyDeviceKeyStore();
+    final String alias = ezkeyDeviceKeyAlias(1);
     try {
-      String spki = await store.generateKeyPair(alias);
+      final String spki = await store.generateKeyPair(alias);
       // The reported tier is the one the platform reads back from the key now (#108): `none` on an
       // emulator, which has no secure hardware.
       expect(await store.keyTier(alias), store.storageTier);
@@ -23,10 +23,10 @@ void main() {
       // About half of raw Keystore signatures are high-S: sign enough payloads to see both forms.
       int highS = 0;
       for (int i = 0; i < 16; i++) {
-        String payload = 'proof-token-$i|true';
-        String signature = await store.sign(alias, payload);
+        final String payload = 'proof-token-$i|true';
+        final String signature = await store.sign(alias, payload);
         expect(verifyEcdsaSha256(ecPublicKeyFromSpkiBase64(spki), payload, signature), isTrue);
-        String normalized = normalizeEcdsaDerSignatureLowS(signature);
+        final String normalized = normalizeEcdsaDerSignatureLowS(signature);
         expect(isLowSEcdsaDerSignature(normalized), isTrue);
         expect(verifyEcdsaSha256(ecPublicKeyFromSpkiBase64(spki), payload, normalized), isTrue);
         if (!isLowSEcdsaDerSignature(signature)) {
@@ -45,16 +45,16 @@ void main() {
   });
 
   test('orphan cleanup leaves the keys of the other build type in the real Keystore (#41)', () async {
-    NativeEzkeyDeviceKeyStore debugStore = NativeEzkeyDeviceKeyStore(namespace: 'debug');
-    NativeEzkeyDeviceKeyStore mainStore = NativeEzkeyDeviceKeyStore(namespace: 'main');
-    String orphan = ezkeyDeviceKeyAlias(1, namespace: 'debug');
-    String otherBuild = ezkeyDeviceKeyAlias(2, namespace: 'main');
+    final NativeEzkeyDeviceKeyStore debugStore = NativeEzkeyDeviceKeyStore(namespace: 'debug');
+    final NativeEzkeyDeviceKeyStore mainStore = NativeEzkeyDeviceKeyStore(namespace: 'main');
+    final String orphan = ezkeyDeviceKeyAlias(1, namespace: 'debug');
+    final String otherBuild = ezkeyDeviceKeyAlias(2, namespace: 'main');
     try {
       await debugStore.generateKeyPair(orphan);
       await mainStore.generateKeyPair(otherBuild);
 
       // The debug build sees no record at all, as when its namespace is empty.
-      List<String> deleted = await deleteOrphanEzkeyDeviceKeys(keyStore: debugStore, enrollmentStore: InMemoryEnrollmentStore());
+      final List<String> deleted = await deleteOrphanEzkeyDeviceKeys(keyStore: debugStore, enrollmentStore: InMemoryEnrollmentStore());
 
       expect(deleted, [orphan]);
       expect(await debugStore.publicKey(orphan), isNull);
@@ -66,7 +66,7 @@ void main() {
   });
 
   test('signing with a missing key is a local-state error', () async {
-    NativeEzkeyDeviceKeyStore store = NativeEzkeyDeviceKeyStore();
+    final NativeEzkeyDeviceKeyStore store = NativeEzkeyDeviceKeyStore();
     await expectLater(store.sign('${ezkeyDeviceKeyAliasPrefix}missing', 'payload'), throwsA(isA<EzkeyLocalStateException>()));
   });
 }
