@@ -16,14 +16,6 @@ runs:
         flutter-version: ${{ steps.flutter-version.outputs.version }}
         cache: true
 
-    # Flutter 3.50 turns on Swift Package Manager and migrates the Xcode projects at build time; on the runner,
-    # Xcode 26.3 crashes while resolving the packages (#148). Keep CocoaPods, as with Flutter 3.47, until SPM is
-    # checked on the Mac (#136).
-    - name: Keep CocoaPods for the Apple builds
-      if: runner.os == 'macOS'
-      shell: bash
-      run: flutter config --no-enable-swift-package-manager
-
     # window_manager 0.7 (upstream, 2026-11) depends on cnativeapi, whose native build hook runs on every Linux host,
     # even for `dart run` and `flutter test`, and needs the GTK 3, X11 and Xi development packages.
     - name: Install the native build hook dependencies
