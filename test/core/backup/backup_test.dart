@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:open_authenticator/core/backup/backup.dart';
@@ -19,6 +18,7 @@ import 'package:open_authenticator/ezkey/providers.dart';
 import 'package:open_authenticator/ezkey/to_reenroll.dart';
 import 'package:open_authenticator/utils/platform.dart' as app;
 import 'package:open_authenticator/utils/result/result.dart';
+import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 
 import '../../ezkey/support.dart';
 
@@ -30,8 +30,23 @@ import '../../ezkey/support.dart';
 // it must keep restoring, so that users' existing backups do too. `fixtures/1793600000000.bak` is the same
 // backup with an EzKey inventory of two entries (#92).
 
-/// The plugin channel `getApplicationDocumentsDirectory` goes through.
-const MethodChannel _pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
+/// Points the app's Documents and support directories at a temporary [documents] directory.
+///
+/// Since the 2026-11 sync, upstream also lists backups in the support directory on Windows and Linux, and
+/// calls the path provider platform directly: a method channel mock no longer reaches it.
+class _TestDirectories extends PathProviderPlatform {
+  /// The temporary Documents directory.
+  final Directory documents;
+
+  /// Creates a path provider rooted in [documents].
+  _TestDirectories(this.documents);
+
+  @override
+  Future<String> getApplicationDocumentsPath() async => documents.path;
+
+  @override
+  Future<String> getApplicationSupportPath() async => '${documents.path}${Platform.pathSeparator}support';
+}
 
 /// The password of the committed fixture.
 const String _fixturePassword = 'fixture-password';
@@ -71,7 +86,6 @@ class _FixedCryptoStore extends CryptoStoreNotifier {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  final TestDefaultBinaryMessenger messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
 
   late CryptoStore deviceStore;
   late Directory documents;
@@ -112,12 +126,13 @@ void main() {
   setUp(() {
     documents = Directory.systemTemp.createTempSync('oa_backup_test');
     backups = Directory('${documents.path}${Platform.pathSeparator}Open Authenticator Backups (Debug)');
-    messenger.setMockMethodCallHandler(_pathProviderChannel, (call) async => call.method == 'getApplicationDocumentsDirectory' ? documents.path : null);
+    final PathProviderPlatform previous = PathProviderPlatform.instance;
+    PathProviderPlatform.instance = _TestDirectories(documents);
+    addTearDown(() => PathProviderPlatform.instance = previous);
   });
 
   tearDown(() {
     container.dispose();
-    messenger.setMockMethodCallHandler(_pathProviderChannel, null);
     documents.deleteSync(recursive: true);
   });
 

@@ -7,6 +7,8 @@ analyzer:
     unnecessary_async: ignore
 
 linter:
+  # These rules also reach upstream's own tests at the top of test/ (since 2026-11). Keep only rules upstream's
+  # tests pass: avoid_slow_async_io was dropped for that reason (#148).
   rules:
     - avoid_dynamic_calls
     - unawaited_futures
@@ -17,7 +19,6 @@ linter:
     - close_sinks
     - directives_ordering
     - prefer_final_fields
-    - avoid_slow_async_io
     - only_throw_errors
     - use_named_constants
     - no_literal_bool_comparisons

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:ezkey_dart/ezkey_dart.dart';
 import 'package:flutter/foundation.dart';
@@ -9,7 +10,7 @@ import 'package:open_authenticator/ezkey/enrollment_store.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
 
 // The EzKey enrollment inventory in backups (docs/adr/0005-ezkey-enrollment-inventory-in-backups.md).
-// Upstream's lib/model/backup/backup.dart and store.dart call into this file; each hook is listed in
+// Upstream's lib/core/backup/backup.dart and store.dart call into this file; each hook is listed in
 // docs/ezkey/integration.md. The inventory never re-creates an enrollment: the device keys stay on the
 // device (ADR-0002), so it only tells the user what to re-enroll after a restore.
 
@@ -127,6 +128,23 @@ class EzkeyBackupInventory {
       entries: List.unmodifiable(entries),
       encrypted: base64.encode(encrypted),
     );
+  }
+
+  /// Reads the inventory of the backup [file], with the backup's [cryptoStore].
+  ///
+  /// Upstream's reader keeps only the TOTPs, the salt and the signature of the file (2026-11), so the
+  /// inventory reads the file again. Returns `null` on any failure, like [tryRead].
+  static Future<EzkeyBackupInventory?> tryReadFile(File file, CryptoStore cryptoStore) async {
+    try {
+      final Object? json = jsonDecode(utf8.decode(await file.readAsBytes()));
+      return json is Map<String, dynamic> ? tryRead(json, cryptoStore) : null;
+    } on FormatException catch (ex) {
+      debugPrint('EzKey backup inventory ignored: $ex');
+      return null;
+    } on FileSystemException catch (ex) {
+      debugPrint('EzKey backup inventory ignored: $ex');
+      return null;
+    }
   }
 
   /// Reads the inventory of the backup whose content is [backupJson], with the backup's [cryptoStore].

@@ -154,7 +154,7 @@ class Backup implements Comparable<Backup> {
       passwordSignature: base64.encode(signature),
       salt: cryptoStore.salt,
       totps: totps,
-      ezkeyInventory: EzkeyBackupInventory.tryRead(jsonData, cryptoStore),
+      ezkeyInventory: await EzkeyBackupInventory.tryReadFile(file, cryptoStore),
     );
   }
 
