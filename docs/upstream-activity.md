@@ -4,11 +4,11 @@ How often upstream changes each part of the app. Use it to judge the **sync cost
 
 ## Snapshot
 
-Refreshed on 2026-11-20 against `upstream/main` at `57b4fca` (2026-11-19), after the first sync (#148). The history has 465 commits, the first dated 2024-07-08. Windows: 12 months = since 2025-11-20, 6 months = since 2026-05-20.
+Refreshed on 2026-11-20 against `upstream/main` at `57b4fca` (2026-11-19), during the first sync (#148); upstream added 26 fixes on 2026-11-20 (`db19409`), merged in the same sync. The history has 465 commits, the first dated 2024-07-08. Windows: 12 months = since 2025-11-20, 6 months = since 2026-05-20.
 
 **Upstream is quiet most of the time, then moves in bursts that can rewrite foundations.**
 - Over 12 months, the commit types were: 98 `chore`, 41 `fix`, 23 `refactor`, and only 3 `feat`.
-- Activity per month: 80 commits in April 2026 (custom backend and refactors), 15 in May, 17 in June, 5 in July, 1 in August, none in September and October, then **39 on 2026-11-18 and 2026-11-19**.
+- Activity per month: 80 commits in April 2026 (custom backend and refactors), 15 in May, 17 in June, 5 in July, 1 in August, none in September and October, then **39 on 2026-11-18 and 2026-11-19, and 26 more on 2026-11-20**.
 - The November burst was not features: a new Flutter (3.50, adopted within days of its release), every dependency updated, a much stricter lint set, `lib/model` renamed `lib/core` and other moves, and about twenty robustness fixes. The previous snapshot (2026-11-02) read "maintenance mode"; three months of silence did not predict it.
 - **Reading for the fork:** expect long quiet periods and sudden large syncs. A burst touches every file through renames and lint fixes, so its cost is mostly in the fork's own code (imports, tests, lints), not in the ledger's conflicts. See [`upstream-sync.md`](upstream-sync.md).
 
