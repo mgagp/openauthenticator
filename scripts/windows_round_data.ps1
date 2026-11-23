@@ -3,8 +3,9 @@ param(
   [string]$SaveDir = ''
 )
 # Saves, clears and restores the Windows debug data of Open Authenticator around a test round (#132,
-# docs/test-plan.md section 6): the Credential Manager entries app.openauthenticator.debug*, the two debug
-# files in %APPDATA%\Skyost\Open Authenticator, and the debug backups in Documents.
+# docs/test-plan.md section 6): the Credential Manager entries app.openauthenticator.debug*, the debug files
+# in %APPDATA%\Skyost\Open Authenticator, and the debug backups in Documents. A debug build also rewrites
+# shared_preferences.json (the profile and release file name) with its flutterDebug. keys, so it is saved too.
 #   list     show what is there
 #   save     copy it to $SaveDir (refuses if a save is already there)
 #   clear    delete it, for a fresh install of the debug build type
@@ -68,7 +69,7 @@ public static class OaCred {
 
 $filter = 'app.openauthenticator.debug*'
 $appData = Join-Path $env:APPDATA 'Skyost\Open Authenticator'
-$debugFiles = @('app_debug.sqlite', 'shared_preferences_debug.json')
+$debugFiles = @('app_debug.sqlite', 'shared_preferences_debug.json', 'shared_preferences.json')
 $backups = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Open Authenticator Backups (Debug)'
 
 function Show-State {

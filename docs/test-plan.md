@@ -98,9 +98,9 @@ One checklist for the whole app, run on each platform and deployment model upstr
 | # | Check | How (Android) | Android | Windows | macOS | iOS sim | Linux |
 |---|---|---|---|---|---|---|---|
 | U1 | First launch: intro slides, master password set, home empty | emu | pass 11-13 | pass 11-13 (auto) | — | — | — |
-| U2 | Add a TOTP by camera scan of an `otpauth://` QR | device | pass 11-13 (Pixel) | — | — | — | — |
+| U2 | Add a TOTP by camera scan of an `otpauth://` QR | device | pass 11-13 (Pixel) | n/a 11-23 (no scanner on desktop) | — | — | — |
 | U3 | Add a TOTP by hand (secret, issuer, label, algorithm, digits, period) | emu | pass 11-13 | pass 11-13 (auto) | — | — | — |
-| U4 | Add a TOTP from an `otpauth://` link opened from outside the app | emu (`adb shell am start -d`) | pass 11-13 | blocked 11-17 (see notes) | — | — | — |
+| U4 | Add a TOTP from an `otpauth://` link opened from outside the app | emu (`adb shell am start -d`) | pass 11-13 | pass 11-23 (MSIX, running and cold start) | — | — | — |
 | U5 | The code shown matches a reference generator, and the countdown rolls over | emu | pass 11-13 | pass 11-13 (auto) | — | — | — |
 | U6 | Copy a code (tap, copy button setting) | emu | pass 11-13 | pass 11-22 (auto) | — | — | — |
 | U7 | Edit a TOTP, then delete it | emu | pass 11-13 | pass 11-13 (auto) | — | — | — |
@@ -108,12 +108,12 @@ One checklist for the whole app, run on each platform and deployment model upstr
 | U9 | Settings: theme, language, display options persist after a restart | emu | pass 11-13 | pass 11-22 (auto) | — | — | — |
 | U10 | Change the master password; the TOTPs still decrypt | emu | pass 11-13 | pass 11-22 (auto) | — | — | — |
 | U11 | App unlock: master password at start, wrong then right password | emu | pass 11-13 | pass 11-22 (auto) | — | — | — |
-| U12 | App unlock: biometric / system authentication | device | pass 11-22 (Pixel, also started behind the lock screen: #98 fixed upstream) | — | — | — | — |
+| U12 | App unlock: biometric / system authentication | device | pass 11-22 (Pixel, also started behind the lock screen: #98 fixed upstream) | pass 11-23 (Windows Hello) | — | — | — |
 | U13 | Backup now, then restore it after deleting a TOTP; wrong backup password refused | emu | pass 11-13 | pass 11-13 (auto) | — | — | — |
 | U14 | Manage backups: list, delete | emu | fail #141 | pass 11-22 (auto; #141 fixed upstream) | — | — | — |
 | U15 | Clear data: everything gone, back to the intro | emu | fail #141 | pass 11-22 (auto) | — | — | — |
 | U16 | Account sign-in (email link or a provider) and synchronization with the official backend | device | blocked 11-17 (account) | — | — | — | — |
-| U17 | `openauthenticator://` link handling (debug "Input link" entry) | emu | blocked 11-17 (account) | blocked 11-17 (see notes) | — | — | — |
+| U17 | `openauthenticator://` link handling (debug "Input link" entry) | emu | blocked 11-17 (account) | partial 11-23 (routing through MSIX; sign-in return blocked: account) | — | — | — |
 | U18 | Contributor Plan screen opens (no purchase) | emu | n/a (no RevenueCat key) | — | — | — | — |
 | U19 | App restart keeps the TOTPs and settings | emu | pass 11-13 | pass 11-22 (auto) | — | — | — |
 
@@ -138,7 +138,7 @@ One checklist for the whole app, run on each platform and deployment model upstr
 | Platform | Upstream's package | What this fork can check |
 |---|---|---|
 | Android | Play Store APK / AAB, signed by upstream | Debug and profile APKs; release needs upstream's key |
-| Windows | MSIX (Microsoft Store), `protocol_activation` registers the link schemes | Debug `.exe`; an MSIX signed with a local test certificate (#132) |
+| Windows | MSIX (Microsoft Store), `protocol_activation` registers the link schemes | Debug `.exe`; the debug build registered as an MSIX in Developer Mode (links, #132). A signed MSIX with a test certificate was not made: trusting the certificate needs admin rights, and it adds nothing for the links |
 | macOS, iOS | App Store, upstream's Apple team | Debug builds, locally signed or unsigned (#135, #136) |
 | Linux | Flatpak (Flathub), Snap | To decide (#138) |
 
@@ -203,4 +203,16 @@ powershell -Command "Get-AppxPackage 32411Skyost.OpenAuthenticator | Remove-Appx
 - Not seen: the result inside the app. Launched outside `flutter test` while the session was locked, the app's window stays hidden (the runner shows it after the first frame), packaged or not. U4 and U17 stay blocked until a run with the session unlocked.
 - The package uses upstream's identity (`32411Skyost.OpenAuthenticator`), with no official app installed on this PC. It stays registered for the next run; remove it before installing the Store app.
 
-Still to do on Windows, with the maintainer at the PC: U12 (Windows Hello), U6, the in-app result of U4 and U17. Not applicable or blocked: U2 (no camera scanner on desktop; to confirm), U16 (account), U18 (no RevenueCat key).
+The items left here were done on 2026-11-23 (next paragraph).
+
+**Windows 11, debug, 2026-11-23 (#132), third part, with the maintainer at the PC.** `main` at 4571bd2 (after #147). Data saved and restored around the run with `scripts/windows_round_data.ps1`, which now also covers `shared_preferences.json` (see below).
+
+- The links phase of `upstream_restart_test.dart` could not run: under `flutter test`, the app froze at start (white window, "Not Responding"), twice, and also without the Windows key store plugin, so not #147 (#153). The same build works with `flutter run`, as a plain `.exe` and through the package, so the maintainer did the intro by hand instead.
+- U4: with the app running, an `otpauth://` link opened from outside (`Start-Process`) reaches it through the package and opens "Add a TOTP", filled in; once saved, the code matches an independent RFC 6238 computation (SHA1, 6 digits). With the app closed, a second link starts the packaged app with the link as its argument, and the same page opens. The label comes without its `Issuer:` prefix, as upstream does since the sync (`test/pages/scan_test.dart`).
+- U17: `openauthenticator://purchases/success` reaches the running app and shows its success toast (no backend call). The sign-in return (`openauthenticator://auth/.../finish`) stays blocked: it needs an account on the official backend.
+- U12: with "Enable local authentication" on, the next start shows "Open Authenticator is locked" and the Windows Hello prompt; after it, the home screen. On the first restart the maintainer did not notice the prompt and the app was unlocked when looked at; the second restart showed the prompt plainly, so this is not counted as a failure.
+- U2: `n/a`: on desktop, upstream's + goes straight to manual entry (`_AddTotpDialog.isSupported` is mobile only); only a debug build offers the QR choice.
+- The packaged app writes to the real `%APPDATA%\Skyost\Open Authenticator`, not to a per-package copy (nothing under `%LOCALAPPDATA%\Packages\32411Skyost.OpenAuthenticator_yhymjcmmmq0ba` but the system files).
+- A debug build also writes `shared_preferences.json` (the profile and release file name) with its `flutterDebug.` keys, not only `shared_preferences_debug.json`; the app does not read the intro state from it (the intro still showed after a clear). The file has existed on this PC since 2026-11-03 and was not covered by the data script, so earlier rounds rewrote it; its content before them is lost (rate-my-app counters and the intro flag only). Upstream behaviour, noted only.
+
+The Windows column of the upstream round is complete, except U16 and U18 (as on Android: account, RevenueCat key) and the automated rerun (#153). The package stays registered for the next run; remove it before installing the Store app.
