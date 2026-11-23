@@ -5,6 +5,7 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   app_links
   connectivity_plus
+  ezkey_keystore
   firebase_core
   cloud_firestore
   firebase_auth

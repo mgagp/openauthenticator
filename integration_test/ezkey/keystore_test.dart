@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:ezkey_dart/ezkey_dart.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -17,6 +19,12 @@ void main() {
       // The reported tier is the one the platform reads back from the key now (#108): `none` on an
       // emulator, which has no secure hardware.
       expect(await store.keyTier(alias), store.storageTier);
+      // The Windows software fallback is checked on a PC with a TPM by forcing it in a debug build:
+      // EZKEY_KEYSTORE_FORCE_SOFTWARE=1 and --dart-define=EZKEY_KEYSTORE_EXPECTED_TIER=none.
+      const String expectedTier = String.fromEnvironment('EZKEY_KEYSTORE_EXPECTED_TIER');
+      if (expectedTier.isNotEmpty) {
+        expect(store.storageTier.name, expectedTier);
+      }
       expect(await store.publicKey(alias), spki);
       expect(await store.deviceKeyAliases(), contains(alias));
 
@@ -63,6 +71,27 @@ void main() {
       await debugStore.deleteKeyPair(orphan);
       await mainStore.deleteKeyPair(otherBuild);
     }
+  });
+
+  test('key generation leaves the app responsive (#134)', () async {
+    final NativeEzkeyDeviceKeyStore store = NativeEzkeyDeviceKeyStore();
+    final String alias = ezkeyDeviceKeyAlias(3);
+    int ticks = 0;
+    final Timer timer = Timer.periodic(const Duration(milliseconds: 10), (_) => ticks++);
+    final Stopwatch stopwatch = Stopwatch()..start();
+    try {
+      await store.generateKeyPair(alias);
+      stopwatch.stop();
+    } finally {
+      timer.cancel();
+      await store.deleteKeyPair(alias);
+    }
+
+    // A key store call that blocks the platform thread also blocks Dart's timers, which then fire once at the
+    // end. Running off that thread, the timer keeps ticking (at least one tick per 40 ms, a loose bound).
+    // ignore: avoid_print
+    print('EZKEY_KEYSTORE generate=${stopwatch.elapsedMilliseconds}ms ticks=$ticks');
+    expect(ticks, greaterThanOrEqualTo(stopwatch.elapsedMilliseconds ~/ 40));
   });
 
   test('signing with a missing key is a local-state error', () async {
