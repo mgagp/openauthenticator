@@ -9,8 +9,13 @@
 // effort, reported as tier `none`. The tier is read back from the key (#108): `standard` only when the
 // key's own PCP_PLATFORM_TYPE property says it is in a TPM 2.0. No `strong` on Windows.
 //
-// Proof of concept: the calls run on the platform thread (TPM operations take tens to hundreds of ms).
+// The calls run one at a time, in order, on a worker thread (a TPM key takes about 0.5 s to create, a
+// signature 60 to 90 ms), and each result is posted back to the platform thread through a message-only
+// window: the same model as the Android plugin's single-thread executor.
 // Error messages carry a CNG status code only, never key material or payloads.
+//
+// Debug builds only: EZKEY_KEYSTORE_FORCE_SOFTWARE=1 in the environment skips the TPM, so the software
+// fallback can be tested on a PC that has one. Release and profile builds ignore it.
 
 #include "include/ezkey_keystore/ezkey_keystore_plugin_c_api.h"
 
@@ -27,11 +32,20 @@
 #include <flutter/standard_method_codec.h>
 
 #include <algorithm>
+#include <condition_variable>
 #include <cstdio>
+#include <deque>
+#include <functional>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
+#include <thread>
+#include <utility>
 #include <vector>
+
+// The plugin DLL's own module handle, for its window class.
+extern "C" IMAGE_DOS_HEADER __ImageBase;
 
 #ifndef NCRYPT_PCP_PLATFORM_TYPE_PROPERTY
 #define NCRYPT_PCP_PLATFORM_TYPE_PROPERTY L"PCP_PLATFORM_TYPE"
@@ -103,7 +117,27 @@ struct Provider {
   LPCWSTR name;
   bool hardware;
 };
-constexpr Provider kProviders[] = {{MS_PLATFORM_CRYPTO_PROVIDER, true}, {MS_KEY_STORAGE_PROVIDER, false}};
+constexpr Provider kHardwareProvider = {MS_PLATFORM_CRYPTO_PROVIDER, true};
+constexpr Provider kSoftwareProvider = {MS_KEY_STORAGE_PROVIDER, false};
+
+#ifdef _DEBUG
+// Whether a debug build was asked to skip the TPM (tests of the software fallback).
+bool SoftwareForced() {
+  static const bool forced = [] {
+    char value[4] = {};
+    return GetEnvironmentVariableA("EZKEY_KEYSTORE_FORCE_SOFTWARE", value, sizeof(value)) == 1 && value[0] == '1';
+  }();
+  return forced;
+}
+#else
+constexpr bool SoftwareForced() { return false; }
+#endif
+
+// The providers in use, in the order keys are created and looked up: the TPM first.
+const std::vector<Provider>& Providers() {
+  static const std::vector<Provider> providers = SoftwareForced() ? std::vector<Provider>{kSoftwareProvider} : std::vector<Provider>{kHardwareProvider, kSoftwareProvider};
+  return providers;
+}
 
 void Check(SECURITY_STATUS status) {
   if (status != ERROR_SUCCESS) {
@@ -171,7 +205,7 @@ std::optional<OpenedKey> TryOpenKey(const Provider& provider, const std::wstring
 
 // Opens the key of [alias], looking in the TPM first.
 std::optional<OpenedKey> FindKey(const std::wstring& alias) {
-  for (const Provider& provider : kProviders) {
+  for (const Provider& provider : Providers()) {
     std::optional<OpenedKey> opened = TryOpenKey(provider, alias);
     if (opened) {
       return opened;
@@ -278,7 +312,7 @@ std::vector<BYTE> Sha256(const std::string& data) {
 
 // Deletes the key of [alias] from every provider (no-op when there is none).
 void DeleteKeyPair(const std::wstring& alias) {
-  for (const Provider& provider : kProviders) {
+  for (const Provider& provider : Providers()) {
     std::optional<OpenedKey> opened = TryOpenKey(provider, alias);
     if (!opened) {
       continue;
@@ -323,13 +357,19 @@ EncodableMap GenerateKeyPair(const std::wstring& alias) {
   // Like the Android Keystore, a new key replaces any key under the same alias.
   DeleteKeyPair(alias);
   OpenedKey created;
-  SECURITY_STATUS status = CreateKey(kProviders[0], alias, created);
-  if (status != ERROR_SUCCESS) {
-    char buffer[96];
-    std::snprintf(buffer, sizeof(buffer), "EzkeyKeystore: TPM key creation failed (0x%08X), software fallback\n", static_cast<unsigned int>(status));
-    OutputDebugStringA(buffer);
-    Check(CreateKey(kProviders[1], alias, created));
+  SECURITY_STATUS status = NTE_PROV_TYPE_NOT_DEF;
+  for (const Provider& provider : Providers()) {
+    status = CreateKey(provider, alias, created);
+    if (status == ERROR_SUCCESS) {
+      break;
+    }
+    if (provider.hardware) {
+      char buffer[96];
+      std::snprintf(buffer, sizeof(buffer), "EzkeyKeystore: TPM key creation failed (0x%08X), software fallback\n", static_cast<unsigned int>(status));
+      OutputDebugStringA(buffer);
+    }
   }
+  Check(status);
   return EncodableMap{
       {EncodableValue("publicKey"), EncodableValue(Base64(SpkiOf(created.key.get())))},
       {EncodableValue("tier"), EncodableValue(TierOf(created))},
@@ -353,7 +393,7 @@ std::string Sign(const std::wstring& alias, const std::string& payload) {
 EncodableList Aliases(const std::string& prefix) {
   EncodableList result;
   std::vector<std::string> seen;
-  for (const Provider& provider : kProviders) {
+  for (const Provider& provider : Providers()) {
     NcryptHandle handle;
     if (NCryptOpenStorageProvider(handle.out(), provider.name, 0) != ERROR_SUCCESS) {
       continue;
@@ -401,57 +441,204 @@ std::wstring RequireAlias(const EncodableMap* arguments) {
   return Utf8ToWide(*alias);
 }
 
+// What a call produced: computed on the worker thread, delivered on the platform thread.
+struct Outcome {
+  enum class Kind { kSuccess, kError, kNotImplemented };
+  Kind kind = Kind::kSuccess;
+  EncodableValue value;
+  std::string code;
+  std::string message;
+
+  static Outcome Success(EncodableValue value = EncodableValue()) { return Outcome{Kind::kSuccess, std::move(value), {}, {}}; }
+  static Outcome Error(std::string code, std::string message) { return Outcome{Kind::kError, EncodableValue(), std::move(code), std::move(message)}; }
+  static Outcome NotImplemented() { return Outcome{Kind::kNotImplemented, EncodableValue(), {}, {}}; }
+};
+
+// Runs one channel method. Called on the worker thread; touches no Flutter object.
+Outcome Run(const std::string& method, const EncodableValue& argument_value) {
+  const EncodableMap* arguments = std::get_if<EncodableMap>(&argument_value);
+  try {
+    if (method == "generateKeyPair") {
+      return Outcome::Success(EncodableValue(GenerateKeyPair(RequireAlias(arguments))));
+    }
+    if (method == "sign") {
+      const std::string* payload = StringArgument(arguments, "payload");
+      if (payload == nullptr) {
+        throw InvalidArguments{"Missing argument: payload"};
+      }
+      return Outcome::Success(EncodableValue(Sign(RequireAlias(arguments), *payload)));
+    }
+    if (method == "publicKey") {
+      std::optional<OpenedKey> opened = FindKey(RequireAlias(arguments));
+      return opened ? Outcome::Success(EncodableValue(Base64(SpkiOf(opened->key.get())))) : Outcome::Success();
+    }
+    if (method == "keyTier") {
+      std::optional<OpenedKey> opened = FindKey(RequireAlias(arguments));
+      return opened ? Outcome::Success(EncodableValue(TierOf(*opened))) : Outcome::Success();
+    }
+    if (method == "deleteKeyPair") {
+      DeleteKeyPair(RequireAlias(arguments));
+      return Outcome::Success();
+    }
+    if (method == "aliases") {
+      const std::string* prefix = StringArgument(arguments, "prefix");
+      return Outcome::Success(EncodableValue(Aliases(prefix == nullptr ? std::string() : *prefix)));
+    }
+    return Outcome::NotImplemented();
+  } catch (const KeyNotFound& error) {
+    return Outcome::Error("key_not_found", "No key for alias " + error.alias);
+  } catch (const InvalidArguments& error) {
+    return Outcome::Error("invalid_arguments", error.message);
+  } catch (const CngError& error) {
+    char buffer[32];
+    std::snprintf(buffer, sizeof(buffer), "CNG 0x%08X", static_cast<unsigned int>(error.status));
+    return Outcome::Error("keystore_error", buffer);
+  } catch (const std::exception&) {
+    return Outcome::Error("keystore_error", "exception");
+  }
+}
+
+// A finished call, posted to the platform thread to be answered there.
+struct Completion {
+  std::unique_ptr<flutter::MethodResult<EncodableValue>> result;
+  Outcome outcome;
+
+  void Deliver() {
+    switch (outcome.kind) {
+      case Outcome::Kind::kSuccess:
+        result->Success(outcome.value);
+        break;
+      case Outcome::Kind::kError:
+        result->Error(outcome.code, outcome.message);
+        break;
+      case Outcome::Kind::kNotImplemented:
+        result->NotImplemented();
+        break;
+    }
+  }
+};
+
+// Runs jobs one at a time, in the order they were queued, on its own thread.
+class SerialWorker {
+ public:
+  SerialWorker() : thread_([this] { Loop(); }) {}
+  ~SerialWorker() {
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      stopping_ = true;
+    }
+    ready_.notify_one();
+    thread_.join();
+  }
+  SerialWorker(const SerialWorker&) = delete;
+  SerialWorker& operator=(const SerialWorker&) = delete;
+
+  void Post(std::function<void()> job) {
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      jobs_.push_back(std::move(job));
+    }
+    ready_.notify_one();
+  }
+
+ private:
+  // Runs until stopped: the job in progress finishes, the queued ones are dropped.
+  void Loop() {
+    while (true) {
+      std::function<void()> job;
+      {
+        std::unique_lock<std::mutex> lock(mutex_);
+        ready_.wait(lock, [this] { return stopping_ || !jobs_.empty(); });
+        if (stopping_) {
+          return;
+        }
+        job = std::move(jobs_.front());
+        jobs_.pop_front();
+      }
+      job();
+    }
+  }
+
+  std::mutex mutex_;
+  std::condition_variable ready_;
+  std::deque<std::function<void()>> jobs_;
+  bool stopping_ = false;
+  std::thread thread_;  // Last: it starts once the members it uses exist.
+};
+
+constexpr UINT kCompletionMessage = WM_APP + 1;
+constexpr wchar_t kWindowClass[] = L"EzkeyKeystoreMessageWindow";
+
 class EzkeyKeystorePlugin : public flutter::Plugin {
  public:
   static void RegisterWithRegistrar(flutter::PluginRegistrarWindows* registrar) {
     auto channel = std::make_unique<flutter::MethodChannel<EncodableValue>>(registrar->messenger(), kChannel, &flutter::StandardMethodCodec::GetInstance());
     auto plugin = std::make_unique<EzkeyKeystorePlugin>();
-    channel->SetMethodCallHandler([](const flutter::MethodCall<EncodableValue>& call, std::unique_ptr<flutter::MethodResult<EncodableValue>> result) { HandleMethodCall(call, std::move(result)); });
+    EzkeyKeystorePlugin* handler = plugin.get();
+    channel->SetMethodCallHandler([handler](const flutter::MethodCall<EncodableValue>& call, std::unique_ptr<flutter::MethodResult<EncodableValue>> result) { handler->HandleMethodCall(call, std::move(result)); });
     plugin->channel_ = std::move(channel);
     registrar->AddPlugin(std::move(plugin));
   }
 
- private:
-  static void HandleMethodCall(const flutter::MethodCall<EncodableValue>& call, std::unique_ptr<flutter::MethodResult<EncodableValue>> result) {
-    const EncodableMap* arguments = std::get_if<EncodableMap>(call.arguments());
-    const std::string& method = call.method_name();
-    try {
-      if (method == "generateKeyPair") {
-        result->Success(EncodableValue(GenerateKeyPair(RequireAlias(arguments))));
-      } else if (method == "sign") {
-        const std::string* payload = StringArgument(arguments, "payload");
-        if (payload == nullptr) {
-          throw InvalidArguments{"Missing argument: payload"};
-        }
-        result->Success(EncodableValue(Sign(RequireAlias(arguments), *payload)));
-      } else if (method == "publicKey") {
-        std::optional<OpenedKey> opened = FindKey(RequireAlias(arguments));
-        opened ? result->Success(EncodableValue(Base64(SpkiOf(opened->key.get())))) : result->Success();
-      } else if (method == "keyTier") {
-        std::optional<OpenedKey> opened = FindKey(RequireAlias(arguments));
-        opened ? result->Success(EncodableValue(TierOf(*opened))) : result->Success();
-      } else if (method == "deleteKeyPair") {
-        DeleteKeyPair(RequireAlias(arguments));
-        result->Success();
-      } else if (method == "aliases") {
-        const std::string* prefix = StringArgument(arguments, "prefix");
-        result->Success(EncodableValue(Aliases(prefix == nullptr ? std::string() : *prefix)));
-      } else {
-        result->NotImplemented();
+  // Created and destroyed on the platform thread, whose message loop serves the window.
+  EzkeyKeystorePlugin() {
+    HINSTANCE instance = reinterpret_cast<HINSTANCE>(&__ImageBase);
+    WNDCLASSW window_class = {};
+    window_class.lpfnWndProc = WindowProc;
+    window_class.hInstance = instance;
+    window_class.lpszClassName = kWindowClass;
+    RegisterClassW(&window_class);  // Fails harmlessly when an earlier engine in this process registered it.
+    window_ = CreateWindowExW(0, kWindowClass, L"", 0, 0, 0, 0, 0, HWND_MESSAGE, nullptr, instance, nullptr);
+    worker_ = std::make_unique<SerialWorker>();
+  }
+
+  ~EzkeyKeystorePlugin() override {
+    channel_.reset();
+    worker_.reset();  // Waits for the job in progress, which may still post its completion.
+    if (window_ != nullptr) {
+      MSG message;
+      while (PeekMessageW(&message, window_, kCompletionMessage, kCompletionMessage, PM_REMOVE)) {
+        delete reinterpret_cast<Completion*>(message.lParam);  // The engine is going away: nobody to answer.
       }
-    } catch (const KeyNotFound& error) {
-      result->Error("key_not_found", "No key for alias " + error.alias);
-    } catch (const InvalidArguments& error) {
-      result->Error("invalid_arguments", error.message);
-    } catch (const CngError& error) {
-      char buffer[32];
-      std::snprintf(buffer, sizeof(buffer), "CNG 0x%08X", static_cast<unsigned int>(error.status));
-      result->Error("keystore_error", buffer);
-    } catch (const std::exception&) {
-      result->Error("keystore_error", "exception");
+      DestroyWindow(window_);
     }
   }
 
+  EzkeyKeystorePlugin(const EzkeyKeystorePlugin&) = delete;
+  EzkeyKeystorePlugin& operator=(const EzkeyKeystorePlugin&) = delete;
+
+ private:
+  static LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
+    if (message == kCompletionMessage) {
+      std::unique_ptr<Completion> completion(reinterpret_cast<Completion*>(lparam));
+      completion->Deliver();
+      return 0;
+    }
+    return DefWindowProcW(window, message, wparam, lparam);
+  }
+
+  void HandleMethodCall(const flutter::MethodCall<EncodableValue>& call, std::unique_ptr<flutter::MethodResult<EncodableValue>> result) {
+    if (window_ == nullptr) {
+      result->Error("keystore_error", "no message window");
+      return;
+    }
+    // The call does not outlive this handler, so the job gets its own copies. std::function needs a copyable
+    // job, so the pending result travels in a shared pointer until the job posts it.
+    auto pending = std::make_shared<Completion>();
+    pending->result = std::move(result);
+    std::string method = call.method_name();
+    EncodableValue arguments = call.arguments() == nullptr ? EncodableValue() : *call.arguments();
+    HWND window = window_;
+    worker_->Post([window, method = std::move(method), arguments = std::move(arguments), pending] {
+      Completion* posted = new Completion{std::move(pending->result), Run(method, arguments)};
+      if (!PostMessageW(window, kCompletionMessage, 0, reinterpret_cast<LPARAM>(posted))) {
+        delete posted;
+      }
+    });
+  }
+
+  HWND window_ = nullptr;
+  std::unique_ptr<SerialWorker> worker_;
   std::unique_ptr<flutter::MethodChannel<EncodableValue>> channel_;
 };
 
