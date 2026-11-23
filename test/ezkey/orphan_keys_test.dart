@@ -10,7 +10,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test('deletes the own namespace keys without a readable record, and leaves every other key', () async {
-    Set<String> keystoreAliases = {
+    final Set<String> keystoreAliases = {
       'ezkey-device-debug-1-a', // referenced
       'ezkey-device-debug-2-b', // orphan
       'ezkey-device-debug-3-c', // its record is unreadable
@@ -20,7 +20,7 @@ void main() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(EzkeyKeystore.channel, (call) async {
       switch (call.method) {
         case 'aliases':
-          String prefix = (call.arguments as Map)['prefix'] as String;
+          final String prefix = (call.arguments as Map)['prefix'] as String;
           return keystoreAliases.where((alias) => alias.startsWith(prefix)).toList();
         case 'deleteKeyPair':
           keystoreAliases.remove((call.arguments as Map)['alias']);
@@ -30,12 +30,12 @@ void main() {
     });
     addTearDown(() => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(EzkeyKeystore.channel, null));
 
-    InMemorySecureValues values = InMemorySecureValues();
-    SecureEzkeyEnrollmentStore store = SecureEzkeyEnrollmentStore(values);
+    final InMemorySecureValues values = InMemorySecureValues();
+    final SecureEzkeyEnrollmentStore store = SecureEzkeyEnrollmentStore(values);
     await store.save(testEnrollment(1, deviceKeyAlias: 'ezkey-device-debug-1-a'));
     values.values['${SecureEzkeyEnrollmentStore.keyPrefix}http://localhost:8080#3'] = '{broken';
 
-    List<String> deleted = await deleteOrphanEzkeyDeviceKeys(
+    final List<String> deleted = await deleteOrphanEzkeyDeviceKeys(
       keyStore: NativeEzkeyDeviceKeyStore(namespace: 'debug'),
       enrollmentStore: store,
     );

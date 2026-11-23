@@ -11,7 +11,7 @@ Map<String, dynamic> _dartRecord(String path, String function, List<(String, num
         'start': {'line': line},
       },
       'metrics': [
-        for ((String, num, String) metric in metrics) {'metricsId': metric.$1, 'value': metric.$2, 'level': metric.$3},
+        for (final (String, num, String) metric in metrics) {'metricsId': metric.$1, 'value': metric.$2, 'level': metric.$3},
       ],
     },
   },
@@ -26,7 +26,7 @@ void main() {
 
   group('readDartMetrics', () {
     test('ranks alarm, warning and noted as P1, P2 and P3, and skips what is under its threshold', () {
-      Map<String, dynamic> json = {
+      final Map<String, dynamic> json = {
         'records': [
           _dartRecord(r'lib\ezkey\home.dart', 'build', [
             ('cyclomatic-complexity', 26, 'alarm'),
@@ -37,7 +37,7 @@ void main() {
         ],
       };
 
-      List<Finding> findings = readDartMetrics(json, root: root);
+      final List<Finding> findings = readDartMetrics(json, root: root);
 
       expect(findings.map((finding) => (finding.rule, finding.priority)), [
         ('cyclomatic-complexity', Priority.p1),
@@ -50,7 +50,7 @@ void main() {
     });
 
     test('ranks test code one level lower', () {
-      Map<String, dynamic> json = {
+      final Map<String, dynamic> json = {
         'records': [
           _dartRecord('test/ezkey/home_test.dart', 'pump', [('cyclomatic-complexity', 26, 'alarm')]),
         ],
@@ -73,7 +73,7 @@ void main() {
     };
 
     test('ranks a long block in app code P2, and says where its copy is', () {
-      Finding finding = readDuplication(report(r'lib\ezkey\a.dart', 16), root: root).single;
+      final Finding finding = readDuplication(report(r'lib\ezkey\a.dart', 16), root: root).single;
 
       expect(finding.priority, Priority.p2);
       expect(finding.path, 'lib/ezkey/a.dart');
@@ -110,7 +110,7 @@ void main() {
     };
 
     test('ranks by SARIF level, with the path relative to the root', () {
-      Finding finding = readSarif(report('detekt.exceptions.TooGenericExceptionCaught', 'warning'), root: root, tool: 'detekt').single;
+      final Finding finding = readSarif(report('detekt.exceptions.TooGenericExceptionCaught', 'warning'), root: root, tool: 'detekt').single;
 
       expect(finding.priority, Priority.p2);
       expect(finding.path, 'packages/plugin/Plugin.kt');
@@ -124,7 +124,7 @@ void main() {
 
   group('readSemgrep', () {
     test('ranks a warning P1, and strips the container mount point', () {
-      Map<String, dynamic> json = {
+      final Map<String, dynamic> json = {
         'results': [
           {
             'check_id': 'rules.ezkey-secret-in-log',
@@ -135,7 +135,7 @@ void main() {
         ],
       };
 
-      Finding finding = readSemgrep(json).single;
+      final Finding finding = readSemgrep(json).single;
 
       expect(finding.rule, 'ezkey-secret-in-log');
       expect(finding.path, 'lib/ezkey/actions.dart');
@@ -149,8 +149,8 @@ void main() {
     });
 
     test('matches only its tool, rule, path and symbol', () {
-      Suppression suppression = Suppression.fromJson({'tool': 'dart_code_linter', 'rule': 'source-lines-of-code', 'path': 'test/', 'symbol': 'main', 'reason': 'Tests.'});
-      Finding inTest = _finding(tool: 'dart_code_linter', rule: 'source-lines-of-code', path: 'test/a_test.dart', symbol: 'main');
+      final Suppression suppression = Suppression.fromJson({'tool': 'dart_code_linter', 'rule': 'source-lines-of-code', 'path': 'test/', 'symbol': 'main', 'reason': 'Tests.'});
+      final Finding inTest = _finding(tool: 'dart_code_linter', rule: 'source-lines-of-code', path: 'test/a_test.dart', symbol: 'main');
 
       expect(suppression.matches(inTest), isTrue);
       expect(suppression.matches(_finding(tool: 'dart_code_linter', rule: 'source-lines-of-code', path: 'lib/a.dart', symbol: 'main')), isFalse);
@@ -159,7 +159,7 @@ void main() {
     });
 
     test('matches a bare method name in every class, and no other method', () {
-      Suppression suppression = Suppression.fromJson({'tool': 'dart_code_linter', 'rule': 'source-lines-of-code', 'symbol': 'build', 'reason': 'Widget trees.'});
+      final Suppression suppression = Suppression.fromJson({'tool': 'dart_code_linter', 'rule': 'source-lines-of-code', 'symbol': 'build', 'reason': 'Widget trees.'});
 
       expect(suppression.matches(_finding(tool: 'dart_code_linter', rule: 'source-lines-of-code', symbol: '_PageState.build')), isTrue);
       expect(suppression.matches(_finding(tool: 'dart_code_linter', rule: 'source-lines-of-code', symbol: 'build')), isTrue);
@@ -170,9 +170,9 @@ void main() {
 
   group('curate', () {
     test('drops suppressed findings and counts them per suppression', () {
-      Suppression suppression = const Suppression(tool: 'jscpd', rule: 'duplicate-dart', reason: 'Not now.');
+      const Suppression suppression = Suppression(tool: 'jscpd', rule: 'duplicate-dart', reason: 'Not now.');
 
-      CuratedReport report = curate([_finding(line: 1), _finding(line: 2), _finding(tool: 'detekt', rule: 'x')], [suppression]);
+      final CuratedReport report = curate([_finding(line: 1), _finding(line: 2), _finding(tool: 'detekt', rule: 'x')], [suppression]);
 
       expect(report.rawCount, 3);
       expect(report.findings.single.tool, 'detekt');
@@ -180,18 +180,18 @@ void main() {
     });
 
     test('merges the metrics of one symbol into one finding at its most urgent rank', () {
-      CuratedReport report = curate([
+      final CuratedReport report = curate([
         _finding(tool: 'dart_code_linter', rule: 'maximum-nesting-level', symbol: 'build', priority: Priority.p3, message: 'nesting 3'),
         _finding(tool: 'dart_code_linter', rule: 'cyclomatic-complexity', symbol: 'build', priority: Priority.p1, message: 'complexity 26'),
       ], []);
 
-      Finding finding = report.findings.single;
+      final Finding finding = report.findings.single;
       expect(finding.priority, Priority.p1);
       expect(finding.message, 'nesting 3; complexity 26');
     });
 
     test('drops exact duplicates, and sorts by rank, then path, then line', () {
-      CuratedReport report = curate([
+      final CuratedReport report = curate([
         _finding(path: 'lib/b.dart', priority: Priority.p2),
         _finding(path: 'lib/a.dart', line: 9, priority: Priority.p2),
         _finding(path: 'lib/a.dart', line: 3, priority: Priority.p2),
@@ -205,16 +205,16 @@ void main() {
 
   group('baseline', () {
     test('keys the metrics of a function by place, so they survive moved lines and merged rules', () {
-      Finding before = _finding(tool: 'dart_code_linter', rule: 'cyclomatic-complexity', symbol: 'build', line: 78);
-      Finding after = _finding(tool: 'dart_code_linter', rule: 'cyclomatic-complexity, source-lines-of-code', symbol: 'build', line: 90);
+      final Finding before = _finding(tool: 'dart_code_linter', rule: 'cyclomatic-complexity', symbol: 'build', line: 78);
+      final Finding after = _finding(tool: 'dart_code_linter', rule: 'cyclomatic-complexity, source-lines-of-code', symbol: 'build', line: 90);
 
       expect(baselineKey(after), baselineKey(before));
     });
 
     test('newSince returns only the urgent findings the baseline does not know', () {
-      Finding known = _finding(tool: 'dart_code_linter', rule: 'cyclomatic-complexity', symbol: 'build', priority: Priority.p1);
-      Finding added = _finding(tool: 'semgrep', rule: 'ezkey-secret-in-log', priority: Priority.p1);
-      Finding minor = _finding(tool: 'jscpd', rule: 'duplicate-dart', priority: Priority.p2);
+      final Finding known = _finding(tool: 'dart_code_linter', rule: 'cyclomatic-complexity', symbol: 'build', priority: Priority.p1);
+      final Finding added = _finding(tool: 'semgrep', rule: 'ezkey-secret-in-log', priority: Priority.p1);
+      final Finding minor = _finding(tool: 'jscpd', rule: 'duplicate-dart', priority: Priority.p2);
 
       expect(newSince([known, added, minor], {baselineKey(known)}), [added]);
     });
@@ -222,10 +222,10 @@ void main() {
 
   group('renderMarkdown', () {
     test('states the counts, each rank and each suppression with its reason', () {
-      Suppression suppression = const Suppression(tool: 'jscpd', rule: 'duplicate-dart', reason: 'Fixture data.');
-      CuratedReport report = curate([_finding(priority: Priority.p1), _finding(line: 2)], [suppression]);
+      const Suppression suppression = Suppression(tool: 'jscpd', rule: 'duplicate-dart', reason: 'Fixture data.');
+      final CuratedReport report = curate([_finding(priority: Priority.p1), _finding(line: 2)], [suppression]);
 
-      String markdown = renderMarkdown(report, title: 'Report', date: DateTime(2026, 11, 8), tools: {'jscpd': 'ran'});
+      final String markdown = renderMarkdown(report, title: 'Report', date: DateTime(2026, 11, 8), tools: {'jscpd': 'ran'});
 
       expect(markdown, contains('**2** raw findings, **2** suppressed, **0** kept: 0 P1, 0 P2, 0 P3.'));
       expect(markdown, contains('| jscpd `duplicate-dart` | 2 | Fixture data. |'));

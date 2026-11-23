@@ -4,20 +4,19 @@ How often upstream changes each part of the app. Use it to judge the **sync cost
 
 ## Snapshot
 
-Measured on 2026-11-02 against `upstream/main` at `272d67e`. That is upstream's last commit, dated 2026-08-15. The history has 426 commits, the first dated 2024-07-08. Windows: 12 months = since 2025-11-01, 6 months = since 2026-05-01.
+Refreshed on 2026-11-20 against `upstream/main` at `57b4fca` (2026-11-19), during the first sync (#148); upstream added 26 fixes on 2026-11-20 (`db19409`), merged in the same sync. The history has 465 commits, the first dated 2024-07-08. Windows: 12 months = since 2025-11-20, 6 months = since 2026-05-20.
 
-**Upstream is in maintenance mode.**
-- Over 12 months, the commit types were: 95 `chore`, 18 `fix`, 14 `refactor`, and only 3 `feat` (authentication tabs, salt recovery, Flatpak).
-- Activity comes in bursts:
-  - 80 commits in April 2026 (custom backend and refactors);
-  - 15 in May 2026;
-  - 17 in June 2026;
-  - since then: 5 in July, 1 in August, none after.
-- A typical recent commit updates dependencies or moves code. It rarely changes a layout.
+**Upstream is quiet most of the time, then moves in bursts that can rewrite foundations.**
+- Over 12 months, the commit types were: 98 `chore`, 41 `fix`, 23 `refactor`, and only 3 `feat`.
+- Activity per month: 80 commits in April 2026 (custom backend and refactors), 15 in May, 17 in June, 5 in July, 1 in August, none in September and October, then **39 on 2026-11-18 and 2026-11-19, and 26 more on 2026-11-20**.
+- The November burst was not features: a new Flutter (3.50, adopted within days of its release), every dependency updated, a much stricter lint set, `lib/model` renamed `lib/core` and other moves, and about twenty robustness fixes. The previous snapshot (2026-11-02) read "maintenance mode"; three months of silence did not predict it.
+- **Reading for the fork:** expect long quiet periods and sudden large syncs. A burst touches every file through renames and lint fixes, so its cost is mostly in the fork's own code (imports, tests, lints), not in the ledger's conflicts. See [`upstream-sync.md`](upstream-sync.md).
 
 **Commit counts overstate the risk.** A dependency or refactor commit touches every file it renames in, often for one or two lines. Before calling a file hot, look at the lines changed and at what the commits were.
 
 ### By area
+
+Measured on 2026-11-02 at `272d67e`, before upstream renamed `lib/model` to `lib/core` (the `lib/model/...` rows now live under `lib/core/...`). Not refreshed in 2026-11: `git log -- <directory>` does not follow a rename, so the new paths only count the commits since the move. The readings still hold, with the November burst added to every row.
 
 | Area | All commits | 12 months | 6 months | Last change | Reading |
 | --- | ---: | ---: | ---: | --- | --- |
@@ -45,24 +44,26 @@ Measured on 2026-11-02 against `upstream/main` at `272d67e`. That is upstream's 
 
 ### Upstream files the fork touches
 
-The files in the ledger ([`ezkey/integration.md`](ezkey/integration.md) § Upstream files touched).
+The files in the ledger ([`ezkey/integration.md`](ezkey/integration.md) § Upstream files touched). Refreshed on 2026-11-20 (`git log --follow`, so the counts include the history before the move to `lib/core`).
 
 | File | All commits | 12 months | Lines changed, 12 months | Last change |
 | --- | ---: | ---: | ---: | --- |
-| `lib/pages/home/page.dart` | 14 | 13 | 883 | 2026-06-10 |
-| `lib/pages/scan.dart` | 12 | 4 | 60 | 2026-05-06 |
-| `lib/pages/settings/entries/clear_data.dart` | 24 | 14 | 97 | 2026-06-26 |
-| `lib/pages/settings/entries/backup_now.dart` | 6 | 4 | 21 | 2026-06-10 |
-| `lib/pages/settings/entries/manage_backups.dart` | 21 | 12 | 257 | 2026-08-15 |
-| `pubspec.yaml` | 86 | 34 | 561 | 2026-08-15 |
+| `lib/pages/home/page.dart` | 18 | 17 | 929 | 2026-11-18 |
+| `lib/pages/scan.dart` | 15 | 7 | 66 | 2026-11-18 |
+| `lib/pages/settings/entries/clear_data.dart` | 29 | 19 | 243 | 2026-11-18 |
+| `lib/pages/settings/entries/backup_now.dart` | 9 | 7 | 29 | 2026-11-18 |
+| `lib/pages/settings/entries/manage_backups.dart` | 26 | 16 | 291 | 2026-11-18 |
+| `lib/core/backup/backup.dart` | 6 | 2 | 194 | 2026-11-18 |
+| `lib/core/backup/store.dart` | 4 | 1 | 148 | 2026-11-18 |
+| `pubspec.yaml` | 93 | 39 | 626 | 2026-11-18 |
 
-- **The home page's 883 lines all date from January and February 2026,** the design update and the custom backend. Since 2026-02-24, upstream has made 7 commits to it, each of 1 or 2 lines. The fork's home hook is 2 lines plus an import, so a sync conflict there is unlikely and quick to resolve.
-- **`pubspec.yaml` is the hottest file the fork touches.** Its entries are dependency lines, which are easy to re-apply, but every upstream dependency update conflicts with them textually.
-- **Settings entries change in step with upstream refactors** (results, flows, backups). The hooks there are 3 to 4 lines at a stable spot (the start of a handler), which keeps them easy to re-apply.
+- **In the first sync, every ledger file conflicted, and every conflict was small.** Most were an import list (upstream's new imports next to the fork's one); the rest were the hook lines themselves, which upstream had restyled (`final` locals) or moved into a new method (`clear_data.dart`). Each was re-applied from its ledger entry.
+- **The home page hook survived a burst without a code conflict**: upstream changed 23 lines of the file, none near the wrapped list.
+- **`pubspec.yaml` stays the hottest file the fork touches**, and its conflicts stay mechanical (dependency lines).
 
 ## Refresh
 
-Run from the repo root, after `git fetch upstream`. Update the snapshot line and the tables when the numbers move enough to change a reading. Rule 3 of [`README.md`](README.md) applies: this map is worth keeping only while it steers decisions.
+Run from the repo root, after `git fetch upstream`. For a file, add `--follow` so its history survives upstream's renames; for a directory upstream moved, count the old and the new path. Update the snapshot line and the tables when the numbers move enough to change a reading. Rule 3 of [`README.md`](README.md) applies: this map is worth keeping only while it steers decisions.
 
 ```sh
 git log upstream/main -1 --format='%h %ad' --date=short     # snapshot commit

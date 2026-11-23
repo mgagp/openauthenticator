@@ -1,20 +1,18 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:open_authenticator/core/backend/user.dart';
+import 'package:open_authenticator/core/purchases/contributor_plan.dart';
+import 'package:open_authenticator/core/settings/storage_type.dart';
 import 'package:open_authenticator/flows/contributor_plan.dart';
 import 'package:open_authenticator/flows/storage_migration.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
-import 'package:open_authenticator/model/backend/user.dart';
-import 'package:open_authenticator/model/purchases/contributor_plan.dart';
-import 'package:open_authenticator/model/settings/storage_type.dart';
 import 'package:open_authenticator/spacing.dart';
 import 'package:open_authenticator/utils/result/handler.dart';
 import 'package:open_authenticator/utils/result/result.dart';
 import 'package:open_authenticator/widgets/button_text.dart';
-import 'package:open_authenticator/widgets/centered_circular_progress_indicator.dart';
 import 'package:open_authenticator/widgets/clickable.dart';
 import 'package:open_authenticator/widgets/dialog/app_dialog.dart';
-import 'package:open_authenticator/widgets/dialog/error_dialog.dart';
 import 'package:open_authenticator/widgets/waiting_overlay.dart';
 
 /// A dialog that blocks everything until the user has either changed its storage type or subscribed to the Contributor Plan.
@@ -30,25 +28,8 @@ class TotpLimitDialog extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    AsyncValue<ContributorPlanState> state = ref.watch(contributorPlanStateProvider);
-    if (state is AsyncError<ContributorPlanState>) {
-      return ErrorDialog(
-        message: translations.totpLimit.message.error,
-        error: state.error,
-        stackTrace: state.stackTrace,
-      );
-    }
-
-    if (state is AsyncLoading<ContributorPlanState>) {
-      return AppDialog(
-        displayCloseButton: !autoDialog,
-        children: [
-          const CenteredCircularProgressIndicator(),
-        ],
-      );
-    }
-
-    User user = ref.watch(userProvider).value!;
+    final User user = ref.watch(userProvider).value!;
+    final bool canSubscribe = !user.contributorPlan && ref.watch(contributorPlanStateProvider).asData?.value == ContributorPlanState.inactive;
     return AppDialog(
       title: Text(translations.totpLimit.title),
       displayCloseButton: !autoDialog,
@@ -58,10 +39,11 @@ class TotpLimitDialog extends ConsumerWidget {
           onPress: () => _returnIfSucceeded(context, ref.read(storageMigrationFlowProvider).changeStorageType(context, StorageType.localOnly).then((result) => result is ResultSuccess)),
           child: ButtonText(translations.totpLimit.actions.stopSynchronization),
         ),
-        ClickableButton(
-          onPress: () => _returnIfSucceeded(context, ref.read(contributorPlanFlowProvider).purchase(context)),
-          child: ButtonText(translations.totpLimit.actions.subscribe),
-        ),
+        if (canSubscribe)
+          ClickableButton(
+            onPress: () => _returnIfSucceeded(context, ref.read(contributorPlanFlowProvider).purchase(context)),
+            child: ButtonText(translations.totpLimit.actions.subscribe),
+          ),
         if (!autoDialog)
           ClickableButton(
             variant: .secondary,
@@ -70,7 +52,7 @@ class TotpLimitDialog extends ConsumerWidget {
           ),
       ],
       children: [
-        if (state.value == ContributorPlanState.active)
+        if (!canSubscribe)
           Text(autoDialog ? translations.totpLimit.message.alreadySubscribed.auto(count: user.totpsLimit) : translations.totpLimit.message.alreadySubscribed.manual(count: user.totpsLimit))
         else
           Text(autoDialog ? translations.totpLimit.message.notSubscribed.auto(count: user.totpsLimit) : translations.totpLimit.message.notSubscribed.manual(count: user.totpsLimit)),
@@ -79,7 +61,7 @@ class TotpLimitDialog extends ConsumerWidget {
           child: ClickableButton(
             variant: .secondary,
             onPress: () async {
-              Result<User> result = await showWaitingOverlay(
+              final Result<User> result = await showWaitingOverlay(
                 context,
                 future: ref.read(userProvider.notifier).refreshUserInfo(),
               );

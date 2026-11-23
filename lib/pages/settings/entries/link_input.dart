@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
-import 'package:open_authenticator/model/app_links/listener.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:open_authenticator/core/app_links/listener.dart';
 import 'package:open_authenticator/widgets/clickable.dart';
 
 /// Allows to input a link from the clipboard.
@@ -18,11 +18,11 @@ class LinkInputSettingsEntryWidget extends ConsumerWidget with FTileMixin {
     title: const Text('Input link'),
     subtitle: const Text('Inputs an openauthenticator:// link from the clipboard.'),
     onPress: () async {
-      ClipboardData? clipboardData = await Clipboard.getData('text/plain');
+      final ClipboardData? clipboardData = await Clipboard.getData('text/plain');
       if (clipboardData == null || clipboardData.text == null) {
         return;
       }
-      Uri? uri = Uri.tryParse(clipboardData.text!);
+      final Uri? uri = Uri.tryParse(clipboardData.text!);
       if (uri == null || uri.scheme != 'openauthenticator') {
         return;
       }

@@ -1,0 +1,45 @@
+name: Upstream watch
+
+# Fork-only workflow (retrospective of the first upstream sync, #149): reports upstream commits that main
+# does not have yet. A red run means "upstream moved, plan a sync" (docs/upstream-sync.md), not a broken
+# build. It only reads upstream; it never opens anything there.
+
+on:
+  schedule:
+    - cron: '17 12 * * 1' # Mondays, 12:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  watch:
+    name: Upstream commits not in main
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Compare main with upstream
+        run: |
+          git remote add upstream https://github.com/openauthenticator-app/openauthenticator.git
+          git fetch --quiet upstream main
+          count=$(git rev-list --count HEAD..FETCH_HEAD)
+          {
+            echo "## Upstream commits not in main: $count"
+            if [ "$count" -gt 0 ]; then
+              echo
+              echo '```'
+              git log --format='%h %ad %s' --date=short HEAD..FETCH_HEAD
+              echo '```'
+              echo
+              echo 'Plan a sync: docs/upstream-sync.md.'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$count" -gt 0 ]; then
+            echo "::error::Upstream has $count commit(s) that main does not have. Plan a sync (docs/upstream-sync.md)."
+            exit 1
+          fi

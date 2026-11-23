@@ -62,9 +62,9 @@ class EzkeyIdentity {
     bool isSystemIntegration = false,
     String? adminType,
   }) {
-    String? account = _clean(enrollmentName);
-    String purpose = isSystemIntegration ? translations.ezkey.identity.administration : _clean(integrationName) ?? account ?? Uri.parse(authApiBaseUrl).authority;
-    String? distinctAccount = _distinct(account, [purpose]);
+    final String? account = _clean(enrollmentName);
+    final String purpose = isSystemIntegration ? translations.ezkey.identity.administration : _clean(integrationName) ?? account ?? Uri.parse(authApiBaseUrl).authority;
+    final String? distinctAccount = _distinct(account, [purpose]);
     return EzkeyIdentity._(
       purpose: purpose,
       isAdministration: isSystemIntegration,
@@ -90,17 +90,17 @@ class EzkeyIdentity {
 
   /// Trims [label], and treats a blank one as missing.
   static String? _clean(String? label) {
-    String? trimmed = label?.trim();
+    final String? trimmed = label?.trim();
     return trimmed == null || trimmed.isEmpty ? null : trimmed;
   }
 
   /// Returns [label] when it is present and repeats none of [others], ignoring case.
   static String? _distinct(String? label, List<String?> others) {
-    String? cleaned = _clean(label);
+    final String? cleaned = _clean(label);
     if (cleaned == null) {
       return null;
     }
-    bool repeated = others.any((other) => other?.toLowerCase() == cleaned.toLowerCase());
+    final bool repeated = others.any((other) => other?.toLowerCase() == cleaned.toLowerCase());
     return repeated ? null : cleaned;
   }
 }

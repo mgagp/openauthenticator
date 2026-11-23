@@ -6,6 +6,7 @@ import 'package:html/dom.dart' as html;
 import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
 import 'package:open_authenticator/app.dart';
+import 'package:open_authenticator/utils/json.dart';
 
 /// A logo search source.
 mixin Source {
@@ -32,7 +33,7 @@ mixin Source {
   /// Check whether the given [imageUrl] is good to display.
   static Future<bool> check(http.Client client, Uri imageUrl) async {
     try {
-      http.Response response = await client.head(imageUrl, headers: defaultHeaders);
+      final http.Response response = await client.head(imageUrl, headers: defaultHeaders);
       return response.statusCode == HttpStatus.ok;
     } catch (_) {
       return false;
@@ -46,7 +47,7 @@ mixin DirectApiSource on Source {
   String get apiHost;
 
   /// The query parameters.
-  Map<String, dynamic>? get queryParameters => null;
+  JsonMap? get queryParameters => null;
 
   @override
   Iterable<Uri> _trySearch(http.Client client, String userKeywords) => {
@@ -58,9 +59,6 @@ mixin DirectApiSource on Source {
 
 /// Search directly on the target website.
 class DirectSource with Source {
-  /// Creates a new direct source instance.
-  const DirectSource();
-
   /// The meta image attributes to look for.
   static const List<String> _kMetaImageAttributes = [
     'og:logo',
@@ -83,15 +81,18 @@ class DirectSource with Source {
     'mask-icon',
   ];
 
+  /// Creates a new direct source instance.
+  const DirectSource();
+
   @override
   String get name => 'Direct';
 
   @override
   Future<List<Uri>> _trySearch(http.Client client, String userKeywords) async {
-    Set<Uri> result = {};
-    for (Uri websiteUrl in _buildWebsiteUrls(userKeywords)) {
+    final Set<Uri> result = {};
+    for (final Uri websiteUrl in _buildWebsiteUrls(userKeywords)) {
       try {
-        http.Response response = await client.get(websiteUrl, headers: Source.defaultHeaders);
+        final http.Response response = await client.get(websiteUrl, headers: Source.defaultHeaders);
         if (response.statusCode != HttpStatus.ok || !_isHtml(response)) {
           continue;
         }
@@ -106,43 +107,40 @@ class DirectSource with Source {
 
   /// Builds the website URLs to try.
   Iterable<Uri> _buildWebsiteUrls(String keywords) sync* {
-    String trimmed = keywords.trim();
+    final String trimmed = keywords.trim();
     if (trimmed.isEmpty) {
       return;
     }
 
-    Uri? directUri = Uri.tryParse(trimmed);
-    if (directUri?.hasScheme == true && directUri?.hasAuthority == true) {
-      yield directUri!;
+    final Uri? directUri = Uri.tryParse(trimmed);
+    if (directUri != null && directUri.hasScheme) {
+      if ((directUri.isScheme('http') || directUri.isScheme('https')) && directUri.host.isNotEmpty && directUri.userInfo.isEmpty) {
+        yield directUri;
+      }
       return;
     }
 
-    String hostLikeKeywords = trimmed.replaceFirst(RegExp(r'^www\.', caseSensitive: false), '');
-    if (!hostLikeKeywords.contains(' ') && hostLikeKeywords.contains('.')) {
-      yield Uri.https(hostLikeKeywords, '');
-      yield Uri.https('www.$hostLikeKeywords', '');
+    final String compact = trimmed.replaceAll(RegExp(r'\s+'), '').replaceFirst(RegExp(r'^www\.', caseSensitive: false), '');
+    if (compact.isEmpty || compact.contains(RegExp(r'[^a-zA-Z0-9.\-]'))) {
       return;
     }
-
-    String compactKeywords = trimmed.replaceAll(RegExp(r'\s+'), '');
-    if (compactKeywords.isNotEmpty) {
-      yield Uri.https('$compactKeywords.com', '');
-      yield Uri.https('www.$compactKeywords.com', '');
-    }
+    final String host = compact.contains('.') ? compact : '$compact.com';
+    yield Uri.https(host, '');
+    yield Uri.https('www.$host', '');
   }
 
   /// Extracts image URLs from the HTML meta and link tags.
   Iterable<Uri> _parseImageUrls(String responseBody, Uri websiteUrl) {
-    Map<String, Uri> metaImages = {};
-    Map<String, Uri> linkImages = {};
-    html.Document document = html_parser.parse(responseBody);
+    final Map<String, Uri> metaImages = {};
+    final Map<String, Uri> linkImages = {};
+    final html.Document document = html_parser.parse(responseBody);
 
-    List<html.Element> elements = document.querySelectorAll('meta, link');
-    for (html.Element element in elements) {
-      String? content = element.attributes['content'];
-      String? href = element.attributes['href'];
+    final List<html.Element> elements = document.querySelectorAll('meta, link');
+    for (final html.Element element in elements) {
+      final String? content = element.attributes['content'];
+      final String? href = element.attributes['href'];
 
-      for (String key in [
+      for (final String key in [
         element.attributes['property'],
         element.attributes['name'],
         element.attributes['itemprop'],
@@ -150,17 +148,17 @@ class DirectSource with Source {
         if (content == null) {
           continue;
         }
-        Uri? imageUrl = _buildImageUrl(content, websiteUrl);
+        final Uri? imageUrl = _buildImageUrl(content, websiteUrl);
         if (imageUrl != null) {
           metaImages.putIfAbsent(key.toLowerCase(), () => imageUrl);
         }
       }
 
       if (href != null) {
-        Set<String> relations = (element.attributes['rel'] ?? '').toLowerCase().split(RegExp(r'\s+')).where((relation) => relation.isNotEmpty).toSet();
-        for (String relation in _kLinkImageRelations) {
+        final Set<String> relations = (element.attributes['rel'] ?? '').toLowerCase().split(RegExp(r'\s+')).where((relation) => relation.isNotEmpty).toSet();
+        for (final String relation in _kLinkImageRelations) {
           if (relations.containsAll(relation.split(' '))) {
-            Uri? imageUrl = _buildImageUrl(href, websiteUrl);
+            final Uri? imageUrl = _buildImageUrl(href, websiteUrl);
             if (imageUrl != null) {
               linkImages.putIfAbsent(relation, () => imageUrl);
             }
@@ -170,23 +168,23 @@ class DirectSource with Source {
     }
 
     return [
-      for (String attribute in _kMetaImageAttributes)
+      for (final String attribute in _kMetaImageAttributes)
         if (metaImages[attribute] != null) metaImages[attribute]!,
-      for (String relation in _kLinkImageRelations)
+      for (final String relation in _kLinkImageRelations)
         if (linkImages[relation] != null) linkImages[relation]!,
     ];
   }
 
   /// Checks whether the response is HTML.
   bool _isHtml(http.Response response) {
-    String contentType = response.headers[HttpHeaders.contentTypeHeader] ?? '';
+    final String contentType = response.headers[HttpHeaders.contentTypeHeader] ?? '';
     return contentType.isEmpty || contentType.toLowerCase().contains('text/html');
   }
 
   /// Builds the image URL.
   Uri? _buildImageUrl(String imageUrl, Uri websiteUrl) {
     try {
-      Uri uri = websiteUrl.resolve(imageUrl.trim());
+      final Uri uri = websiteUrl.resolve(imageUrl.trim());
       return uri.isScheme('http') || uri.isScheme('https') ? uri : null;
     } catch (_) {
       return null;
@@ -204,17 +202,17 @@ class WikimediaSource with Source {
 
   @override
   Future<List<Uri>> _trySearch(http.Client client, String userKeywords) async {
-    List<String> result = [];
+    final List<String> result = [];
     try {
-      http.Response response = await client.get(buildEndpointUrl(userKeywords), headers: Source.defaultHeaders);
-      Map<String, dynamic> json = jsonDecode(response.body);
-      dynamic query = json['query'];
-      if (query is Map<String, dynamic>) {
-        dynamic search = query['search'];
+      final http.Response response = await client.get(buildEndpointUrl(userKeywords), headers: Source.defaultHeaders);
+      final JsonMap json = decodeJsonMap(response.body);
+      final dynamic query = json['query'];
+      if (query is JsonMap) {
+        final dynamic search = query['search'];
         if (search is List) {
-          for (dynamic element in search) {
-            if (element is Map<String, dynamic>) {
-              String logo = element['title'];
+          for (final Object? element in search) {
+            if (element is JsonMap) {
+              final String logo = element['title'];
               if (logo.endsWith('.png') || logo.endsWith('.jpg') || logo.endsWith('.jpeg') || logo.endsWith('.tiff') || logo.endsWith('.webp') || logo.endsWith('.svg')) {
                 result.add(logo);
               }
@@ -256,7 +254,7 @@ class LogoDevSource with Source, DirectApiSource {
   String get apiHost => 'img.logo.dev';
 
   @override
-  Map<String, dynamic>? get queryParameters => {
+  JsonMap? get queryParameters => {
     if (AppCredentials.logoDevApiKey.isNotEmpty) 'token': AppCredentials.logoDevApiKey,
     'format': 'webp',
   };
@@ -284,11 +282,11 @@ class BrandfetchSource with Source {
 
   @override
   Future<List<Uri>> _trySearch(http.Client client, String userKeywords) async {
-    List<Uri> result = [];
+    final List<Uri> result = [];
     try {
-      http.Response response = await client.get(buildEndpointUrl(userKeywords));
-      List jsonList = jsonDecode(response.body);
-      for (dynamic jsonBrand in jsonList) {
+      final http.Response response = await client.get(buildEndpointUrl(userKeywords));
+      final List jsonList = jsonDecode(response.body);
+      for (final dynamic jsonBrand in jsonList) {
         if (jsonBrand['qualityScore'] >= 0.75) {
           result.add(Uri.parse(jsonBrand['icon']));
         }
@@ -305,7 +303,7 @@ class BrandfetchSource with Source {
 extension Search on List<Source> {
   /// Searches using these sources, avoiding errors.
   Future<List<Uri>> search(http.Client client, String userKeywords) async => [
-    for (Source source in this) //
+    for (final Source source in this) //
       ...await source._trySearch(client, userKeywords),
   ];
 }

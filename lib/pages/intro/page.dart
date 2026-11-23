@@ -1,10 +1,10 @@
 import 'package:animations/animations.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:open_authenticator/core/settings/show_intro.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
-import 'package:open_authenticator/model/settings/show_intro.dart';
 import 'package:open_authenticator/pages/home/page.dart';
 import 'package:open_authenticator/pages/intro/slides/log_in.dart';
 import 'package:open_authenticator/pages/intro/slides/password.dart';
@@ -12,6 +12,8 @@ import 'package:open_authenticator/pages/intro/slides/slide.dart';
 import 'package:open_authenticator/pages/intro/slides/welcome.dart';
 import 'package:open_authenticator/spacing.dart';
 import 'package:open_authenticator/utils/brightness_listener.dart';
+import 'package:open_authenticator/utils/result/handler.dart';
+import 'package:open_authenticator/utils/result/result.dart';
 import 'package:open_authenticator/widgets/app_scaffold.dart';
 import 'package:open_authenticator/widgets/button_text.dart';
 import 'package:open_authenticator/widgets/clickable.dart';
@@ -33,6 +35,9 @@ class IntroPage extends ConsumerStatefulWidget {
 
 /// The intro page state.
 class _IntroPageState extends ConsumerState<IntroPage> with BrightnessListener {
+  /// Whether this slide is currently being saved.
+  bool _advancing = false;
+
   @override
   void onBrightnessChange(Brightness brightness) {
     super.onBrightnessChange(brightness);
@@ -47,7 +52,7 @@ class _IntroPageState extends ConsumerState<IntroPage> with BrightnessListener {
 
   /// Allows to adapt system UI overlay to the current brightness.
   void _adaptSystemUiOverlayToBrightness() {
-    Brightness brightness = currentBrightness;
+    final Brightness brightness = currentBrightness;
     SystemChrome.setSystemUIOverlayStyle(
       SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -57,6 +62,7 @@ class _IntroPageState extends ConsumerState<IntroPage> with BrightnessListener {
     );
   }
 
+  /// Builds the current setup step and its navigation controls.
   @override
   Widget build(BuildContext context) => PopScope(
     canPop: false,
@@ -64,7 +70,7 @@ class _IntroPageState extends ConsumerState<IntroPage> with BrightnessListener {
       center: true,
       asyncValue: ref.watch(currentIntroPageSlideProvider),
       footerBuilder: (slideState) {
-        bool hasFinished = slideState.slideIndex == slideState.slideCount - 1;
+        final bool hasFinished = slideState.slideIndex == slideState.slideCount - 1;
         return Padding(
           padding: .only(
             top: kSpace,
@@ -84,14 +90,7 @@ class _IntroPageState extends ConsumerState<IntroPage> with BrightnessListener {
                 ),
                 ClickableButton(
                   mainAxisSize: .min,
-                  onPress: slideState.canGoToNextSlide
-                      ? () async {
-                          bool shouldFinish = await ref.read(currentIntroPageSlideProvider.notifier).goToNextSlide(context);
-                          if (shouldFinish) {
-                            finish();
-                          }
-                        }
-                      : null,
+                  onPress: slideState.canGoToNextSlide && !_advancing ? _advance : null,
                   prefix: Icon(hasFinished ? FLucideIcons.check : FLucideIcons.chevronRight),
                   child: ButtonText(hasFinished ? translations.intro.button.finish : translations.intro.button.next),
                 ),
@@ -124,10 +123,33 @@ class _IntroPageState extends ConsumerState<IntroPage> with BrightnessListener {
     ),
   );
 
+  /// Saves the current slide and lets the user retry a failed credential write.
+  Future<void> _advance() async {
+    if (_advancing) {
+      return;
+    }
+    setState(() => _advancing = true);
+    try {
+      if (await ref.read(currentIntroPageSlideProvider.notifier).goToNextSlide() && mounted) {
+        await finish();
+      }
+    } catch (error, stackTrace) {
+      if (mounted) {
+        handleResult(context, ResultError(exception: error, stackTrace: stackTrace));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _advancing = false);
+      }
+    }
+  }
+
   /// Finishes the intro.
   Future<void> finish() async {
-    SystemChrome.restoreSystemUIOverlays();
-    Navigator.pushNamedAndRemoveUntil(context, HomePage.name, (_) => false);
-    ref.read(showIntroSettingsEntryProvider.notifier).changeValue(false);
+    await ref.read(showIntroSettingsEntryProvider.notifier).changeValue(false);
+    if (mounted) {
+      SystemChrome.restoreSystemUIOverlays();
+      Navigator.pushNamedAndRemoveUntil(context, HomePage.name, (_) => false);
+    }
   }
 }

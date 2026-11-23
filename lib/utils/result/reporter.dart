@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:open_authenticator/utils/result/result.dart';
 import 'package:open_authenticator/utils/sentry.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
@@ -63,29 +65,32 @@ void reportResult<T>(
   Result<T> result, {
   ResultReporting? reporting,
 }) {
-  if (reporting == null && result is ResultError) {
-    if (kDebugMode) {
-      reporting = _sendToSentry((result as ResultError).exception) ? .consoleAndSentry : .console;
-    } else {
-      reporting = _sendToSentry((result as ResultError).exception) ? .sentry : .none;
-    }
-  }
-  if (reporting != null) {
-    for (ResultReporter reporter in reporting._reporters) {
+  final ResultReporting? actualReporting = switch (result) {
+    _ when reporting != null => reporting,
+    ResultError(:final exception) when kDebugMode => _sendToSentry(exception) ? .consoleAndSentry : .console,
+    ResultError(:final exception) => _sendToSentry(exception) ? .sentry : .none,
+    _ => null,
+  };
+  if (actualReporting != null) {
+    for (final ResultReporter reporter in actualReporting._reporters) {
       reporter.report(result);
     }
   }
 }
 
 /// Whether the given [ex] should be sent to Sentry.
-bool _sendToSentry(Object? ex) =>
-    kSentryEnabled &&
-    switch (ex) {
-      SocketException(:final osError) => !{7, 8}.contains(osError?.errorCode),
-      TimeoutException() => false,
-      UserError(:final reportToSentry) => reportToSentry,
-      _ => true,
-    };
+bool _sendToSentry(Object? ex) => kSentryEnabled && isReportableException(ex);
+
+/// Whether the given [ex] is worth reporting.
+/// Network failures and busy clipboards depend on the user environment (connection, proxies, other apps), so they cannot be fixed by the app.
+/// This is also used to filter the errors that are automatically caught by Sentry.
+bool isReportableException(Object? ex) => switch (ex) {
+  UserError(:final reportToSentry) => reportToSentry,
+  SocketException() || HandshakeException() || http.ClientException() || TimeoutException() => false,
+  // Another app may hold the Windows clipboard, including when a text field pastes text.
+  PlatformException(code: 'Clipboard error') => false,
+  _ => true,
+};
 
 /// Reports a [Result].
 abstract interface class ResultReporter {

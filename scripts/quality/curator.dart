@@ -98,7 +98,7 @@ class Suppression {
 
   /// Reads one entry of the suppressions file, and refuses an entry without a reason.
   factory Suppression.fromJson(Map<String, dynamic> json) {
-    String reason = (json['reason'] as String? ?? '').trim();
+    final String reason = (json['reason'] as String? ?? '').trim();
     if (reason.isEmpty) {
       throw FormatException('A suppression needs a written reason: $json');
     }
@@ -140,7 +140,7 @@ class CuratedReport {
 
   /// The findings of [priority].
   List<Finding> at(Priority priority) => [
-    for (Finding finding in findings)
+    for (final Finding finding in findings)
       if (finding.priority == priority) finding,
   ];
 }
@@ -161,7 +161,7 @@ String relativePath(String path, String root) {
 
 /// Returns the JSON object under [key] of [json], or an empty one.
 Map<String, dynamic> _object(Object? json, String key) {
-  Object? value = json is Map<String, dynamic> ? json[key] : null;
+  final Object? value = json is Map<String, dynamic> ? json[key] : null;
   return value is Map<String, dynamic> ? value : const {};
 }
 
@@ -175,18 +175,18 @@ Priority? _metricPriority(String? level) => switch (level) {
 
 /// Reads a dart_code_linter JSON report: one finding per metric past its threshold.
 List<Finding> readDartMetrics(Map<String, dynamic> json, {required String root}) => [
-  for (Map<String, dynamic> record in (json['records'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>())
-    for (String kind in ['functions', 'classes'])
-      for (MapEntry<String, dynamic> symbol in (record[kind] as Map<String, dynamic>? ?? {}).entries)
+  for (final Map<String, dynamic> record in (json['records'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>())
+    for (final String kind in ['functions', 'classes'])
+      for (final MapEntry<String, dynamic> symbol in (record[kind] as Map<String, dynamic>? ?? {}).entries)
         ..._symbolFindings(relativePath(record['path'] as String, root), symbol.key, symbol.value as Map<String, dynamic>),
 ];
 
 /// The metrics of one function or class past their threshold.
 List<Finding> _symbolFindings(String path, String symbol, Map<String, dynamic> body) {
-  int line = _object(_object(body, 'codeSpan'), 'start')['line'] as int? ?? 1;
-  List<Finding> findings = [];
-  for (Map<String, dynamic> metric in (body['metrics'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>()) {
-    Priority? priority = _metricPriority(metric['level'] as String?);
+  final int line = _object(_object(body, 'codeSpan'), 'start')['line'] as int? ?? 1;
+  final List<Finding> findings = [];
+  for (final Map<String, dynamic> metric in (body['metrics'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>()) {
+    final Priority? priority = _metricPriority(metric['level'] as String?);
     if (priority != null) {
       findings.add(
         Finding(
@@ -206,12 +206,12 @@ List<Finding> _symbolFindings(String path, String symbol, Map<String, dynamic> b
 
 /// Reads a jscpd JSON report. A long block repeated in app code is P2, anything else P3.
 List<Finding> readDuplication(Map<String, dynamic> json, {required String root, int longBlock = 15}) => [
-  for (Map<String, dynamic> duplicate in (json['duplicates'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>())
+  for (final Map<String, dynamic> duplicate in (json['duplicates'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>())
     () {
-      Map<String, dynamic> first = duplicate['firstFile'] as Map<String, dynamic>;
-      Map<String, dynamic> second = duplicate['secondFile'] as Map<String, dynamic>;
-      String path = relativePath(first['name'] as String, root);
-      int lines = duplicate['lines'] as int;
+      final Map<String, dynamic> first = duplicate['firstFile'] as Map<String, dynamic>;
+      final Map<String, dynamic> second = duplicate['secondFile'] as Map<String, dynamic>;
+      final String path = relativePath(first['name'] as String, root);
+      final int lines = duplicate['lines'] as int;
       return Finding(
         tool: 'jscpd',
         rule: 'duplicate-${duplicate['format']}',
@@ -225,15 +225,15 @@ List<Finding> readDuplication(Map<String, dynamic> json, {required String root, 
 
 /// Reads a SARIF report, as Detekt writes it. Formatting rules are P3.
 List<Finding> readSarif(Map<String, dynamic> json, {required String root, required String tool}) => [
-  for (Map<String, dynamic> run in (json['runs'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>())
-    for (Map<String, dynamic> result in (run['results'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>()) _sarifFinding(result, root: root, tool: tool),
+  for (final Map<String, dynamic> run in (json['runs'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>())
+    for (final Map<String, dynamic> result in (run['results'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>()) _sarifFinding(result, root: root, tool: tool),
 ];
 
 /// One SARIF result.
 Finding _sarifFinding(Map<String, dynamic> result, {required String root, required String tool}) {
-  List<dynamic> locations = result['locations'] as List<dynamic>? ?? [];
-  Map<String, dynamic> location = locations.isEmpty ? {} : (locations.first as Map<String, dynamic>)['physicalLocation'] as Map<String, dynamic>? ?? {};
-  String rule = result['ruleId'] as String? ?? 'unknown';
+  final List<dynamic> locations = result['locations'] as List<dynamic>? ?? [];
+  final Map<String, dynamic> location = locations.isEmpty ? {} : (locations.first as Map<String, dynamic>)['physicalLocation'] as Map<String, dynamic>? ?? {};
+  final String rule = result['ruleId'] as String? ?? 'unknown';
   return Finding(
     tool: tool,
     rule: rule,
@@ -253,7 +253,7 @@ Priority _sarifPriority(String? level) => switch (level) {
 
 /// Reads a Semgrep JSON report, its paths being under [mountPoint]. Errors and warnings are P1.
 List<Finding> readSemgrep(Map<String, dynamic> json, {String mountPoint = '/src/'}) => [
-  for (Map<String, dynamic> result in (json['results'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>())
+  for (final Map<String, dynamic> result in (json['results'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>())
     Finding(
       tool: 'semgrep',
       rule: (result['check_id'] as String).split('.').last,
@@ -270,23 +270,23 @@ List<Finding> readSemgrep(Map<String, dynamic> json, {String mountPoint = '/src/
 /// Drops the suppressed findings and the exact duplicates, merges the metrics of one symbol into one
 /// finding at its most urgent rank, and sorts by rank, then by place.
 CuratedReport curate(List<Finding> raw, List<Suppression> suppressions) {
-  Map<Suppression, int> suppressed = {};
-  Map<String, Finding> kept = {};
-  for (Finding finding in raw) {
-    Suppression? suppression = suppressions.where((candidate) => candidate.matches(finding)).firstOrNull;
+  final Map<Suppression, int> suppressed = {};
+  final Map<String, Finding> kept = {};
+  for (final Finding finding in raw) {
+    final Suppression? suppression = suppressions.where((candidate) => candidate.matches(finding)).firstOrNull;
     if (suppression != null) {
       suppressed[suppression] = (suppressed[suppression] ?? 0) + 1;
       continue;
     }
-    bool bySymbol = finding.tool == 'dart_code_linter' && finding.symbol != null;
-    String key = bySymbol ? '${finding.tool}|${finding.path}|${finding.symbol}' : '${finding.tool}|${finding.rule}|${finding.path}|${finding.line}|${finding.message}';
-    Finding? previous = kept[key];
+    final bool bySymbol = finding.tool == 'dart_code_linter' && finding.symbol != null;
+    final String key = bySymbol ? '${finding.tool}|${finding.path}|${finding.symbol}' : '${finding.tool}|${finding.rule}|${finding.path}|${finding.line}|${finding.message}';
+    final Finding? previous = kept[key];
     kept[key] = previous == null || !bySymbol ? finding : _merge(previous, finding);
   }
-  List<Finding> findings = kept.values.toList()
+  final List<Finding> findings = kept.values.toList()
     ..sort((a, b) {
-      int byPriority = a.priority.index.compareTo(b.priority.index);
-      int byPath = a.path.compareTo(b.path);
+      final int byPriority = a.priority.index.compareTo(b.priority.index);
+      final int byPath = a.path.compareTo(b.path);
       return byPriority != 0 ? byPriority : (byPath != 0 ? byPath : a.line.compareTo(b.line));
     });
   return CuratedReport(rawCount: raw.length, findings: findings, suppressed: suppressed);
@@ -310,31 +310,31 @@ String baselineKey(Finding finding) =>
 
 /// The findings at [atLeast] or more urgent that [baseline] does not know: what the code gained.
 List<Finding> newSince(List<Finding> findings, Set<String> baseline, {Priority atLeast = Priority.p1}) => [
-  for (Finding finding in findings)
+  for (final Finding finding in findings)
     if (finding.priority.index <= atLeast.index && !baseline.contains(baselineKey(finding))) finding,
 ];
 
 /// Renders [report] as Markdown. [tools] maps each analyzer to its status line.
 String renderMarkdown(CuratedReport report, {required String title, required DateTime date, required Map<String, String> tools}) {
-  StringBuffer out = StringBuffer()
+  final StringBuffer out = StringBuffer()
     ..writeln('# $title')
     ..writeln()
     ..writeln('Generated on ${date.toIso8601String().substring(0, 16).replaceFirst('T', ' ')}. Report only: not a CI gate.')
     ..writeln()
     ..writeln('| Analyzer | Status |')
     ..writeln('| --- | --- |');
-  for (MapEntry<String, String> tool in tools.entries) {
+  for (final MapEntry<String, String> tool in tools.entries) {
     out.writeln('| ${tool.key} | ${tool.value} |');
   }
-  int suppressedCount = report.suppressed.values.fold(0, (sum, count) => sum + count);
+  final int suppressedCount = report.suppressed.values.fold(0, (sum, count) => sum + count);
   out
     ..writeln()
     ..writeln(
       '**${report.rawCount}** raw findings, **$suppressedCount** suppressed, **${report.findings.length}** kept: '
       '${Priority.values.map((priority) => '${report.at(priority).length} ${priority.label}').join(', ')}.',
     );
-  for (Priority priority in Priority.values) {
-    List<Finding> findings = report.at(priority);
+  for (final Priority priority in Priority.values) {
+    final List<Finding> findings = report.at(priority);
     out
       ..writeln()
       ..writeln('## ${priority.label} (${findings.length})')
@@ -346,7 +346,7 @@ String renderMarkdown(CuratedReport report, {required String title, required Dat
     out
       ..writeln('| Where | What | Analyzer |')
       ..writeln('| --- | --- | --- |');
-    for (Finding finding in findings) {
+    for (final Finding finding in findings) {
       out.writeln('| `${finding.location}` | ${finding.message.replaceAll('|', '\\|').replaceAll('\n', ' ')} | ${finding.tool} |');
     }
   }
@@ -360,7 +360,7 @@ String renderMarkdown(CuratedReport report, {required String title, required Dat
     out
       ..writeln('| Rule | Count | Reason |')
       ..writeln('| --- | --- | --- |');
-    for (MapEntry<Suppression, int> entry in report.suppressed.entries) {
+    for (final MapEntry<Suppression, int> entry in report.suppressed.entries) {
       out.writeln('| ${entry.key.label} | ${entry.value} | ${entry.key.reason} |');
     }
   }

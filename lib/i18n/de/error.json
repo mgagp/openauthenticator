@@ -16,7 +16,7 @@
     "empty": "Dieses Feld ist erforderlich",
     "email": "Ungültige E-Mail",
     "secret": "Ungültiges Geheimnis eingegeben",
-    "totpDigits": "Diese Zahl muss mindestens 6 betragen",
+    "totpDigits": "Geben Sie eine Stellenzahl zwischen 6 und 15 ein",
     "masterPassword": "Ungültiges Passwort eingegeben",
     "confirmation": "Die Bestätigung stimmt nicht überein",
     "url": "Ungültige URL."
@@ -61,10 +61,9 @@
     "unsupported": "Das Scannen wird von diesem Gerät nicht unterstützt (Code: $exception)."
   },
   "storageMigration": {
-    "getTotps": "Beim Abrufen Ihrer TOTP-Codes ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.",
-    "backupError": "Beim Erstellen der Sicherung ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.",
     "anotherDeletedTotpPolicyShouldBeUsed": "Eine andere gelöschte TOTP-Strategie sollte verwendet werden.",
     "currentStoragePasswordMismatch": "Ungültiges Master-Passwort eingegeben.",
+    "remoteStoragePasswordMismatch": "Ihre Online-TOTPs wurden mit einem anderen Master-Passwort verschlüsselt. Bitte ändern Sie das Master-Passwort auf diesem Gerät, damit es mit dem auf Ihren anderen Geräten übereinstimmt, und versuchen Sie es erneut.",
     "generic": "Beim Migrieren Ihrer Daten ist ein Fehler aufgetreten. Bitte versuchen Sie es später erneut."
   },
   "revenueCat": {
@@ -74,6 +73,7 @@
   "totp": {
     "create": "Dieses TOTP konnte nicht erstellt werden.",
     "decrypt": "Entschlüsselung des TOTP fehlgeschlagen. Bitte stelle sicher, dass du das richtige Passwort eingegeben hast.",
+    "undecryptable": "$count TOTP(s) können mit Ihrem aktuellen Master-Passwort nicht entschlüsselt werden. Tippen Sie in der Liste darauf, um sie mit dem Passwort zu entschlüsseln, mit dem sie verschlüsselt wurden, oder löschen Sie sie, und versuchen Sie es dann erneut.",
     "changeCryptoStore": {
       "noCryptoStore": "Aktueller Krypto-Speicher konnte nicht geladen werden. Bitte schließe die App und öffne sie erneut.",
       "generic": "Verschlüsselung des TOTP mit dem aktuellen Krypto-Speicher fehlgeschlagen."

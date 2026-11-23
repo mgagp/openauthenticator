@@ -1,32 +1,29 @@
 import 'dart:developer';
 import 'dart:io';
 
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:open_authenticator/core/app_unlock/reason.dart';
+import 'package:open_authenticator/core/backend/user.dart';
+import 'package:open_authenticator/core/backup/backup.dart';
+import 'package:open_authenticator/core/database/database.dart';
+import 'package:open_authenticator/core/secure_storage.dart';
+import 'package:open_authenticator/core/settings/app_unlock_method.dart';
+import 'package:open_authenticator/core/settings/entry.dart';
+import 'package:open_authenticator/core/totp/image_cache.dart';
 import 'package:open_authenticator/ezkey/clear_data.dart';
+import 'package:open_authenticator/flows/app_unlock_interaction.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
-import 'package:open_authenticator/model/app_unlock/reason.dart';
-import 'package:open_authenticator/model/backend/user.dart';
-import 'package:open_authenticator/model/backup/backup.dart';
-import 'package:open_authenticator/model/database/database.dart';
-import 'package:open_authenticator/model/secure_storage.dart';
-import 'package:open_authenticator/model/settings/app_unlock_method.dart';
-import 'package:open_authenticator/model/settings/entry.dart';
-import 'package:open_authenticator/model/totp/image_cache.dart';
-import 'package:open_authenticator/utils/app_unlock_interaction.dart';
 import 'package:open_authenticator/utils/platform.dart';
 import 'package:open_authenticator/utils/result/handler.dart';
-import 'package:open_authenticator/utils/result/reporter.dart';
 import 'package:open_authenticator/utils/result/result.dart';
-import 'package:open_authenticator/utils/shared_preferences_with_prefix.dart';
 import 'package:open_authenticator/widgets/button_text.dart';
 import 'package:open_authenticator/widgets/clickable.dart';
 import 'package:open_authenticator/widgets/dialog/app_dialog.dart';
 import 'package:open_authenticator/widgets/dialog/confirmation_dialog.dart';
 import 'package:open_authenticator/widgets/waiting_overlay.dart';
-import 'package:simple_secure_storage/simple_secure_storage.dart';
 
 /// Allows to clear all the app data.
 class ClearDataSettingsEntryWidget extends ConsumerWidget with FTileMixin {
@@ -41,7 +38,7 @@ class ClearDataSettingsEntryWidget extends ConsumerWidget with FTileMixin {
     title: Text(translations.settings.dangerZone.clearData.title),
     subtitle: Text(translations.settings.dangerZone.clearData.subtitle),
     onPress: () async {
-      bool confirm = await ConfirmationDialog.ask(
+      final bool confirm = await ConfirmationDialog.ask(
         context,
         title: translations.settings.dangerZone.clearData.confirmationDialog.title,
         message: translations.settings.dangerZone.clearData.confirmationDialog.message,
@@ -54,62 +51,40 @@ class ClearDataSettingsEntryWidget extends ConsumerWidget with FTileMixin {
         return;
       }
 
-      AppUnlockMethodSettingsEntry appUnlockerMethodsSettingsEntry = ref.read(appUnlockMethodSettingsEntryProvider.notifier);
-      Result unlockResult = await appUnlockerMethodsSettingsEntry.unlockWithCurrentMethod(context.appUnlockInteraction, UnlockReason.sensibleAction);
+      final AppUnlockMethodSettingsEntry appUnlockerMethodsSettingsEntry = ref.read(appUnlockMethodSettingsEntryProvider.notifier);
+      final Result unlockResult = await appUnlockerMethodsSettingsEntry.unlockWithCurrentMethod(context.appUnlockInteraction, UnlockReason.sensibleAction);
       if (unlockResult is! ResultSuccess || !context.mounted) {
         return;
       }
 
-      bool deleteBackups = await ConfirmationDialog.ask(
-        context,
-        title: translations.settings.dangerZone.clearData.backupDeleteConfirmationDialog.title,
-        message: translations.settings.dangerZone.clearData.backupDeleteConfirmationDialog.message,
-        okButtonVariant: .destructive,
+      final bool? deleteBackups = await showFDialog<bool>(
+        context: context,
+        builder: (context, style, animation) => AppDialog(
+          title: Text(translations.settings.dangerZone.clearData.backupDeleteConfirmationDialog.title),
+          actions: [
+            ClickableButton(
+              variant: .destructive,
+              onPress: () => Navigator.pop(context, true),
+              child: ButtonText(translations.storageMigration.deletedTotpPolicyPickerDialog.delete.title),
+            ),
+            ClickableButton(
+              variant: .secondary,
+              onPress: () => Navigator.pop(context, false),
+              child: ButtonText(translations.storageMigration.deletedTotpPolicyPickerDialog.restore.title),
+            ),
+          ],
+          children: [Text(translations.settings.dangerZone.clearData.backupDeleteConfirmationDialog.message)],
+        ),
       );
-      if (!deleteBackups || !context.mounted) {
+      if (deleteBackups == null || !context.mounted) {
         return;
       }
-
-      await showWaitingOverlay(
-        context,
-        future: () async {
-          Result logoutResult = await ref.read(userProvider.notifier).logoutUser();
-          if (!context.mounted) {
-            return;
-          }
-          if (logoutResult is! ResultSuccess) {
-            handleResult(
-              context,
-              logoutResult,
-              presentation: .errorDialog,
-            );
-            return;
-          }
-          CachedSimpleSecureStorage simpleSecureStorage = await ref.read(secureStorageProvider.future);
-          await simpleSecureStorage.clear();
-          await deleteEzkeyKeysAfterClearData(ref);
-          TotpImageCacheManager totpImageCacheManager = ref.read(totpImageCacheManagerProvider.notifier);
-          await totpImageCacheManager.clearCache();
-          SharedPreferencesWithPrefix preferences = await ref.read(sharedPreferencesProvider.future);
-          await preferences.clear();
-          AppDatabase database = ref.read(appDatabaseProvider);
-          await database.clear();
-          if (deleteBackups) {
-            List<ResultError> errors = [];
-            List<BackupPath> backups = await ref.read(backupStoreProvider.future);
-            for (BackupPath backup in backups) {
-              Result deleteResult = await ref.read(backupStoreProvider.notifier).deleteBackup(backup);
-              if (deleteResult is ResultError) {
-                errors.add(deleteResult);
-              }
-            }
-            for (ResultError error in errors) {
-              printException(error.exception, error.stackTrace);
-            }
-          }
-        }(),
-      );
+      final Result result = await showWaitingOverlay(context, future: _clear(ref, deleteBackups));
       if (!context.mounted) {
+        return;
+      }
+      if (result is! ResultSuccess) {
+        handleResult(context, result, presentation: .errorDialog);
         return;
       }
       await _showCloseDialog(context);
@@ -119,9 +94,34 @@ class ClearDataSettingsEntryWidget extends ConsumerWidget with FTileMixin {
     },
   );
 
+  Future<Result> _clear(WidgetRef ref, bool deleteBackups) async {
+    try {
+      final Result<dynamic> logout = await ref.read(userProvider.notifier).logoutUser();
+      if (logout is! ResultSuccess) {
+        return logout;
+      }
+      await (await ref.read(secureStorageProvider.future)).clear();
+      await deleteEzkeyKeysAfterClearData(ref);
+      await ref.read(totpImageCacheManagerProvider.notifier).clearCache();
+      await (await ref.read(sharedPreferencesProvider.future)).clear();
+      await ref.read(appDatabaseProvider).clear();
+      if (deleteBackups) {
+        for (final BackupPath backup in await ref.read(backupStoreProvider.future)) {
+          final Result<dynamic> result = await ref.read(backupStoreProvider.notifier).deleteBackup(backup);
+          if (result is! ResultSuccess) {
+            return result;
+          }
+        }
+      }
+      return const ResultSuccess();
+    } catch (error, stackTrace) {
+      return ResultError(exception: error, stackTrace: stackTrace);
+    }
+  }
+
   /// Shows the dialog that indicates the user he has to restart the app.
   Future<void> _showCloseDialog(BuildContext context) async {
-    bool canExitWithConfirmDialog = _canExitWithConfirmDialog;
+    final bool canExitWithConfirmDialog = _canExitWithConfirmDialog;
     await showFDialog(
       context: context,
       barrierDismissible: false,

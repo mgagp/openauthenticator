@@ -12,7 +12,7 @@ void main() {
 
   group('ezkeyUrlPolicyFor', () {
     test('release and profile builds accept HTTPS only', () {
-      EzkeyUrlPolicy policy = ezkeyUrlPolicyFor(debug: false);
+      final EzkeyUrlPolicy policy = ezkeyUrlPolicyFor(debug: false);
 
       expect(policy.normalize('https://auth.example.com'), 'https://auth.example.com');
       expect(policy.normalize('http://10.0.2.2:8080'), isNull);
@@ -21,7 +21,7 @@ void main() {
     });
 
     test('debug builds also accept plain HTTP to the development hosts, and nowhere else', () {
-      EzkeyUrlPolicy policy = ezkeyUrlPolicyFor(debug: true);
+      final EzkeyUrlPolicy policy = ezkeyUrlPolicyFor(debug: true);
 
       expect(policy.normalize('https://auth.example.com'), 'https://auth.example.com');
       expect(policy.normalize('http://10.0.2.2:8080'), 'http://10.0.2.2:8080');
@@ -31,7 +31,7 @@ void main() {
   });
 
   test('the policy of this build is the debug one when tests run, in debug mode', () {
-    ProviderContainer container = ProviderContainer();
+    final ProviderContainer container = ProviderContainer();
     addTearDown(container.dispose);
 
     expect(container.read(ezkeyUrlPolicyProvider).normalize('http://10.0.2.2:8080'), isNotNull);
@@ -40,7 +40,7 @@ void main() {
   test('the authenticator uses the URL policy of this build', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(EzkeyKeystore.channel, (call) async => <String>[]);
     addTearDown(() => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(EzkeyKeystore.channel, null));
-    ProviderContainer container = ProviderContainer(
+    final ProviderContainer container = ProviderContainer(
       overrides: [
         ezkeyEnrollmentStoreProvider.overrideWith((ref) async => SecureEzkeyEnrollmentStore(InMemorySecureValues())),
         ezkeyUrlPolicyProvider.overrideWithValue(EzkeyUrlPolicy.httpsOnly),
@@ -48,7 +48,7 @@ void main() {
     );
     addTearDown(container.dispose);
 
-    EzkeyAuthenticator authenticator = await container.read(ezkeyAuthenticatorProvider.future);
+    final EzkeyAuthenticator authenticator = await container.read(ezkeyAuthenticatorProvider.future);
 
     expect(authenticator.urlPolicy, same(EzkeyUrlPolicy.httpsOnly));
   });

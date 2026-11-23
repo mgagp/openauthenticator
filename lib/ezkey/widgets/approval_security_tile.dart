@@ -1,10 +1,10 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/ezkey/local_confirmation.dart';
+import 'package:open_authenticator/flows/app_unlock_interaction.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/pages/settings/entries/widgets.dart';
-import 'package:open_authenticator/utils/app_unlock_interaction.dart';
 
 /// "Confirm before approvals": the user's approval protection, shown as an upstream settings
 /// checkbox. Turning it off asks for a confirmation first (#34, #83).

@@ -20,6 +20,8 @@ This direction evolves with the project. When it changes, update this section in
 | --- | --- |
 | [`test-plan.md`](test-plan.md) | What to test first, at which level, and the known seams and gaps |
 | [`upstream-activity.md`](upstream-activity.md) | How often upstream changes each area and each file the fork touches: the sync cost of a divergence |
+| [`upstream-sync.md`](upstream-sync.md) | How to bring in upstream's changes: merge commit, ledger re-application, adapting the fork's code, checks, and the retrospective that ends each sync |
+| [`upstream-sync/`](upstream-sync/) | One journal per sync, kept during the work: steps, problems, decisions, lessons, then the retrospective |
 | [`ezkey/integration.md`](ezkey/integration.md) | EzKey integration design: layers, contract conformance, upstream files touched, lab setup |
 | [`ezkey/harmonization.md`](ezkey/harmonization.md) | EzKey × Open Authenticator features: the two tracks, integration levels, inventory of upstream features, tracking |
 | [`ezkey/integrator-guide.md`](ezkey/integrator-guide.md) | Draft guide for adding EzKey to another mobile app, tested by whether a cold agent reaches this fork's decisions |

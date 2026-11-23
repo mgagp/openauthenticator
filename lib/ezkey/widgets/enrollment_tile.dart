@@ -1,6 +1,6 @@
 import 'package:ezkey_dart/ezkey_dart.dart';
-import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/ezkey/identity.dart';
 import 'package:open_authenticator/ezkey/messages.dart';
 import 'package:open_authenticator/widgets/clickable.dart';
@@ -35,11 +35,11 @@ class EzkeyEnrollmentTile extends StatelessWidget with FTileMixin {
 
   @override
   Widget build(BuildContext context) {
-    EzkeyIdentity identity = EzkeyIdentity.of(enrollment);
-    String host = enrollment.authApiBaseUri.authority;
+    final EzkeyIdentity identity = EzkeyIdentity.of(enrollment);
+    final String host = enrollment.authApiBaseUri.authority;
     // One line each, so the summary cannot push the server away. The key tier comes first so a long
     // server address is what gets cut.
-    String? server = showDetails ? '${ezkeyStorageTierLabel(enrollment.devicePrivateKeyStorageTier)} · $host' : (showServer ? host : null);
+    final String? server = showDetails ? '${ezkeyStorageTierLabel(enrollment.devicePrivateKeyStorageTier)} · $host' : (showServer ? host : null);
     return ClickableTile(
       prefix: const Icon(FLucideIcons.shieldCheck),
       title: Text(identity.purpose),

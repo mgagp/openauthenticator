@@ -29,6 +29,6 @@ bool isEzkeyInvitation(String content) {
 /// upstream's TOTP page does. Returns whether the scanner resumes: only when the flow stopped before that
 /// page (cancelled, or binding failed and the user was told).
 Future<bool> onEzkeyScan(BuildContext context, WidgetRef ref, String content) async {
-  bool opened = await EzkeyActions.addEnrollment(context, ref, content, replaceRoute: true);
+  final bool opened = await EzkeyActions.addEnrollment(context, ref, content, replaceRoute: true);
   return !opened;
 }

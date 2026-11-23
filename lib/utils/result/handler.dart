@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/utils/result/presentation.dart';
 import 'package:open_authenticator/utils/result/reporter.dart';
 import 'package:open_authenticator/utils/result/result.dart';
@@ -8,7 +8,7 @@ void handleResult<T>(
   BuildContext context,
   Result<T> result, {
   ResultPresentation presentation = .successAndErrorDialog,
-  ResultReporting reporting = .consoleAndSentry,
+  ResultReporting? reporting,
   MessageBuilder<T>? buildSuccessToastMessage,
   MessageBuilder<Object?>? buildErrorToastMessage,
   MessageBuilder<Object?>? buildErrorDialogMessage,

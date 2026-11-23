@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/i18n/localizable_exception.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/utils/result/result.dart';
@@ -61,7 +61,7 @@ extension PresentResult<T> on Result<T> {
   /// Shows an error dialog for a [ResultError].
   void showErrorDialog(BuildContext context, MessageBuilder<Object?>? errorMessage) {
     if (this is ResultError) {
-      String? message = errorMessage?.call((this as ResultError).exception);
+      final String? message = errorMessage?.call((this as ResultError).exception);
       ErrorDialog.openDialog(
         context,
         error: (this as ResultError).exception,

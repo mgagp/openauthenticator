@@ -1,39 +1,40 @@
 import 'package:custom_refresh_indicator/custom_refresh_indicator.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:open_authenticator/core/app_unlock/methods/method.dart';
+import 'package:open_authenticator/core/app_unlock/state.dart';
+import 'package:open_authenticator/core/backend/authentication/session.dart';
+import 'package:open_authenticator/core/backend/backend.dart';
+import 'package:open_authenticator/core/backend/synchronization/push/result.dart';
+import 'package:open_authenticator/core/backend/synchronization/queue.dart';
+import 'package:open_authenticator/core/backend/synchronization/status.dart';
+import 'package:open_authenticator/core/crypto/store.dart';
+import 'package:open_authenticator/core/settings/display_copy_button.dart';
+import 'package:open_authenticator/core/settings/display_search_button.dart';
+import 'package:open_authenticator/core/settings/storage_type.dart';
+import 'package:open_authenticator/core/totp/decrypted.dart';
+import 'package:open_authenticator/core/totp/repository.dart';
+import 'package:open_authenticator/core/totp/totp.dart';
 import 'package:open_authenticator/ezkey/home_zone.dart';
 import 'package:open_authenticator/flows/master_password.dart';
 import 'package:open_authenticator/i18n/localizable_exception.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/main.dart';
-import 'package:open_authenticator/model/app_unlock/methods/method.dart';
-import 'package:open_authenticator/model/app_unlock/state.dart';
-import 'package:open_authenticator/model/backend/authentication/session.dart';
-import 'package:open_authenticator/model/backend/backend.dart';
-import 'package:open_authenticator/model/backend/synchronization/push/result.dart';
-import 'package:open_authenticator/model/backend/synchronization/queue.dart';
-import 'package:open_authenticator/model/backend/synchronization/status.dart';
-import 'package:open_authenticator/model/crypto/store.dart';
-import 'package:open_authenticator/model/settings/display_copy_button.dart';
-import 'package:open_authenticator/model/settings/display_search_button.dart';
-import 'package:open_authenticator/model/settings/storage_type.dart';
-import 'package:open_authenticator/model/totp/decrypted.dart';
-import 'package:open_authenticator/model/totp/repository.dart';
-import 'package:open_authenticator/model/totp/totp.dart';
 import 'package:open_authenticator/pages/scan.dart';
 import 'package:open_authenticator/pages/settings/page.dart';
 import 'package:open_authenticator/pages/sync_issues.dart';
 import 'package:open_authenticator/pages/totp.dart';
 import 'package:open_authenticator/spacing.dart';
+import 'package:open_authenticator/utils/clipboard.dart';
+import 'package:open_authenticator/utils/color.dart';
 import 'package:open_authenticator/utils/platform.dart';
 import 'package:open_authenticator/utils/result/handler.dart';
 import 'package:open_authenticator/utils/result/result.dart';
-import 'package:open_authenticator/utils/utils.dart';
 import 'package:open_authenticator/widgets/app_scaffold.dart';
 import 'package:open_authenticator/widgets/button_text.dart';
 import 'package:open_authenticator/widgets/clickable.dart';
@@ -47,7 +48,6 @@ import 'package:open_authenticator/widgets/image_text_actions.dart';
 import 'package:open_authenticator/widgets/rotation_animation.dart';
 import 'package:open_authenticator/widgets/smooth_scale.dart';
 import 'package:open_authenticator/widgets/title_text.dart';
-import 'package:open_authenticator/widgets/toast.dart';
 import 'package:open_authenticator/widgets/totp/widget.dart';
 import 'package:open_authenticator/widgets/waiting_overlay.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
@@ -105,9 +105,9 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    AsyncValue<List<Totp>> totps = ref.watch(totpRepositoryProvider);
-    StorageType? storageType = ref.watch(storageTypeSettingsEntryProvider).value;
-    bool displaySearchButton = ref.read(displaySearchButtonSettingsEntryProvider).value ?? true;
+    final AsyncValue<List<Totp>> totps = ref.watch(totpRepositoryProvider);
+    final StorageType? storageType = ref.watch(storageTypeSettingsEntryProvider).value;
+    final bool displaySearchButton = ref.read(displaySearchButtonSettingsEntryProvider).value ?? true;
     return AppScaffold.asyncValue(
       asyncValue: totps,
       scrollable: !totps.hasValue,
@@ -126,7 +126,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             }
           });
           if (!(await ref.read(displayCopyButtonSettingsEntryProvider.future))) {
-            Totp? totp = totps.value?[index];
+            final Totp? totp = totps.value?[index];
             if (context.mounted && totp?.isDecrypted == true) {
               _TotpsListWidget.copyCode(context, totp as DecryptedTotp);
             }
@@ -135,7 +135,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         showSearchBox: showSearchBox,
       ),
       builder: (value) {
-        Widget body = _RequireProviderValueWidget.cryptoStore(
+        final Widget body = _RequireProviderValueWidget.cryptoStore(
           childIfAbsent: Center(
             child: SingleChildScrollView(
               padding: context.theme.scaffoldStyle.childPadding,
@@ -209,12 +209,12 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   /// Triggered when the "Add" button is pressed.
-  void onAddButtonPress(BuildContext context) async {
+  Future<void> onAddButtonPress(BuildContext context) async {
     if (!kDebugMode && !_AddTotpDialog.isSupported) {
       Navigator.pushNamed(context, TotpPage.name);
       return;
     }
-    AddTotpDialogResult? choice = await _AddTotpDialog.show(context);
+    final AddTotpDialogResult? choice = await _AddTotpDialog.show(context);
     if (choice == null || !context.mounted) {
       return;
     }

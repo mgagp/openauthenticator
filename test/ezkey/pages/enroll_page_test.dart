@@ -1,8 +1,8 @@
 import 'package:ezkey_dart/ezkey_dart.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/ezkey/pages/enroll_page.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/themes.dart';
@@ -16,9 +16,9 @@ const String _invitation = '{"enrollmentProofToken":"proof-token-12","authUrl":"
 void main() {
   /// Shows the page for [_invitation], bound as an administrator of type [adminType] when it is set.
   Future<void> pumpPage(WidgetTester tester, {String? adminType}) async {
-    EzkeyBoundEnrollment bound = (await tester.runAsync(() async {
-      Ed25519TestKeyPair integrationKey = await generateEd25519TestKeyPair();
-      EzkeyAuthenticator authenticator = EzkeyAuthenticator(
+    final EzkeyBoundEnrollment bound = (await tester.runAsync(() async {
+      final Ed25519TestKeyPair integrationKey = await generateEd25519TestKeyPair();
+      final EzkeyAuthenticator authenticator = EzkeyAuthenticator(
         keyStore: SoftwareDeviceKeyStore(),
         enrollmentStore: InMemoryEnrollmentStore(),
         apiFactory: (uri) => BindingAuthApi(integrationKey, adminType: adminType),
