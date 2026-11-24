@@ -36,17 +36,17 @@
   "page": {
     "title": "EzKey",
     "enrollments": "Enrôlements",
-    "empty": "Cet appareil n'est pas encore enrôlé. Demandez une invitation EzKey à votre administrateur, puis scannez son code QR.",
+    "empty": "Cet appareil n'est pas encore enrôlé. Demandez une invitation EzKey à votre administrateur, puis ajoutez-la ci-dessous.",
     "add": "Ajouter un enrôlement",
     "scan": {
       "title": "Scanner le code QR d'une invitation",
       "subtitle": "Le code QR fourni par votre administrateur."
     },
     "paste": {
-      "title": "Saisir une invitation manuellement",
-      "subtitle": "Collez le contenu du code QR de l'invitation.",
-      "dialogTitle": "Saisir une invitation",
-      "dialogMessage": "Collez le contenu du code QR de l'invitation."
+      "title": "Coller une invitation",
+      "subtitle": "Le texte d'invitation fourni par votre administrateur.",
+      "dialogTitle": "Coller une invitation",
+      "dialogMessage": "Collez le texte d'invitation fourni par votre administrateur. Le code à 6 chiffres vient séparément et vous sera demandé ensuite."
     },
     "forget": {
       "title": "Retirer de cet appareil",
@@ -77,7 +77,7 @@
   },
   "scan": {
     "title": "Scanner une invitation EzKey",
-    "notAnInvitation": "Ce code QR n'est pas une invitation EzKey."
+    "notAnInvitation": "Ce n'est pas une invitation EzKey."
   },
   "server": {
     "title": "Serveur EzKey",
@@ -93,7 +93,7 @@
     "server": "Serveur",
     "administrator": "Cette invitation enrôle un compte administrateur EzKey.",
     "codeLabel": "Code d'enrôlement",
-    "codeHelp": "Saisissez le code à 6 chiffres que votre administrateur vous a donné séparément. Il n'est pas dans le code QR.",
+    "codeHelp": "Saisissez le code à 6 chiffres que votre administrateur vous a donné séparément. Il n'est pas dans l'invitation.",
     "abandonWarning": "Si vous quittez maintenant, cette invitation ne pourra plus servir et il vous en faudra une nouvelle.",
     "submit": "Enrôler cet appareil",
     "binding": "Connexion au serveur EzKey...",

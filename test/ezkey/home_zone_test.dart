@@ -19,6 +19,7 @@ import 'package:open_authenticator/ezkey/pages/enrollment_page.dart';
 import 'package:open_authenticator/ezkey/pages/ezkey_page.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
 import 'package:open_authenticator/ezkey/to_reenroll.dart';
+import 'package:open_authenticator/ezkey/widgets/paste_invitation_dialog.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/themes.dart';
 import 'package:open_authenticator/utils/platform.dart';
@@ -321,7 +322,7 @@ void main() {
       });
     });
 
-    testWidgets('the add button offers to scan or type an invitation', (tester) async {
+    testWidgets('the add button offers to scan or paste an invitation', (tester) async {
       await pumpZone(tester, []);
 
       await tester.tap(find.byKey(const ValueKey('ezkey-home-add')));
@@ -329,6 +330,19 @@ void main() {
 
       expect(find.byKey(const ValueKey('ezkey-home-add-scan')), findsOneWidget);
       expect(find.byKey(const ValueKey('ezkey-home-add-paste')), findsOneWidget);
+    });
+
+    testWidgets('the add button goes straight to pasting where nothing can be scanned', (tester) async {
+      final Platform platform = currentPlatform;
+      addTearDown(() => currentPlatform = platform);
+      currentPlatform = .windows;
+      await pumpZone(tester, []);
+
+      await tester.tap(find.byKey(const ValueKey('ezkey-home-add')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('ezkey-home-add-scan')), findsNothing);
+      expect(find.byType(EzkeyPasteInvitationDialog), findsOneWidget);
     });
 
     testWidgets('the info button tells what EzKey is and links to its website and source code', (tester) async {

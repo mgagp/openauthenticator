@@ -1,5 +1,4 @@
 import 'package:ezkey_dart/ezkey_dart.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/ezkey/messages.dart';
@@ -8,16 +7,10 @@ import 'package:open_authenticator/ezkey/pages/enroll_page.dart';
 import 'package:open_authenticator/ezkey/pages/scan_page.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
 import 'package:open_authenticator/ezkey/toast.dart';
+import 'package:open_authenticator/ezkey/widgets/paste_invitation_dialog.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/widgets/dialog/text_input_dialog.dart';
 import 'package:open_authenticator/widgets/waiting_overlay.dart';
-
-/// Whether the user may type or paste an invitation instead of scanning it.
-///
-/// Debug builds only, like the EzKey reference app's test-only "controlled seed bypass": the QR
-/// content carries the invitation's bearer proof token, which pasting moves through the clipboard.
-/// The lab and the emulator e2e (no camera) rely on it. Tests may change it.
-bool ezkeyManualInvitationEntry = kDebugMode;
 
 /// Where to bind an invitation: [override] is the Auth API address the user typed, or `null` to use the
 /// invitation's own.
@@ -36,16 +29,11 @@ class EzkeyActions {
     }
   }
 
-  /// Asks for the invitation content, then adds the enrollment.
+  /// Asks the user to paste the invitation, then adds the enrollment.
   static Future<void> addFromText(BuildContext context, WidgetRef ref) async {
-    final String? code = await TextInputDialog.prompt(
-      context,
-      title: translations.ezkey.page.paste.dialogTitle,
-      message: translations.ezkey.page.paste.dialogMessage,
-      validator: (value) => value == null || value.trim().isEmpty ? translations.error.validation.empty : null,
-    );
+    final String? code = await EzkeyPasteInvitationDialog.prompt(context);
     if (code != null && context.mounted) {
-      await addEnrollment(context, ref, code.trim());
+      await addEnrollment(context, ref, code);
     }
   }
 

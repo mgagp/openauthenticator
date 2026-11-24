@@ -36,17 +36,17 @@
   "page": {
     "title": "EzKey",
     "enrollments": "Enrollments",
-    "empty": "This device is not enrolled yet. Ask your administrator for an EzKey invitation, then scan its QR code.",
+    "empty": "This device is not enrolled yet. Ask your administrator for an EzKey invitation, then add it below.",
     "add": "Add an enrollment",
     "scan": {
       "title": "Scan an invitation QR code",
       "subtitle": "The QR code your administrator gave you."
     },
     "paste": {
-      "title": "Enter an invitation manually",
-      "subtitle": "Paste the content of the invitation QR code.",
-      "dialogTitle": "Enter an invitation",
-      "dialogMessage": "Paste the content of the invitation QR code."
+      "title": "Paste an invitation",
+      "subtitle": "The invitation text your administrator gave you.",
+      "dialogTitle": "Paste an invitation",
+      "dialogMessage": "Paste the invitation text your administrator gave you. The 6-digit code comes separately and is asked for next."
     },
     "forget": {
       "title": "Remove from this device",
@@ -77,7 +77,7 @@
   },
   "scan": {
     "title": "Scan an EzKey invitation",
-    "notAnInvitation": "This QR code is not an EzKey invitation."
+    "notAnInvitation": "This is not an EzKey invitation."
   },
   "server": {
     "title": "EzKey server",
@@ -93,7 +93,7 @@
     "server": "Server",
     "administrator": "This invitation enrolls an EzKey administrator account.",
     "codeLabel": "Enrollment code",
-    "codeHelp": "Enter the 6-digit code your administrator gave you separately. It is not in the QR code.",
+    "codeHelp": "Enter the 6-digit code your administrator gave you separately. It is not in the invitation.",
     "abandonWarning": "If you leave now, this invitation can no longer be used and you will need a new one.",
     "submit": "Enroll this device",
     "binding": "Contacting the EzKey server...",

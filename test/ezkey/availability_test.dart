@@ -24,4 +24,20 @@ void main() {
       }
     });
   });
+
+  group('ezkeyCanScan', () {
+    late Platform platform;
+
+    setUp(() => platform = currentPlatform);
+
+    tearDown(() => currentPlatform = platform);
+
+    test('is true only where the scanner has an implementation', () {
+      for (final Platform value in Platform.values) {
+        currentPlatform = value;
+
+        expect(ezkeyCanScan, const {Platform.android, Platform.iOS, Platform.macOS}.contains(value), reason: value.name);
+      }
+    });
+  });
 }
