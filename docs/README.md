@@ -6,6 +6,8 @@ Decision records and design notes for this fork. `CLAUDE.md` holds the operating
 
 This fork explores integrating EzKey into Open Authenticator while staying aligned with upstream (`CLAUDE.md` § Upstream alignment). Every divergence is kept small, ledgered and easy to re-apply, so that the work can either be offered upstream or stand on its own. Every platform upstream ships stays buildable ([ADR-0004](adr/0004-ezkey-multi-platform-posture.md)). The work alternates between the EzKey track and the harmonization track ([`ezkey/harmonization.md`](ezkey/harmonization.md)).
 
+For EzKey, this fork is not a reference: EzKey's canonical reference participant is its own mobile app. The fork is the example that a third-party authenticator can take up the EzKey protocol through the authenticator SDK (`ezkey_dart`), and that an adopter can use it as is within its documented limits, on desktop too. EzKey parked its in-house desktop app for this reason (mgagp/ezkey#1491, 2026-11-24).
+
 This direction evolves with the project. When it changes, update this section in the PR that records the change.
 
 ## Rules
