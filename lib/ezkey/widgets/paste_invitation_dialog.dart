@@ -57,8 +57,9 @@ class _EzkeyPasteInvitationDialogState extends State<EzkeyPasteInvitationDialog>
         key: const ValueKey('ezkey-paste-field'),
         control: .managed(controller: _controller),
         autofocus: true,
-        minLines: 3,
-        maxLines: 5,
+        // Bounded, so that a longer text does not push the buttons under the keyboard: it scrolls instead.
+        minLines: 2,
+        maxLines: 3,
         autocorrect: false,
         enableSuggestions: false,
         enableIMEPersonalizedLearning: false,
