@@ -1,4 +1,5 @@
 import 'package:ezkey_dart/ezkey_dart.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forui/forui.dart';
@@ -13,9 +14,12 @@ import '../support.dart';
 /// An invitation for enrollment 12 that carries its Auth API address.
 const String _invitation = '{"enrollmentProofToken":"proof-token-12","authUrl":"https://auth.example.com"}';
 
+/// The longest host name DNS allows (253 characters), whose end tells whose it is.
+final String _longestHost = '${List.filled(4, 'a' * 58).join('.')}.owner.example.com';
+
 void main() {
-  /// Shows the page for [_invitation], bound as an administrator of type [adminType] when it is set.
-  Future<void> pumpPage(WidgetTester tester, {String? adminType}) async {
+  /// Shows the page for [invitation], bound as an administrator of type [adminType] when it is set.
+  Future<void> pumpPage(WidgetTester tester, {String? adminType, String invitation = _invitation}) async {
     final EzkeyBoundEnrollment bound = (await tester.runAsync(() async {
       final Ed25519TestKeyPair integrationKey = await generateEd25519TestKeyPair();
       final EzkeyAuthenticator authenticator = EzkeyAuthenticator(
@@ -23,7 +27,7 @@ void main() {
         enrollmentStore: InMemoryEnrollmentStore(),
         apiFactory: (uri) => BindingAuthApi(integrationKey, adminType: adminType),
       );
-      return authenticator.bindEnrollment(EnrollmentCode.parse(_invitation));
+      return authenticator.bindEnrollment(EnrollmentCode.parse(invitation));
     }))!;
     await tester.pumpWidget(
       ProviderScope(
@@ -54,6 +58,23 @@ void main() {
       expect(find.text('auth.example.com'), findsOneWidget);
       expect(find.text(translations.ezkey.enroll.administrator), findsNothing);
     });
+
+    for (final double textScale in const [1, 2]) {
+      testWidgets('shows the whole server address, however long, on a small phone (text x$textScale)', (tester) async {
+        tester.view.physicalSize = const Size(360, 3000);
+        tester.view.devicePixelRatio = 1;
+        tester.platformDispatcher.textScaleFactorTestValue = textScale;
+        addTearDown(tester.view.reset);
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+        await pumpPage(tester, invitation: '{"enrollmentProofToken":"proof-token-12","authUrl":"https://$_longestHost"}');
+
+        final RenderParagraph address = tester.renderObject(find.text(_longestHost));
+        expect(address.didExceedMaxLines, isFalse);
+        expect(address.size.width, lessThanOrEqualTo(360));
+        expect(tester.takeException(), isNull);
+      });
+    }
 
     testWidgets('an administrator invitation carries the administrator warning', (tester) async {
       await pumpPage(tester, adminType: 'GLOBAL_ADMIN');

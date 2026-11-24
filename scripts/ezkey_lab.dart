@@ -94,7 +94,8 @@ Future<Map<String, Object>> invite(String name) async {
     'enrollmentId': enrollmentId,
     'enrollmentChallenge': '${created['enrollmentChallenge']}'.padLeft(6, '0'),
     // The Admin API only gives the QR content as a PNG image, so this composes the same JSON:
-    // the proof token alone (EzKey ADR-0019). The lab stack sets no `authUrl`.
+    // the proof token alone (EzKey ADR-0019). It leaves out the `authUrl` a stack may set
+    // (EZKEY_QR_AUTH_BASE_URL): the emulator reaches the stack at http://10.0.2.2:8080 instead.
     'code': jsonEncode({'enrollmentProofToken': details['enrollmentProofToken']}),
   };
 }
