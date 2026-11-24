@@ -70,7 +70,8 @@ The reference app shows one valid answer, not the only one. When you differ from
 - **Take the enrollment id from the bind answer, never from the invitation.** The invitation holds the proof token and, optionally, the server address (EzKey ADR-0019). Let the SDK parse it, and do not read its fields yourself: this app needed no code change when the id left the invitation (#129).
 - **The invitation may carry no server address,** so be ready to ask for it, and validate it with the SDK's URL policy.
 - **Require HTTPS in release builds.** The SDK's default policy also accepts plain HTTP to `localhost`, `127.0.0.1` and `10.0.2.2`, as the reference app does. Keep that for debug builds, where a local stack and an emulator need it, and pass `EzkeyUrlPolicy.httpsOnly` elsewhere (#109). The SDK refuses an address with the same exception as an invitation already enrolled, so check the address first to tell the user the real reason.
-- **Scanning is the release path.** The QR content carries a bearer token, so typing or pasting it belongs in debug builds unless you decide otherwise for a platform with no camera (ADR-0004 D5).
+- **Scan first, and let the user paste the invitation.** A device with no camera, or a phone that shows its own invitation, cannot scan. The QR content is a bearer token, but bind is read-once, the invitation expires, and the challenge is required and travels separately, so pasting the JSON is acceptable in release builds (ADR-0004 D5, mgagp/ezkey#1185). Never put the challenge in the same text, never log the pasted text, and do not add a link or an image reader for it.
+- **Before calling something a gap in EzKey, search its backlog and issues,** not only its docs. We held this choice open for weeks while EzKey had already decided it.
 - **Show who the enrollment is for before the challenge:** service, organization, account, server, and whether it is an administrator enrollment.
 - **Warn before the code is submitted,** since a wrong code invalidates the invitation.
 - **If the host has its own scanner, make both recognize both kinds of code,** so the user cannot scan at the wrong place (#66).
@@ -216,7 +217,7 @@ Complete up to commit `79f4358`, the 54 commits of `upstream/main..main`. **Reve
 | Question | Decision | Status | Source | Guide |
 | --- | --- | --- | --- | --- |
 | What if the invitation has no server address? | Ask for it, validated by the SDK's URL policy | Kept | #21 | §5 |
-| Can an invitation be pasted in release builds? | It could. Now debug only | **Reversed** | #21, #39 | §5 |
+| Can an invitation be pasted in release builds? | It could, then debug only (#39). Decided again: yes, on every platform (not built yet) | **Reversed twice** | #21, #39, #133 | §5 |
 | What is shown before the challenge? | Service, organization, account, server, administrator notice | Kept | #21 | §5 |
 | What if the user scans in the host's scanner? | Both scanners recognize both kinds of code | Kept | #66 | §5 |
 
