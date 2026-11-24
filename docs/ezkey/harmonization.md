@@ -82,7 +82,7 @@ Some equivalents go beyond what EzKey's reference mobile app does, for example a
 | **Contributor Plan TOTP limit** | Not applicable | Enrollments do not count toward the TOTP limit, which exists to protect the sync server | — |
 | **Clear data** | Shared, made aware | Done: warning and immediate key deletion | H1 |
 | **Delete account** | EzKey first | The closest equivalent is unenrolling from the server. The Auth API has no device-side unenroll, so "remove" is local only and the server enrollment stays active | H18 |
-| **Add by QR, manually, deep link** | Shared / Equivalent / EzKey first | QR: done, one scanner for both (H6). Manual entry: debug only today (#38); pasting in release builds is decided, on every platform (ADR-0004 D5). Deep link: not pursued (ADR-0004 D5) | H6, H8 |
+| **Add by QR, manually, deep link** | Shared / Equivalent / EzKey first | QR: done, one scanner for both (H6). Paste: done in every build, on every platform (ADR-0004 D5, #158). Deep link: not pursued (ADR-0004 D5) | H6, H8 |
 | **Search, logos, copy button** | Equivalent / Not applicable | Search over enrollments is to decide; logos through signed instance info (#26); copying has no EzKey meaning | H9, H14 |
 | **Theme, locale, onboarding, translations** | Shared / Equivalent | The theme and the locale already apply to EzKey. An intro step and the other locales are still to do | H11, H13 |
 | **Change backend URL** | Not applicable | Each enrollment carries its own Auth API URL | — |
