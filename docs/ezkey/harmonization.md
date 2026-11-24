@@ -45,7 +45,7 @@ First pass on 2026-10-30. Facts checked in the code; ideas are hypotheses until 
 | H5 | **Master password / crypto store** (`core/crypto/`) | EzKey records are not encrypted with the master password (ADR-0002: secure storage plus non-exportable keys) | Decide whether EzKey should follow the master password (e.g. lock approvals until unlocked). Needs an ADR. **Partly done in #83**: when the app unlocks with the master password, "confirm before approvals" asks for it. Encrypting the records is not planned (see the parity section) | L1–L2 | Upstream providers (read only) | Low (analysis first) |
 | H6 | **QR scanner** (`pages/scan.dart`: parses `otpauth` URIs) | Separate EzKey scanner (`ezkey/pages/scan_page.dart`) | One scanner that recognizes both an `otpauth` URI and an EzKey invitation, routing each to its flow | L2 | Upstream scan page (small, ledgered edit) or a wrapper | Medium |
 | H7 | **Add flow** (home `+`, `onAddButtonPress`) | Two `+` buttons, one per zone (ADR-0003) | Possibly one "Add" that offers both, depending on the home-zone evolution (#32 / #44) | L2 | Upstream home dialog (ledgered) | Low |
-| H8 | **Deep links** (`core/app_links/`: `otpauth://`, `openauthenticator://`) | EzKey invitations cannot be opened by a link | Route an EzKey invitation link to the enrollment flow, if EzKey defines one | L1–L2 | Upstream link listener (a new handler) | Low (depends on EzKey) |
+| H8 | **Deep links** (`core/app_links/`: `otpauth://`, `openauthenticator://`) | EzKey invitations cannot be opened by a link | None: an EzKey invitation link is not pursued, the invitation is pasted (ADR-0004 D5, #133) | — | None: upstream's links stay as they are | Closed |
 | H9 | **Search** (home search over TOTPs) | Does not see EzKey enrollments | Include enrollments in the results, or keep search TOTP-only on purpose | L2 | Upstream search (ledgered) | Low |
 | H10 | **Settings page** (`pages/settings/`) | EzKey settings live on the EzKey page (#33); the Settings entry was removed in #28 | Decide whether an "EzKey" section belongs in Settings, for discoverability and consistency | L1 | Upstream settings page (ledgered) | Low |
 | H11 | **Onboarding** (`pages/intro/`) | No mention of EzKey | One optional intro step, shown only where EzKey is available | L1 | Upstream intro (ledgered) | Low |
@@ -82,7 +82,7 @@ Some equivalents go beyond what EzKey's reference mobile app does, for example a
 | **Contributor Plan TOTP limit** | Not applicable | Enrollments do not count toward the TOTP limit, which exists to protect the sync server | — |
 | **Clear data** | Shared, made aware | Done: warning and immediate key deletion | H1 |
 | **Delete account** | EzKey first | The closest equivalent is unenrolling from the server. The Auth API has no device-side unenroll, so "remove" is local only and the server enrollment stays active | H18 |
-| **Add by QR, manually, deep link** | Shared / Equivalent / EzKey first | QR: done, one scanner for both (H6). Manual entry: debug only (#38); it is needed on desktop (ADR-0004 D5). Deep link: EzKey has no link format yet | H6, H8 |
+| **Add by QR, manually, deep link** | Shared / Equivalent / EzKey first | QR: done, one scanner for both (H6). Manual entry: debug only today (#38); pasting in release builds is decided, on every platform (ADR-0004 D5). Deep link: not pursued (ADR-0004 D5) | H6, H8 |
 | **Search, logos, copy button** | Equivalent / Not applicable | Search over enrollments is to decide; logos through signed instance info (#26); copying has no EzKey meaning | H9, H14 |
 | **Theme, locale, onboarding, translations** | Shared / Equivalent | The theme and the locale already apply to EzKey. An intro step and the other locales are still to do | H11, H13 |
 | **Change backend URL** | Not applicable | Each enrollment carries its own Auth API URL | — |
@@ -91,7 +91,7 @@ Some equivalents go beyond what EzKey's reference mobile app does, for example a
 **Order the categories suggest:**
 1. Equivalents that protect the user: the key-use gate (H4, H5).
 2. The inventory in backups (H16). Decided in ADR-0005 (#89); written and read (#92), shown as "to re-enroll" after a restore (#94).
-3. "EzKey first" items (H17, H18, H8), raised in the EzKey repository; the app follows once EzKey supports them.
+3. "EzKey first" items (H17, H18), raised in the EzKey repository; the app follows once EzKey supports them.
 
 ## Tracking
 

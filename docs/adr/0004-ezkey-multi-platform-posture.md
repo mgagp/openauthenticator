@@ -1,6 +1,6 @@
 # ADR-0004: EzKey multi-platform posture
 
-- **Status:** Proposed (2026-10-30). D2 and D3 amended (2026-11-08, #108): the tier is read back from the key. D2 amended (2026-11-23, #134): the Windows key store on the TPM, and its per-user key boundary.
+- **Status:** Proposed (2026-10-30). D2 and D3 amended (2026-11-08, #108): the tier is read back from the key. D2 amended (2026-11-23, #134): the Windows key store on the TPM, and its per-user key boundary. D5 decided (2026-11-24, #133): pasting the invitation.
 - **Issue:** #48. Extends ADR-0001 D2 (native key store) and ADR-0002 (key storage, written for Android) to every platform upstream ships.
 
 ## Context
@@ -21,12 +21,16 @@ The SDK is pure Dart (`dart:io`, `cryptography`, `pointycastle`); the enrollment
      **Key boundary: per user (decided 2026-11-23).** A CNG key belongs to the Windows user, not to the app, even inside the MSIX package: any process of that user can ask it to sign, none can copy it off the device. Accepted because it is the boundary upstream already has for its own secrets on Windows (salt, password signature and derived key in the Credential Manager), and because parity with Android's per-app key comes from the app-level confirmation (D4; ADR-0002 already rejected binding the key to user authentication). Rejected: a CNG UI policy (a Windows consent or PIN dialog on every signature) and a Windows Hello key (RSA only and a Hello prompt per use, so a change to EzKey's protocol).
 3. **Tier mapping.** `strong`: a discrete secure element (Android StrongBox). `standard`: the platform's main hardware key store (Android TEE, Apple Secure Enclave, a TPM), as the SDK's `DevicePrivateKeyStorageTier` defines it. A platform without a hardware key store is not enabled. That means Linux for now. On an enabled platform, every implementation reads the tier back from the key it generated, as the platform reports it (#108): `strong` only when the platform confirms the discrete secure element, otherwise the lower tier it can prove, down to `none` when the key is outside secure hardware or the platform cannot tell (an emulator). Such a key is not refused: best effort, verified, reported honestly; a minimum tier is the server's to enforce.
 4. **Shared Dart stays platform-neutral.** Platform code lives only in the plugin. Shared code passes every platform's values where an API asks for them: local confirmation passes iOS, macOS, Android and Windows prompt messages, like upstream's `LocalAuthenticationDefault`. The desktop window-focus handling upstream adds around that prompt comes with the first desktop port. The alias format and the debug / main namespace (#41) apply unchanged on every platform.
-5. **Enrollment in release builds needs an input per platform.** Android, iOS and macOS have the camera scanner (`mobile_scanner`). Windows and Linux have none. The choice is open and must be made, with the user, before a desktop platform joins D1:
-   - accept the pasted invitation in release builds, since the code is one-time, short-lived and needs the 6-digit challenge;
-   - read the QR code from an image or a screen capture;
-   - leave EzKey off desktop.
+5. **Enrollment in release builds needs an input per platform.** Android, iOS and macOS have the camera scanner (`mobile_scanner`). Windows and Linux have none.
+   **Decided with the maintainer (2026-11-24, #133): the user can paste the invitation, in release builds and on every platform.** The pasted text is the JSON the QR code holds: the proof token and the server address. Scanning stays the first choice where there is a camera. One path for every platform also covers a phone that shows its own invitation (#111). It is EzKey's own direction: mgagp/ezkey#1185 (paste in release builds, and a copy of the JSON in the Admin UI).
+   Why a bearer token may go through the clipboard: bind is read-once, the invitation expires (7 days by default, set by the server), and the 6-digit challenge is required, is never in the JSON, and allows one attempt. Accepted residual risk: a clipboard manager, Windows clipboard history or its cloud sync may keep the text.
+   The operator hands the JSON to the user, with the challenge through another channel. EzKey's invitation email carries the QR image only; adding the text to it is EzKey's later choice.
+   Rejected:
+   - **an EzKey invitation link:** a verified `https` link needs domains known at build time, while each adopter has its own; a custom scheme can be claimed by any app; and registering one touches upstream's link files on every platform;
+   - **reading the QR code from an image or a screen capture:** not a desktop gesture, and the image keeps the token;
+   - **leaving EzKey off desktop:** fails the goal of this ADR.
 
-   Conditional on EzKey since 2026-11-13 (#133): the path for a device that cannot scan is a question for EzKey first (`docs/ezkey/integration.md` § Findings fed back), and it is the same gap as a phone showing its own invitation (#111). A link that opens the app is a fourth candidate.
+   The server address is optional in the invitation today (EzKey ADR-0019) and should become required (mgagp/ezkey#1300). Until then the app keeps asking for a missing address.
 6. **Tests.** Shared logic is tested with a mocked channel, so the unit tests do not depend on the platform. `test/ezkey/availability_test.dart` pins D1. `integration_test/ezkey/keystore_test.dart` is the contract test every platform implementation must pass on a real key store. The iOS simulator has no Secure Enclave, so Apple needs a Mac with one or an iPhone.
 
 ## Alternatives considered
@@ -39,8 +43,8 @@ The SDK is pure Dart (`dart:io`, `cryptography`, `pointycastle`); the enrollment
 ## Consequences
 
 - Android behaviour is unchanged. Checked on the emulator with `keystore_test` and the e2e, plus the unit tests.
-- A port is: native code behind the channel, the D5 choice for desktop, then the platform added to `ezkeySupportedPlatforms`, a build and the contract test. No shared Dart change is expected.
-- Windows (#49) brought the build first, then the key store on the TPM (#134). EzKey on Windows waits for D5 (#133) and the desktop window-focus handling of D4.
+- A port is: native code behind the channel, the D5 paste entry where there is no camera, then the platform added to `ezkeySupportedPlatforms`, a build and the contract test. No shared Dart change is expected.
+- Windows (#49) brought the build first, then the key store on the TPM (#134). EzKey on Windows waits for the paste entry of D5 to be built, and for the desktop window-focus handling of D4.
 - Apple waits for remote Mac access and a device with a Secure Enclave.
 
 ## References
