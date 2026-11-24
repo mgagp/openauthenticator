@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/ezkey/actions.dart';
+import 'package:open_authenticator/ezkey/availability.dart';
 import 'package:open_authenticator/ezkey/pages/enrollment_page.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
 import 'package:open_authenticator/ezkey/widgets/approval_security_tile.dart';
@@ -89,7 +90,7 @@ class _EnrollmentsGroup extends StatelessWidget {
   );
 }
 
-/// The ways to add an enrollment: scanning the invitation, and typing it where that is allowed.
+/// The ways to add an enrollment: scanning the invitation where that is possible, and pasting it.
 class _AddGroup extends ConsumerWidget {
   /// Creates a new add group instance.
   const _AddGroup();
@@ -98,21 +99,21 @@ class _AddGroup extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) => FTileGroup(
     label: Text(translations.ezkey.page.add),
     children: [
-      ClickableTile(
-        key: const ValueKey('ezkey-add-scan'),
-        prefix: const Icon(FLucideIcons.qrCode),
-        title: Text(translations.ezkey.page.scan.title),
-        subtitle: Text(translations.ezkey.page.scan.subtitle),
-        onPress: () => EzkeyActions.addFromScan(context, ref),
-      ),
-      if (ezkeyManualInvitationEntry)
+      if (ezkeyCanScan)
         ClickableTile(
-          key: const ValueKey('ezkey-add-paste'),
-          prefix: const Icon(FLucideIcons.keyboard),
-          title: Text(translations.ezkey.page.paste.title),
-          subtitle: Text(translations.ezkey.page.paste.subtitle),
-          onPress: () => EzkeyActions.addFromText(context, ref),
+          key: const ValueKey('ezkey-add-scan'),
+          prefix: const Icon(FLucideIcons.qrCode),
+          title: Text(translations.ezkey.page.scan.title),
+          subtitle: Text(translations.ezkey.page.scan.subtitle),
+          onPress: () => EzkeyActions.addFromScan(context, ref),
         ),
+      ClickableTile(
+        key: const ValueKey('ezkey-add-paste'),
+        prefix: const Icon(FLucideIcons.clipboardPaste),
+        title: Text(translations.ezkey.page.paste.title),
+        subtitle: Text(translations.ezkey.page.paste.subtitle),
+        onPress: () => EzkeyActions.addFromText(context, ref),
+      ),
     ],
   );
 }

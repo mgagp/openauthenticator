@@ -714,10 +714,10 @@ class EzkeyHomeZone extends ConsumerWidget {
     );
   }
 
-  /// Scans an invitation, or first asks how to add it when manual entry is allowed.
+  /// Asks whether to scan or paste an invitation, or goes straight to pasting where nothing can be scanned.
   Future<void> _addEnrollment(BuildContext context, WidgetRef ref) async {
-    if (!ezkeyManualInvitationEntry) {
-      await EzkeyActions.addFromScan(context, ref);
+    if (!ezkeyCanScan) {
+      await EzkeyActions.addFromText(context, ref);
       return;
     }
     final _AddChoice? choice = await showFDialog<_AddChoice>(
@@ -741,7 +741,7 @@ class EzkeyHomeZone extends ConsumerWidget {
           ),
           ClickableTile(
             key: const ValueKey('ezkey-home-add-paste'),
-            prefix: const Icon(FLucideIcons.keyboard),
+            prefix: const Icon(FLucideIcons.clipboardPaste),
             onPress: () => Navigator.pop(context, _AddChoice.text),
             title: Text(translations.ezkey.page.paste.title),
             subtitle: Text(translations.ezkey.page.paste.subtitle),
@@ -899,7 +899,7 @@ enum _AddChoice {
   /// Scan the invitation QR code.
   scan,
 
-  /// Type or paste the invitation content.
+  /// Paste the invitation content.
   text,
 }
 

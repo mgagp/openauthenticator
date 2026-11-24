@@ -1,6 +1,6 @@
 # ADR-0004: EzKey multi-platform posture
 
-- **Status:** Proposed (2026-10-30). D2 and D3 amended (2026-11-08, #108): the tier is read back from the key. D2 amended (2026-11-23, #134): the Windows key store on the TPM, and its per-user key boundary. D5 decided (2026-11-24, #133): pasting the invitation.
+- **Status:** Proposed (2026-10-30). D2 and D3 amended (2026-11-08, #108): the tier is read back from the key. D2 amended (2026-11-23, #134): the Windows key store on the TPM, and its per-user key boundary. D5 decided (2026-11-24, #133): pasting the invitation, built in #158.
 - **Issue:** #48. Extends ADR-0001 D2 (native key store) and ADR-0002 (key storage, written for Android) to every platform upstream ships.
 
 ## Context
@@ -44,7 +44,7 @@ The SDK is pure Dart (`dart:io`, `cryptography`, `pointycastle`); the enrollment
 
 - Android behaviour is unchanged. Checked on the emulator with `keystore_test` and the e2e, plus the unit tests.
 - A port is: native code behind the channel, the D5 paste entry where there is no camera, then the platform added to `ezkeySupportedPlatforms`, a build and the contract test. No shared Dart change is expected.
-- Windows (#49) brought the build first, then the key store on the TPM (#134). EzKey on Windows waits for the paste entry of D5 to be built, and for the desktop window-focus handling of D4.
+- Windows (#49) brought the build first, then the key store on the TPM (#134). The paste entry of D5 followed (#158). EzKey on Windows waits for the desktop window-focus handling of D4.
 - Apple waits for remote Mac access and a device with a Secure Enclave.
 
 ## References

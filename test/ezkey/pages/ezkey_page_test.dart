@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forui/forui.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:open_authenticator/ezkey/actions.dart';
 import 'package:open_authenticator/ezkey/backup_inventory.dart';
 import 'package:open_authenticator/ezkey/enrollment_store.dart';
 import 'package:open_authenticator/ezkey/local_confirmation.dart';
@@ -15,6 +14,7 @@ import 'package:open_authenticator/ezkey/providers.dart';
 import 'package:open_authenticator/ezkey/to_reenroll.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/themes.dart';
+import 'package:open_authenticator/utils/platform.dart';
 import 'package:open_authenticator/widgets/dialog/confirmation_dialog.dart';
 
 import '../support.dart';
@@ -38,15 +38,15 @@ class _StandardSecurity extends EzkeyApprovalSecurityEntry {
 }
 
 void main() {
-  late bool manualEntry;
+  late Platform platform;
   late InMemorySecureValues values;
 
   setUp(() {
-    manualEntry = ezkeyManualInvitationEntry;
+    platform = currentPlatform;
     values = InMemorySecureValues();
   });
 
-  tearDown(() => ezkeyManualInvitationEntry = manualEntry);
+  tearDown(() => currentPlatform = platform);
 
   /// Shows the EzKey page of a device that holds [enrollments].
   Future<void> pumpPage(WidgetTester tester, {List<EzkeyEnrollment> enrollments = const []}) async {
@@ -98,8 +98,8 @@ void main() {
       expect(tester.widget<EzkeyEnrollmentPage>(find.byType(EzkeyEnrollmentPage)).enrollment.enrollmentId, 6);
     });
 
-    testWidgets('offers manual invitation entry when it is allowed (debug builds)', (tester) async {
-      ezkeyManualInvitationEntry = true;
+    testWidgets('offers to scan or paste an invitation', (tester) async {
+      currentPlatform = .android;
 
       await pumpPage(tester);
 
@@ -107,13 +107,13 @@ void main() {
       expect(find.byKey(const ValueKey('ezkey-add-paste')), findsOneWidget);
     });
 
-    testWidgets('only offers to scan when manual entry is not allowed (release builds)', (tester) async {
-      ezkeyManualInvitationEntry = false;
+    testWidgets('only offers to paste where nothing can be scanned', (tester) async {
+      currentPlatform = .windows;
 
       await pumpPage(tester);
 
-      expect(find.byKey(const ValueKey('ezkey-add-scan')), findsOneWidget);
-      expect(find.byKey(const ValueKey('ezkey-add-paste')), findsNothing);
+      expect(find.byKey(const ValueKey('ezkey-add-scan')), findsNothing);
+      expect(find.byKey(const ValueKey('ezkey-add-paste')), findsOneWidget);
     });
 
     testWidgets('offers the approval confirmation setting, off by default', (tester) async {

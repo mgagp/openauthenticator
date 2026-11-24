@@ -9,3 +9,7 @@ const Set<Platform> ezkeySupportedPlatforms = {Platform.android};
 
 /// Whether EzKey is offered on the current platform. Every EzKey entry point checks it.
 bool get ezkeyAvailable => ezkeySupportedPlatforms.contains(currentPlatform);
+
+/// Whether an invitation's QR code can be scanned on the current platform: where upstream's scanner
+/// (`mobile_scanner`) has an implementation. Elsewhere, pasting the invitation is the only way to enroll.
+bool get ezkeyCanScan => const {Platform.android, Platform.iOS, Platform.macOS}.contains(currentPlatform);

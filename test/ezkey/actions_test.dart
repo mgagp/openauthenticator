@@ -1,4 +1,5 @@
 import 'package:ezkey_dart/ezkey_dart.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forui/forui.dart';
@@ -6,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/ezkey/actions.dart';
 import 'package:open_authenticator/ezkey/pages/enroll_page.dart';
 import 'package:open_authenticator/ezkey/providers.dart';
+import 'package:open_authenticator/ezkey/widgets/paste_invitation_dialog.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
 import 'package:open_authenticator/themes.dart';
 
@@ -42,8 +44,8 @@ void main() {
     opened = null;
   });
 
-  /// Shows a page whose "Add" button adds [code], then presses it.
-  Future<void> add(WidgetTester tester, String code) async {
+  /// Shows a page whose "Add" button calls [onAdd], then presses it.
+  Future<void> pressAdd(WidgetTester tester, Future<void> Function(BuildContext context, WidgetRef ref) onAdd) async {
     final EzkeyAuthenticator authenticator = EzkeyAuthenticator(
       keyStore: SoftwareDeviceKeyStore(),
       enrollmentStore: InMemoryEnrollmentStore(),
@@ -66,7 +68,7 @@ void main() {
             home: Consumer(
               builder: (context, ref, child) => Scaffold(
                 body: TextButton(
-                  onPressed: () async => opened = await EzkeyActions.addEnrollment(context, ref, code),
+                  onPressed: () => onAdd(context, ref),
                   child: const Text('Add'),
                 ),
               ),
@@ -76,6 +78,21 @@ void main() {
       ),
     );
     await tester.tap(find.text('Add'));
+    await tester.pumpAndSettle();
+  }
+
+  /// Adds [code] as an invitation.
+  Future<void> add(WidgetTester tester, String code) => pressAdd(
+    tester,
+    (context, ref) async => opened = await EzkeyActions.addEnrollment(context, ref, code),
+  );
+
+  /// Opens the paste dialog, pastes [text] and confirms.
+  Future<void> paste(WidgetTester tester, String text) async {
+    await pressAdd(tester, EzkeyActions.addFromText);
+    await tester.enterText(find.byType(EditableText), text);
+    await tester.pump();
+    await tester.tap(find.text(MaterialLocalizations.of(tester.element(find.byType(EditableText))).okButtonLabel));
     await tester.pumpAndSettle();
   }
 
@@ -136,6 +153,101 @@ void main() {
       expect(find.byType(EzkeyEnrollPage), findsNothing);
       expect(opened, isFalse);
       await closeToasts(tester);
+    });
+  });
+
+  group('EzkeyActions.addFromText', () {
+    /// Runs [body] and returns what it logged.
+    Future<String> logged(Future<void> Function() body) async {
+      final DebugPrintCallback original = debugPrint;
+      final StringBuffer log = StringBuffer();
+      debugPrint = (message, {wrapWidth}) => log.writeln(message);
+      try {
+        await body();
+      } finally {
+        debugPrint = original;
+      }
+      return log.toString();
+    }
+
+    testWidgets('a pasted invitation opens the enrollment page, with spaces and line breaks around it', (tester) async {
+      await paste(tester, '\n  $_invitation \n');
+
+      expect(find.byType(EzkeyEnrollPage), findsOneWidget);
+      expect(apiUris.single.host, 'auth.example.com');
+    });
+
+    testWidgets('a pasted invitation without its server address asks for it', (tester) async {
+      await paste(tester, _invitationWithoutServer);
+
+      expect(find.text(translations.ezkey.server.title), findsOneWidget);
+      expect(apiUris, isEmpty);
+    });
+
+    testWidgets('malformed text says it is not an invitation, and never logs it', (tester) async {
+      final String log = await logged(() => paste(tester, '{"enrollmentProofToken":"proof-token-12"'));
+
+      expect(find.text(translations.ezkey.scan.notAnInvitation), findsOneWidget);
+      expect(find.byType(EzkeyEnrollPage), findsNothing);
+      expect(log, isNot(contains('proof-token')));
+      await closeToasts(tester);
+    });
+
+    testWidgets('a bind that fails never logs the pasted token', (tester) async {
+      api = _UnreachableAuthApi.new;
+
+      final String log = await logged(() => paste(tester, _invitation));
+
+      expect(log, contains('EzKey bind failed'));
+      expect(log, isNot(contains('proof-token')));
+      await closeToasts(tester);
+    });
+
+    testWidgets('a server address that is not secure is refused', (tester) async {
+      await paste(tester, '{"enrollmentProofToken":"proof-token-12","authUrl":"http://auth.example.com"}');
+
+      expect(find.byType(EzkeyEnrollPage), findsNothing);
+      expect(apiUris, isEmpty);
+      await closeToasts(tester);
+    });
+
+    testWidgets('cancelling, or confirming an empty field, adds nothing', (tester) async {
+      await pressAdd(tester, EzkeyActions.addFromText);
+      final MaterialLocalizations localizations = MaterialLocalizations.of(tester.element(find.byType(EditableText)));
+
+      await tester.tap(find.text(localizations.okButtonLabel), warnIfMissed: false);
+      await tester.pumpAndSettle();
+      expect(find.byType(EzkeyPasteInvitationDialog), findsOneWidget);
+
+      await tester.tap(find.text(localizations.cancelButtonLabel));
+      await tester.pumpAndSettle();
+      expect(find.byType(EzkeyPasteInvitationDialog), findsNothing);
+      expect(find.byType(FToast), findsNothing);
+      expect(apiUris, isEmpty);
+    });
+
+    testWidgets('the field lets nothing keep or alter the text', (tester) async {
+      await pressAdd(tester, EzkeyActions.addFromText);
+      final EditableText field = tester.widget(find.byType(EditableText));
+
+      expect(field.autocorrect, isFalse);
+      expect(field.enableSuggestions, isFalse);
+      expect(field.enableIMEPersonalizedLearning, isFalse);
+      expect(field.smartQuotesType, SmartQuotesType.disabled);
+      expect(field.smartDashesType, SmartDashesType.disabled);
+      expect(field.autofillHints, isNull);
+    });
+
+    testWidgets('the field is emptied as soon as it is read', (tester) async {
+      await pressAdd(tester, EzkeyActions.addFromText);
+      await tester.enterText(find.byType(EditableText), _invitation);
+      await tester.pump();
+      final TextEditingController controller = tester.widget<EditableText>(find.byType(EditableText)).controller;
+
+      await tester.tap(find.text(MaterialLocalizations.of(tester.element(find.byType(EditableText))).okButtonLabel));
+
+      expect(controller.text, isEmpty);
+      await tester.pumpAndSettle();
     });
   });
 }
