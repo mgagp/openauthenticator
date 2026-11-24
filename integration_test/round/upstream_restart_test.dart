@@ -7,7 +7,6 @@ import 'package:hashlib/hashlib.dart' as hashlib;
 import 'package:integration_test/integration_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
-import 'package:open_authenticator/main.dart' as app;
 import 'package:open_authenticator/widgets/dialog/text_input_dialog.dart';
 import 'package:open_authenticator/widgets/expandable_tile.dart';
 
@@ -40,7 +39,7 @@ void main() {
       case 'restart':
         await _afterRestart(tester);
       case 'links':
-        await app.main();
+        await startApp();
         await completeIntro(tester);
         report('links', 'intro done, home empty; the app is ready for links opened from outside (MSIX)');
       default:
@@ -51,7 +50,7 @@ void main() {
 
 /// First launch: sets everything the second launch checks.
 Future<void> _setup(WidgetTester tester) async {
-  await app.main();
+  await startApp();
   await completeIntro(tester);
   await addManualTotp(tester, label: 'carol@example.com', issuer: 'ManualCo');
 
@@ -148,7 +147,7 @@ Future<void> _setup(WidgetTester tester) async {
 
 /// Second launch: checks what the first one left, then clears the data.
 Future<void> _afterRestart(WidgetTester tester) async {
-  await app.main();
+  await startApp();
 
   // U11: the app asks for the master password at start; a wrong one does not unlock.
   await _unlockAtStart(tester, 'WrongPassword');

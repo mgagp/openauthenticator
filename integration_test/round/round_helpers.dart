@@ -1,10 +1,30 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forui/forui.dart';
 import 'package:hashlib/hashlib.dart' as hashlib;
 import 'package:material_ui/material_ui.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
+import 'package:open_authenticator/main.dart' as app;
+import 'package:window_manager/window_manager.dart';
+
+/// Starts the real app, as `main()` does.
+///
+/// On Windows, it first builds nativeapi's native window manager, a function-local static (#153).
+/// Otherwise `main()`'s first window call builds it: its constructor walks the app's windows, and when the
+/// window's state changed since `main()` wrapped it, it reports the change through
+/// `WindowManager::GetInstance()`, re-entering its own static initialization. The main thread then waits on
+/// itself for good (white window, "Not Responding"). Under `flutter test`, the binding draws a first frame
+/// before `main()`, so the runner shows the window during that start-up: started right away, the app froze
+/// 4 times out of 4; with this warm-up, 0 out of 4. Built before `main()` wraps the window, the manager has
+/// no earlier state to compare with.
+Future<void> startApp() async {
+  if (Platform.isWindows) {
+    WindowManager.instance.hasWillShowHook();
+  }
+  await app.main();
+}
 
 /// The master password the round sets during the intro.
 const String roundMasterPassword = 'RoundTest2026xyz';
