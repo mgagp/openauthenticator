@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forui/forui.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
-import 'package:open_authenticator/main.dart' as app;
 import 'package:open_authenticator/widgets/expandable_tile.dart';
 
 import 'round_helpers.dart';
@@ -20,7 +19,7 @@ void main() {
 
   // Semantics off: forui 0.25 text fields break the semantics merge invariant of Flutter 3.47 (#30).
   testWidgets('upstream round on a fresh install', semanticsEnabled: false, (tester) async {
-    await app.main();
+    await startApp();
 
     // U1: intro, master password, empty home.
     await completeIntro(tester);
