@@ -171,4 +171,125 @@ void main() {
       expect(unlockMethod.reasons, isEmpty);
     });
   });
+
+  group('EzkeyDeviceConfirmation', () {
+    late _FakeWindow window;
+    late int prompts;
+
+    /// Returns a confirmation on [promptWindow] whose prompt runs [answer].
+    EzkeyDeviceConfirmation createConfirmation(Future<bool> Function() answer, {_FakeWindow? promptWindow, bool refocus = true}) {
+      prompts = 0;
+      return EzkeyDeviceConfirmation(
+        window: () => promptWindow,
+        refocusAfterPrompt: refocus,
+        prompt: ({required title, required reason}) {
+          prompts++;
+          promptWindow?.calls.add('prompt');
+          return answer();
+        },
+      );
+    }
+
+    setUp(() => window = _FakeWindow());
+
+    test('without a window (mobile), only the prompt runs', () async {
+      final EzkeyDeviceConfirmation confirmation = createConfirmation(() async => true);
+
+      final bool confirmed = await confirmation(title: 'Title', reason: 'Reason');
+
+      expect(confirmed, isTrue);
+      expect(prompts, 1);
+    });
+
+    test('keeps the window in front during the prompt, then restores it and refocuses it', () async {
+      final EzkeyDeviceConfirmation confirmation = createConfirmation(() async => true, promptWindow: window);
+
+      final bool confirmed = await confirmation(title: 'Title', reason: 'Reason');
+
+      expect(confirmed, isTrue);
+      expect(window.calls, ['focus', 'onTop:true', 'prompt', 'onTop:false', 'blur', 'focus']);
+      expect(window.isAlwaysOnTop, isFalse);
+    });
+
+    test('a window already on top stays on top', () async {
+      window.isAlwaysOnTop = true;
+      window.calls.clear();
+      final EzkeyDeviceConfirmation confirmation = createConfirmation(() async => true, promptWindow: window);
+
+      await confirmation(title: 'Title', reason: 'Reason');
+
+      expect(window.isAlwaysOnTop, isTrue);
+    });
+
+    test('restores the window after a cancelled prompt', () async {
+      final EzkeyDeviceConfirmation confirmation = createConfirmation(() async => false, promptWindow: window);
+
+      final bool confirmed = await confirmation(title: 'Title', reason: 'Reason');
+
+      expect(confirmed, isFalse);
+      expect(window.calls, ['focus', 'onTop:true', 'prompt', 'onTop:false', 'blur', 'focus']);
+    });
+
+    test('restores the window when the prompt throws', () async {
+      final EzkeyDeviceConfirmation confirmation = createConfirmation(() async => throw StateError('prompt failed'), promptWindow: window);
+
+      await expectLater(confirmation(title: 'Title', reason: 'Reason'), throwsStateError);
+
+      expect(window.calls, ['focus', 'onTop:true', 'prompt', 'onTop:false', 'blur', 'focus']);
+    });
+
+    test('does not refocus where the platform does not need it', () async {
+      final EzkeyDeviceConfirmation confirmation = createConfirmation(() async => true, promptWindow: window, refocus: false);
+
+      await confirmation(title: 'Title', reason: 'Reason');
+
+      expect(window.calls, ['focus', 'onTop:true', 'prompt', 'onTop:false']);
+    });
+
+    test('refuses a second confirmation while a prompt is open', () async {
+      final Completer<bool> answer = Completer<bool>();
+      final EzkeyDeviceConfirmation confirmation = createConfirmation(() => answer.future, promptWindow: window);
+
+      final Future<bool> first = confirmation(title: 'Title', reason: 'Reason');
+      final bool second = await confirmation(title: 'Title', reason: 'Reason');
+      answer.complete(true);
+
+      expect(second, isFalse);
+      expect(await first, isTrue);
+      expect(prompts, 1);
+    });
+
+    test('accepts a new confirmation once the prompt is closed, even after an error', () async {
+      final EzkeyDeviceConfirmation confirmation = createConfirmation(() async => throw StateError('prompt failed'), promptWindow: window);
+      await expectLater(confirmation(title: 'Title', reason: 'Reason'), throwsStateError);
+
+      await expectLater(confirmation(title: 'Title', reason: 'Reason'), throwsStateError);
+
+      expect(prompts, 2);
+    });
+  });
+}
+
+/// A window that records the operations made on it, in order.
+class _FakeWindow implements EzkeyPromptWindow {
+  /// The operations, in order.
+  final List<String> calls = [];
+
+  /// The current always-on-top state.
+  bool _isAlwaysOnTop = false;
+
+  @override
+  bool get isAlwaysOnTop => _isAlwaysOnTop;
+
+  @override
+  set isAlwaysOnTop(bool value) {
+    calls.add('onTop:$value');
+    _isAlwaysOnTop = value;
+  }
+
+  @override
+  void focus() => calls.add('focus');
+
+  @override
+  void blur() => calls.add('blur');
 }
