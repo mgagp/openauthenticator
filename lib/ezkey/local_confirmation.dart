@@ -16,7 +16,10 @@ import 'package:open_authenticator/core/app_unlock/reason.dart';
 import 'package:open_authenticator/core/settings/app_unlock_method.dart';
 import 'package:open_authenticator/core/settings/entry.dart';
 import 'package:open_authenticator/i18n/translations.g.dart';
+import 'package:open_authenticator/utils/platform.dart';
 import 'package:open_authenticator/utils/result/result.dart';
+import 'package:open_authenticator/utils/window.dart';
+import 'package:window_manager/window_manager.dart';
 
 /// The approval protection the user chose, as in the EzKey reference app (#34).
 enum EzkeyApprovalSecurity {
@@ -98,8 +101,9 @@ final ezkeyDowngradeConfirmationProvider = Provider<Future<bool> Function(AppUnl
       ),
 );
 
-/// The device credential prompt, replaceable in tests (see [confirmWithDevice]).
-final ezkeyDeviceConfirmationProvider = Provider<Future<bool> Function({required String title, required String reason})>((ref) => confirmWithDevice);
+/// The device credential prompt with the desktop window kept in front (see [EzkeyDeviceConfirmation]),
+/// replaceable in tests.
+final ezkeyDeviceConfirmationProvider = Provider<Future<bool> Function({required String title, required String reason})>((ref) => EzkeyDeviceConfirmation().call);
 
 /// Returns whether the user confirmed with the app unlock method they chose (#83): an EzKey approval
 /// is one of upstream's sensitive actions, so the master password or upstream's local auth prompt is
@@ -119,8 +123,8 @@ Future<bool> confirmWithAppUnlockMethod(Ref ref, AppUnlockInteraction interactio
 /// returns `false`.
 ///
 /// Passes the prompt messages of every platform `local_auth` supports, like upstream's
-/// `LocalAuthenticationDefault`, so a port needs no change here (ADR-0004). Desktop window focus
-/// handling, which upstream adds around the prompt, comes with the first desktop port.
+/// `LocalAuthenticationDefault`, so a port needs no change here (ADR-0004). The desktop window is
+/// handled around this prompt by [EzkeyDeviceConfirmation].
 Future<bool> confirmWithDevice({required String title, required String reason}) async {
   final LocalAuthentication localAuthentication = LocalAuthentication();
   try {
@@ -147,5 +151,106 @@ Future<bool> confirmWithDevice({required String title, required String reason}) 
   } on LocalAuthException catch (ex) {
     debugPrint('EzKey local confirmation: ${ex.code.name}');
     return ex.code == LocalAuthExceptionCode.noCredentialsSet;
+  }
+}
+
+/// The window operations the device confirmation needs (see [EzkeyDeviceConfirmation]).
+abstract interface class EzkeyPromptWindow {
+  /// Whether the window stays above the other windows.
+  bool get isAlwaysOnTop;
+
+  /// Sets whether the window stays above the other windows.
+  set isAlwaysOnTop(bool value);
+
+  /// Gives the focus to the window.
+  void focus();
+
+  /// Takes the focus away from the window.
+  void blur();
+}
+
+/// The app's desktop window, through `window_manager`.
+class _NativePromptWindow implements EzkeyPromptWindow {
+  /// The app window.
+  final Window _window;
+
+  /// Creates a new native prompt window instance.
+  _NativePromptWindow(this._window);
+
+  @override
+  bool get isAlwaysOnTop => _window.isAlwaysOnTop;
+
+  @override
+  set isAlwaysOnTop(bool value) => _window.isAlwaysOnTop = value;
+
+  @override
+  void focus() => _window.focus();
+
+  @override
+  void blur() => _window.blur();
+}
+
+/// Returns the app's desktop window, or `null` on mobile.
+EzkeyPromptWindow? _currentPromptWindow() {
+  final Window? window = currentWindow;
+  return window == null ? null : _NativePromptWindow(window);
+}
+
+/// Asks for the device credential (see [confirmWithDevice]) with the desktop window kept in front
+/// while the prompt is open, as upstream's `LocalAuthenticationDefault.authenticate` does (ADR-0004 D4,
+/// #163): otherwise Windows Hello can open behind the app.
+///
+/// The window is focused and kept on top during the prompt. Afterwards, whatever the outcome, its
+/// always-on-top state is restored and, on Windows and macOS, it is blurred then focused again,
+/// upstream's workaround for flutter/flutter#122322. A second confirmation while one is open is
+/// refused without a prompt. This guard cannot see a prompt opened by upstream's own local
+/// authentication.
+class EzkeyDeviceConfirmation {
+  /// Returns the window to keep in front, or `null` when there is none (mobile).
+  final EzkeyPromptWindow? Function() _window;
+
+  /// Whether the window is blurred then focused after the prompt.
+  final bool _refocusAfterPrompt;
+
+  /// Opens the device credential prompt.
+  final Future<bool> Function({required String title, required String reason}) _prompt;
+
+  /// Whether a prompt is open.
+  bool _confirming = false;
+
+  /// Creates a new device confirmation instance. The defaults are the app window, a refocus on
+  /// Windows and macOS, and [confirmWithDevice]; tests replace them.
+  EzkeyDeviceConfirmation({
+    EzkeyPromptWindow? Function()? window,
+    bool? refocusAfterPrompt,
+    Future<bool> Function({required String title, required String reason})? prompt,
+  }) : _window = window ?? _currentPromptWindow,
+       _refocusAfterPrompt = refocusAfterPrompt ?? const {Platform.windows, Platform.macOS}.contains(currentPlatform),
+       _prompt = prompt ?? confirmWithDevice;
+
+  /// Returns whether the user confirmed, with [title] and [reason] shown by the prompt.
+  Future<bool> call({required String title, required String reason}) async {
+    if (_confirming) {
+      return false;
+    }
+    final EzkeyPromptWindow? window = _window();
+    final bool wasAlwaysOnTop = window?.isAlwaysOnTop ?? false;
+    _confirming = true;
+    try {
+      window
+        ?..focus()
+        ..isAlwaysOnTop = true;
+      return await _prompt(title: title, reason: reason);
+    } finally {
+      _confirming = false;
+      if (window != null) {
+        window.isAlwaysOnTop = wasAlwaysOnTop;
+        if (_refocusAfterPrompt) {
+          window
+            ..blur()
+            ..focus();
+        }
+      }
+    }
   }
 }
